@@ -35,63 +35,136 @@ body {
     color: var(--salon-dark);
 }
 
-/* ==================== 核心元件覆蓋 ==================== */
+/* ==================== 核心元件覆蓋（SalonEase 風格） ==================== */
 
-/* 按鈕 */
-.btn-primary {
+/* --- 按鈕系統 --- */
+.btn {
+    border-radius: 0.75rem;
+    font-weight: 500;
+    padding: 0.5rem 1.25rem;
+    transition: all 0.2s ease;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+.btn-sm {
+    padding: 0.35rem 0.9rem;
+    font-size: 0.875rem;
+}
+
+/* 主要按鈕（深灰黑） */
+.btn-primary,
+.btn-dark {
     background-color: var(--salon-dark);
     border-color: var(--salon-dark);
+    color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover,
+.btn-dark:hover {
     background-color: #1f1f21;
     border-color: #1f1f21;
+    color: white;
 }
 
+/* 次要按鈕 */
 .btn-outline-secondary {
     color: var(--salon-dark);
     border-color: var(--salon-border);
+    background-color: transparent;
 }
 
 .btn-outline-secondary:hover {
     background-color: var(--salon-border);
     color: var(--salon-dark);
+    border-color: var(--salon-border);
 }
 
-/* 輸入框 */
+/* 成功/強調色按鈕（使用 sage green） */
+.btn-success {
+    background-color: var(--salon-sage);
+    border-color: var(--salon-sage);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #7a8f7a;
+    border-color: #7a8f7a;
+}
+
+/* 危險按鈕 */
+.btn-danger {
+    background-color: #c62828;
+    border-color: #c62828;
+}
+
+.btn-danger:hover {
+    background-color: #a71d1d;
+}
+
+/* --- 輸入框系統 --- */
 .form-control,
-.form-select {
+.form-select,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+textarea {
     border-radius: 0.75rem;
-    border-color: var(--salon-border);
-    background-color: #fff;
+    border: 1px solid var(--salon-border);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-control:focus,
-.form-select:focus {
+.form-select:focus,
+input:focus,
+textarea:focus {
     border-color: var(--salon-sage);
-    box-shadow: 0 0 0 0.2rem rgba(143, 166, 143, 0.25);
+    box-shadow: 0 0 0 0.2rem rgba(143, 166, 143, 0.2);
+    outline: none;
 }
 
-/* 卡片 */
+.form-label {
+    font-weight: 500;
+    color: var(--salon-dark);
+    margin-bottom: 0.35rem;
+}
+
+/* --- 卡片系統 --- */
 .card {
     border-radius: 1rem;
-    border-color: var(--salon-border);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--salon-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
 }
 
 .card-header {
     background-color: #fff;
-    border-bottom-color: var(--salon-border);
+    border-bottom: 1px solid var(--salon-border);
+    font-weight: 600;
+    padding: 1rem 1.25rem;
 }
 
-/* 表格 */
+.card-body {
+    padding: 1.25rem;
+}
+
+.card-footer {
+    background-color: #F8F5F0;
+    border-top: 1px solid var(--salon-border);
+}
+
+/* --- 表格系統 --- */
 .table {
     --bs-table-bg: #fff;
     --bs-table-hover-bg: #F8F5F0;
-}
-
-.table > :not(caption) > * > * {
-    border-bottom-color: var(--salon-border);
+    font-size: 0.95rem;
 }
 
 .table thead th {
@@ -101,36 +174,84 @@ body {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--salon-border);
+    padding: 0.75rem 1rem;
 }
 
-/* Modal */
+.table > :not(caption) > * > * {
+    border-bottom-color: var(--salon-border);
+    padding: 0.65rem 1rem;
+}
+
+.table-responsive {
+    border-radius: 0.75rem;
+    border: 1px solid var(--salon-border);
+}
+
+/* --- Modal 系統 --- */
 .modal-content {
     border-radius: 1rem;
     border: none;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
 .modal-header {
-    border-bottom-color: var(--salon-border);
+    border-bottom: 1px solid var(--salon-border);
+    padding: 1rem 1.25rem;
 }
 
-/* 導航 */
+.modal-body {
+    padding: 1.25rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--salon-border);
+    background-color: #F8F5F0;
+    padding: 1rem 1.25rem;
+}
+
+/* --- 導航 --- */
 .navbar {
     background-color: #fff;
     border-bottom: 1px solid var(--salon-border);
 }
 
-/* 熱鍵列（底部固定） */
+.nav-link {
+    color: var(--salon-dark);
+    border-radius: 0.5rem;
+    margin: 0 0.15rem;
+    padding: 0.5rem 0.9rem;
+}
+
+.nav-link:hover {
+    background-color: #F8F5F0;
+}
+
+.nav-link.active {
+    background-color: var(--salon-dark);
+    color: white !important;
+}
+
+/* --- 熱鍵列（底部） --- */
 .hotkey-bar {
     background-color: #fff;
     border-top: 1px solid var(--salon-border);
+    font-size: 0.875rem;
 }
 
-/* 響應式調整（保留部分原有優化） */
+/* --- 響應式優化 --- */
 @media (max-width: 768px) {
-    .form-control,
-    .form-select,
     .btn {
         min-height: 42px;
+        padding: 0.6rem 1rem;
+    }
+
+    .form-control,
+    .form-select {
+        min-height: 42px;
+    }
+
+    .modal-content {
+        border-radius: 0.75rem;
     }
 }
