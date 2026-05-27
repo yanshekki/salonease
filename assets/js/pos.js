@@ -288,6 +288,12 @@ function setupCustomerSearch() {
 
                     // 載入客戶持有的有效套票
                     await loadCustomerPackages(c.id);
+
+                    // 如果目前正在看「套票」分類，自動刷新顯示客戶套票
+                    const packageBtn = document.getElementById('filter-package');
+                    if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]')) {
+                        renderCustomerPackages();
+                    }
                 } else {
                     currentCustomer = null;
                     customerPackages = [];
