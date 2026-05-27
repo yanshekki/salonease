@@ -22,6 +22,11 @@ $lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
+<div class="mb-4 p-3 bg-[#F8F5F0] border border-[#EDE5DC] rounded-2xl text-sm text-[#5A5A5C]">
+    目前系統已進入 <span class="font-medium text-[#2C2C2E]">維護階段</span>。
+    核心功能已完成，未來會以穩定性及小優化為主。如有新需求，歡迎提出。
+</div>
+
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
     <!-- 今日營業額 -->
     <div class="bg-white rounded-2xl p-5 border border-gray-100">

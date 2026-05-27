@@ -55,7 +55,7 @@ $extraJs = 'hotkeys.js';
         </label>
         <span class="text-[10px] text-[#8A8A8C] pt-5">（產品低於門檻時會顯示紅色警示）</span>
     </div>
-    <button onclick="loadProducts()" class="salon-btn salon-btn-secondary h-[42px]">重新載入</button>
+    <button onclick="loadProducts()" class="salon-btn salon-btn-secondary h-[42px]" title="重新載入產品列表">重新載入</button>
 </div>
 
 <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
