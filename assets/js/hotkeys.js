@@ -15,6 +15,7 @@
             { key: 'Alt+A', desc: '前往預約管理', action: () => location.href = '/appointments.php' },
             { key: 'Alt+C', desc: '前往客戶管理', action: () => location.href = '/customers.php' },
             { key: 'Alt+R', desc: '前往報表', action: () => location.href = '/reports.php' },
+            { key: 'Alt+M', desc: '前往佣金查詢', action: () => location.href = '/commissions.php' },
             { key: 'Alt+S', desc: '前往設定', action: () => location.href = '/settings.php' },
             { key: 'F9', desc: '打印上一張收據（58mm 熱感紙）', action: () => window.printLastReceipt?.('58') },
         ],
@@ -94,7 +95,7 @@
 
         // 簡單全域 Alt 組合
         if (e.altKey) {
-            const map = { 'h': '/dashboard.php', 'p': '/pos.php', 'a': '/appointments.php', 'c': '/customers.php', 'r': '/reports.php', 's': '/settings.php' };
+            const map = { 'h': '/dashboard.php', 'p': '/pos.php', 'a': '/appointments.php', 'c': '/customers.php', 'r': '/reports.php', 'm': '/commissions.php', 's': '/settings.php' };
             if (map[e.key.toLowerCase()]) {
                 e.preventDefault();
                 location.href = map[e.key.toLowerCase()];

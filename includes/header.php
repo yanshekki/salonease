@@ -93,6 +93,10 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                        class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'reports' ? 'nav-active' : '' ?>">
                         報表
                     </a>
+                    <a href="/commissions.php" 
+                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'commissions' ? 'nav-active' : '' ?>">
+                        佣金
+                    </a>
                     <a href="/staff.php" 
                        class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'staff' ? 'nav-active' : '' ?>">
                         員工
