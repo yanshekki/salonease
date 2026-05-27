@@ -121,6 +121,9 @@ switch ($action) {
 
         // 只有 admin 可以改其他 admin 的角色
         $currentUser = get_current_user();
+        if (!$currentUser) {
+            json_error('請先登入', 401);
+        }
         if ($current['role'] === 'admin' && $role !== 'admin' && $currentUser['role'] !== 'admin') {
             json_error('無法更改其他管理員的角色');
         }
@@ -140,7 +143,12 @@ switch ($action) {
         $id = (int)post('id');
         $newStatus = (int)post('status'); // 1 = 啟用, 0 = 停用
 
-        if ($id === get_current_user()['id']) {
+        $currentUser = get_current_user();
+        if (!$currentUser) {
+            json_error('請先登入', 401);
+        }
+
+        if ($id === $currentUser['id']) {
             json_error('不能停用自己的帳號');
         }
 
