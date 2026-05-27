@@ -168,8 +168,8 @@ $extraJs = 'hotkeys.js';
         </div>
 
         <!-- 時間軸容器 -->
-        <div id="today-timeline" class="border rounded-xl overflow-hidden bg-[#FAF7F2] min-h-[420px]">
-            <!-- JS 會渲染時間格 + 預約區塊 -->
+        <div id="today-timeline" class="border rounded-xl bg-white min-h-[420px]">
+            <!-- JS 會渲染專業時間軸 -->
         </div>
     </div>
     <div class="text-xs text-[#8A8A8C] mt-3">空白時段可點擊直接新增預約 • 點擊預約區塊查看詳情</div>
@@ -699,7 +699,6 @@ async function loadTodaySchedule() {
     const todayStr = today.toISOString().split('T')[0];
     dateEl.textContent = today.toLocaleDateString('zh-HK', { weekday: 'long', month: 'long', day: 'numeric' });
 
-    // 確保今日時程的美容師選單已載入
     if (staffFilter.options.length <= 1) {
         try {
             const staffRes = await SalonEase.fetch('/api/staff.php?action=list&status=1');
@@ -717,80 +716,60 @@ async function loadTodaySchedule() {
 
     try {
         let url = `/api/appointments.php?action=list&date_from=${todayStr}&date_to=${todayStr}`;
-        if (selectedStaff) {
-            url += `&staff_id=${selectedStaff}`;
-        }
+        if (selectedStaff) url += `&staff_id=${selectedStaff}`;
+
         const res = await SalonEase.fetch(url);
         const appts = (res.data || []).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-        // 建立時間格：09:00 ~ 21:00，每 30 分鐘
-        const slots = [];
-        for (let h = 9; h <= 21; h++) {
-            for (let m = 0; m < 60; m += 30) {
-                if (h === 21 && m > 0) break; // 21:00 結束
-                const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                slots.push(timeStr);
-            }
+        // 建立時間格（09:00 - 21:00，每 30 分鐘）
+        const startHour = 9;
+        const endHour = 21;
+        const slotMinutes = 30;
+        const totalSlots = ((endHour - startHour) * 60) / slotMinutes;
+
+        // 建立 grid 容器
+        let html = `
+            <div class="grid" style="grid-template-columns: 60px 1fr; font-size: 13px;">
+                <!-- 時間軸 -->
+                <div class="border-r bg-[#F8F5F0]">
+        `;
+
+        for (let i = 0; i <= totalSlots; i++) {
+            const minutes = i * slotMinutes;
+            const hour = startHour + Math.floor(minutes / 60);
+            const min = minutes % 60;
+            const timeLabel = `${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+
+            html += `<div class="h-[28px] flex items-center justify-end pr-2 text-[#5A5A5C] border-b text-xs">${timeLabel}</div>`;
         }
 
-        let html = '<div class="divide-y divide-gray-200 text-sm">';
+        html += `</div><div class="relative" style="height: ${totalSlots * 28}px;">`;
 
-        slots.forEach((slotTime, index) => {
-            const slotStart = new Date(`${todayStr}T${slotTime}:00`);
-            const slotEnd = new Date(slotStart.getTime() + 30 * 60000);
+        // 渲染預約區塊
+        appts.forEach(a => {
+            const aStart = new Date(a.start_time);
+            const aEnd = new Date(a.end_time);
 
-            // 找出這個時段重疊的預約
-            const overlapping = appts.filter(a => {
-                const aStart = new Date(a.start_time);
-                const aEnd = new Date(a.end_time);
-                return aStart < slotEnd && aEnd > slotStart;
-            });
+            const startMinutes = (aStart.getHours() - startHour) * 60 + aStart.getMinutes();
+            const endMinutes = (aEnd.getHours() - startHour) * 60 + aEnd.getMinutes();
 
-            if (overlapping.length > 0) {
-                // 顯示第一個預約，並註明是否有更多
-                const a = overlapping[0];
-                const start = new Date(a.start_time);
-                const isStartSlot = slotTime === start.toTimeString().slice(0,5);
+            const top = Math.max(0, (startMinutes / slotMinutes) * 28);
+            const height = Math.max(28, ((endMinutes - startMinutes) / slotMinutes) * 28);
 
-                let content = '';
-                if (isStartSlot) {
-                    const more = overlapping.length > 1 ? ` +${overlapping.length - 1}` : '';
-                    content = `
-                        <div class="flex-1 pl-2 border-l-2 border-[#8FA68F]">
-                            <div class="font-medium text-sm">${e(a.customer_name || '客戶')}${more}</div>
-                            <div class="text-xs text-[#4A6A4A]">${e(a.staff_name || '')}</div>
-                        </div>
-                    `;
-                } else {
-                    // 延續時段
-                    content = `
-                        <div class="flex-1 pl-2 text-[#8A8A8C]">
-                            <div class="text-xs">↓ ${e(a.customer_name || '')}</div>
-                        </div>
-                    `;
-                }
+            const statusColor = a.status === 'confirmed' ? '#C6E2C6' : 
+                               (a.status === 'pending' ? '#FFF3C6' : '#E5E5E5');
 
-                html += `
-                    <div onclick="showDetailModal(${a.id})" 
-                         class="flex items-center px-3 py-1.5 bg-[#E8F0E8] hover:bg-[#D4E6D4] cursor-pointer transition">
-                        <div class="w-16 font-mono text-xs text-[#5A5A5C] flex-shrink-0">${slotTime}</div>
-                        ${content}
-                    </div>
-                `;
-            } else {
-                // 空白時段，可點擊新增
-                const clickableStart = `${todayStr} ${slotTime}:00`;
-                html += `
-                    <div onclick="showCreateModalWithTime('${clickableStart}')"
-                         class="flex items-center px-3 py-[5px] text-[#8A8A8C] hover:bg-white hover:text-[#2C2C2E] cursor-pointer transition group">
-                        <div class="w-16 font-mono text-xs flex-shrink-0">${slotTime}</div>
-                        <div class="flex-1 pl-2 text-xs group-hover:text-[#8FA68F]">＋ 新增</div>
-                    </div>
-                `;
-            }
+            html += `
+                <div onclick="showDetailModal(${a.id})" 
+                     class="absolute left-1 right-1 rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center"
+                     style="top: ${top}px; height: ${height}px; background-color: ${statusColor};">
+                    <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
+                    <div class="text-[10px] text-[#555] truncate">${e(a.staff_name || '')}</div>
+                </div>
+            `;
         });
 
-        html += '</div>';
+        html += `</div></div>`;
         container.innerHTML = html;
 
     } catch (err) {
