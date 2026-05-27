@@ -11,20 +11,8 @@
     Require all denied
 </FilesMatch>
 
-<Directory "includes">
-    Require all denied
-</Directory>
-
-<Directory "sql">
-    Require all denied
-</Directory>
-
-<Directory "uploads">
-    # 允許圖片 / 文件存取，但限制執行
-    <FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
-        Require all denied
-    </FilesMatch>
-</Directory>
+# 注意：Directory 區塊已移除（.htaccess 不支援）
+# 改為在各資料夾內放置獨立的 .htaccess 檔案保護
 
 # 基本 PHP 設定（共享主機常見）
 <IfModule mod_php.c>
