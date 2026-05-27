@@ -183,10 +183,39 @@ SalonEase 已提供專業級一鍵安裝工具，**強烈建議使用此方法**
 6. 登入後立即修改管理員密碼
 7. 前往「系統設定」完善店舖資訊、打印設定及佣金比率
 
-#### 日後升級
-- 系統提供 `upgrade.php` 一鍵升級工具
-- 日後有資料庫結構更新（新增欄位、索引、表格等），只需將新的 migration 檔案放入 `migrations/` 資料夾
-- 登入後瀏覽 `/upgrade.php` 即可一鍵執行所有待處理更新（安全、支援交易回滾）
+#### 日後升級流程（強烈建議閱讀）
+
+SalonEase 設計了專業的一鍵升級機制，未來任何資料庫結構更新（新增欄位、索引、新表、seed 更新等）都可以安全、一鍵完成。
+
+**升級步驟：**
+1. 登入系統（必須是 admin 或 manager 角色）
+2. 瀏覽 `https://你的域名/upgrade.php`
+3. 系統會自動掃描 `migrations/` 資料夾，列出所有待執行的更新
+4. 按下「開始一鍵升級」按鈕
+5. 系統會逐一執行 migration，並以交易保護（失敗會自動回滾）
+
+**如何新增 migration（給開發者）：**
+- 在 `migrations/` 資料夾建立新檔案，例如 `003_add_customer_points.php`
+- 檔案格式範例：
+  ```php
+  return [
+      'description' => '為 customers 表新增積分欄位',
+      'up' => function($pdo) {
+          // 安全、冪等的 SQL
+          try {
+              $pdo->exec("ALTER TABLE customers ADD COLUMN points INT DEFAULT 0");
+          } catch (PDOException $e) {
+              // 忽略已存在欄位的錯誤
+          }
+      }
+  ];
+  ```
+- 放入後，其他環境只要去 `upgrade.php` 就能自動套用
+
+**升級前後檢查清單：**
+- 升級前：備份資料庫
+- 升級後：檢查 `upgrade.php` 是否顯示「已是最新版本」
+- 如有自訂 migration，建議先在測試環境驗證
 
 **強烈建議**：
 - 生產環境務必定期備份資料庫（尤其是 `sales`、`commissions`、`customer_packages` 表）
