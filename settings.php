@@ -20,11 +20,11 @@ include __DIR__ . '/includes/header.php';
             <div class="text-sm text-[#5A5A5C] mt-1">管理房間名稱與容量（用於預約）</div>
         </a>
 
-        <div class="p-5 bg-white border border-gray-100 rounded-2xl opacity-60">
-            <div class="text-2xl mb-2">💰</div>
-            <div class="font-semibold">佣金率設定</div>
-            <div class="text-sm text-[#5A5A5C] mt-1">（Phase 1 後續實作）</div>
-        </div>
+        <a href="/services.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
+            <div class="text-2xl mb-2">💆</div>
+            <div class="font-semibold group-hover:text-[#8FA68F]">服務項目管理</div>
+            <div class="text-sm text-[#5A5A5C] mt-1">管理療程名稱、時長與價格</div>
+        </a>
 
         <div class="p-5 bg-white border border-gray-100 rounded-2xl opacity-60">
             <div class="text-2xl mb-2">🏪</div>
