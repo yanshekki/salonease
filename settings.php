@@ -37,6 +37,12 @@ include __DIR__ . '/includes/header.php';
             <div class="font-semibold group-hover:text-[#8FA68F]">零售產品管理</div>
             <div class="text-sm text-[#5A5A5C] mt-1">管理產品、售價與庫存</div>
         </a>
+
+        <a href="/packages.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
+            <div class="text-2xl mb-2">🎫</div>
+            <div class="font-semibold group-hover:text-[#8FA68F]">套票管理</div>
+            <div class="text-sm text-[#5A5A5C] mt-1">療程卡（套票）定義與定價</div>
+        </a>
     </div>
 </div>
 <?php $extraJs = 'hotkeys.js'; include __DIR__ . '/includes/footer.php'; ?>
