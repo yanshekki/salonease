@@ -172,6 +172,11 @@ $extraJs = 'hotkeys.js';
         <!-- 美容師顏色圖例 -->
         <div id="today-staff-legend" class="flex flex-wrap gap-2 mb-3 text-xs"></div>
 
+        <!-- 今日時程 Tooltip -->
+        <div id="timeline-tooltip" class="hidden fixed z-[80] bg-white border border-gray-300 shadow-lg rounded-xl p-3 text-sm max-w-xs pointer-events-none">
+            <!-- 由 JS 動態填入 -->
+        </div>
+
         <!-- 時間軸容器 -->
         <div id="today-timeline" class="border rounded-xl bg-white min-h-[420px]">
             <!-- JS 會渲染專業時間軸 -->
@@ -1297,6 +1302,74 @@ function getStaffColor(name) {
     const hue = Math.abs(hash) % 360;
     return `hsl(${hue}, 65%, 88%)`; // 淺色系
 }
+
+// 今日時程 Tooltip（服務項目快速查看）
+(function() {
+    const timelineContainer = document.getElementById('today-timeline');
+    const tooltip = document.getElementById('timeline-tooltip');
+
+    if (!timelineContainer || !tooltip) return;
+
+    let currentFetchId = null;
+
+    timelineContainer.addEventListener('mouseover', async function(e) {
+        const block = e.target.closest('[onclick*="showDetailModal"]');
+        if (!block) {
+            tooltip.classList.add('hidden');
+            return;
+        }
+
+        const match = block.getAttribute('onclick').match(/showDetailModal\((\d+)\)/);
+        if (!match) return;
+
+        const apptId = match[1];
+        if (currentFetchId === apptId) {
+            tooltip.classList.remove('hidden');
+            return;
+        }
+
+        currentFetchId = apptId;
+
+        tooltip.innerHTML = `<div class="text-[#8A8A8C]">載入服務項目中...</div>`;
+        tooltip.style.left = (e.pageX + 15) + 'px';
+        tooltip.style.top = (e.pageY + 10) + 'px';
+        tooltip.classList.remove('hidden');
+
+        try {
+            const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${apptId}`);
+            const a = res.data;
+
+            let servicesHtml = '<div class="text-[#8A8A8C]">無服務項目</div>';
+            if (a.items && a.items.length > 0) {
+                servicesHtml = '<div class="font-medium mb-1">服務項目：</div><ul class="list-disc list-inside text-xs">';
+                a.items.forEach(item => {
+                    servicesHtml += `<li>${e(item.service_name || '服務')} — $${parseFloat(item.price_at_time || 0).toFixed(0)}</li>`;
+                });
+                servicesHtml += '</ul>';
+            }
+
+            tooltip.innerHTML = `
+                <div class="font-medium">${e(a.customer_name || '客戶')}</div>
+                <div class="text-xs text-[#5A5A5C] mb-2">${e(a.staff_name || '')}</div>
+                ${servicesHtml}
+            `;
+        } catch (err) {
+            tooltip.innerHTML = `<div class="text-red-500">載入失敗</div>`;
+        }
+    });
+
+    timelineContainer.addEventListener('mousemove', function(e) {
+        if (!tooltip.classList.contains('hidden')) {
+            tooltip.style.left = (e.pageX + 15) + 'px';
+            tooltip.style.top = (e.pageY + 10) + 'px';
+        }
+    });
+
+    timelineContainer.addEventListener('mouseleave', function() {
+        tooltip.classList.add('hidden');
+        currentFetchId = null;
+    });
+})();
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
