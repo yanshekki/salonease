@@ -221,6 +221,15 @@ switch ($action) {
         $isA4 = ($format === 'a4');
         $is80 = ($format === '80');
 
+        // 店舖基本資訊（目前直接寫死，之後可從設定表或 config 讀取）
+        // 建議日後搬到 settings 表或 config.php，方便老闆自行修改
+        $shop = [
+            'name'    => 'SalonEase 美容中心',
+            'address' => '香港九龍尖沙咀彌敦道 100 號 8 樓',
+            'phone'   => '2345 6789',
+            'footer'  => '專業 · 貼心 · 值得信賴'
+        ];
+
         $sale = db_query_one("SELECT * FROM sales WHERE id = ?", [$id]);
         if (!$sale) {
             die('找不到該銷售單');
@@ -280,8 +289,8 @@ switch ($action) {
             <!-- ==================== A4 正式收據 / 合約版 ==================== -->
             <div class="receipt-a4" style="max-width: 210mm; margin: 0 auto; padding: 12mm 15mm; font-family: system-ui, 'Noto Sans TC', sans-serif; font-size: 11.5pt; line-height: 1.5; color: #222;">
                 <div style="text-align: center; border-bottom: 3px solid #2C2C2E; padding-bottom: 8mm; margin-bottom: 8mm;">
-                    <div style="font-size: 22pt; font-weight: 700; letter-spacing: 1px;">SalonEase 美容中心</div>
-                    <div style="margin-top: 2mm; font-size: 10pt; color: #555;">香港 · 專業美容護理服務</div>
+                    <div style="font-size: 22pt; font-weight: 700; letter-spacing: 1px;"><?= e($shop['name']) ?></div>
+                    <div style="margin-top: 2mm; font-size: 10pt; color: #555;"><?= e($shop['address']) ?>　Tel: <?= e($shop['phone']) ?></div>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6mm; font-size: 10.5pt;">
@@ -361,9 +370,13 @@ switch ($action) {
                     </div>
                 </div>
 
+                <div style="margin-top: 6mm; font-size: 8.5pt; text-align: center; color: #777;">
+                    此為客戶副本　店舖存根請保留備查
+                </div>
+
                 <div style="margin-top: 10mm; text-align: center; font-size: 9.5pt; color: #666;">
                     感謝惠顧！如有任何疑問，歡迎隨時聯絡我們。<br>
-                    SalonEase · 專業 · 貼心 · 值得信賴
+                    <?= e($shop['name']) ?> · <?= e($shop['footer']) ?>
                 </div>
             </div>
 
@@ -371,8 +384,9 @@ switch ($action) {
             <!-- ==================== 熱感紙收據（58mm / 80mm） ==================== -->
             <div class="receipt-thermal <?= $is80 ? 'receipt-thermal-80' : '' ?>" style="margin: 0 auto; width: <?= $is80 ? '80mm' : '58mm' ?>; max-width: <?= $is80 ? '80mm' : '58mm' ?>; font-family: 'Courier New', monospace; font-size: <?= $is80 ? '12px' : '10.5px' ?>; line-height: 1.32; color: #000; padding: <?= $is80 ? '4mm 3mm' : '3mm 2.5mm 5mm' ?>;">
                 <div style="text-align:center; margin-bottom: 2mm;">
-                    <div style="font-size: <?= $is80 ? '14px' : '13px' ?>; font-weight:700;">SalonEase 美容中心</div>
-                    <div style="font-size:9px; margin-top:1px;">收據 #<?= $id ?></div>
+                    <div style="font-size: <?= $is80 ? '14px' : '13px' ?>; font-weight:700;"><?= e($shop['name']) ?></div>
+                    <div style="font-size:8.5px; margin-top:1px;"><?= e($shop['address']) ?></div>
+                    <div style="font-size:8.5px;">Tel: <?= e($shop['phone']) ?>　　收據 #<?= $id ?></div>
                 </div>
 
                 <div style="border-top:1px dashed #333; margin:2mm 0;"></div>
@@ -423,7 +437,7 @@ switch ($action) {
                 <div style="text-align:center; font-size:9px; line-height:1.4;">
                     感謝惠顧！<br>
                     付款方式：<?= strtoupper($sale['payment_method']) ?><br>
-                    <span style="font-size:8px;">SalonEase · 專業美容服務</span>
+                    <span style="font-size:8px;"><?= e($shop['footer']) ?></span>
                 </div>
             </div>
         <?php endif; ?>

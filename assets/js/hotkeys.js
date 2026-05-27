@@ -16,6 +16,7 @@
             { key: 'Alt+C', desc: '前往客戶管理', action: () => location.href = '/customers.php' },
             { key: 'Alt+R', desc: '前往報表', action: () => location.href = '/reports.php' },
             { key: 'Alt+S', desc: '前往設定', action: () => location.href = '/settings.php' },
+            { key: 'F9', desc: '打印上一張收據（58mm 熱感紙）', action: () => window.printLastReceipt?.('58') },
         ],
         // 各頁面可透過 window.SalonEase.Hotkeys.registerPage 加入
         page: []
@@ -97,6 +98,14 @@
             if (map[e.key.toLowerCase()]) {
                 e.preventDefault();
                 location.href = map[e.key.toLowerCase()];
+            }
+        }
+
+        // F9 = 快速打印上一張收據（58mm）
+        if (e.key === 'F9') {
+            e.preventDefault();
+            if (window.printLastReceipt) {
+                window.printLastReceipt('58');
             }
         }
     });

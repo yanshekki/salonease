@@ -54,6 +54,12 @@
         letter-spacing: 0.5px;
     }
 
+    .receipt-header .shop-info {
+        font-size: 8.5px;
+        line-height: 1.2;
+        margin-top: 1px;
+    }
+
     .separator {
         border-top: 1px dashed #333;
         margin: 2.5mm 0;
@@ -103,6 +109,13 @@
         line-height: 1.5;
         color: #222;
         background: #fff;
+    }
+
+    .receipt-a4 .shop-header {
+        text-align: center;
+        border-bottom: 3px solid #2C2C2E;
+        padding-bottom: 8mm;
+        margin-bottom: 8mm;
     }
 
     .receipt-a4 table {

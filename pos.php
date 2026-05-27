@@ -126,7 +126,7 @@ $extraJs = 'pos.js';
 
                 <button onclick="printLastReceipt()" 
                         class="w-full py-2 border text-sm rounded-xl hover:bg-gray-50">
-                    打印上一張收據（58mm）
+                    打印上一張收據（58mm）　<span class="text-[10px] text-[#8FA68F]">F9</span>
                 </button>
                 <button onclick="showPrintFormatChoice()" 
                         class="w-full py-1.5 mt-1 text-xs text-[#5A5A5C] hover:text-[#2C2C2E] underline">
@@ -139,10 +139,18 @@ $extraJs = 'pos.js';
 </div>
 
 <script>
-// 初始載入
+// 初始載入 + 註冊本頁專屬熱鍵
 document.addEventListener('DOMContentLoaded', () => {
     loadItems();
     setupCustomerSearch();
+
+    // 註冊 POS 頁專屬熱鍵（F9 已全域，但這裡再強調）
+    if (window.SalonEase && window.SalonEase.Hotkeys && window.SalonEase.Hotkeys.registerPage) {
+        window.SalonEase.Hotkeys.registerPage([
+            { key: 'F9', desc: '快速打印上一張收據（58mm 熱感紙）' },
+            { key: 'Ctrl+P', desc: '選擇格式打印收據' },
+        ]);
+    }
 });
 </script>
 
