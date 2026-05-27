@@ -51,6 +51,7 @@ $extraJs = 'hotkeys.js';
         <label class="flex items-center gap-2 text-sm cursor-pointer" title="只顯示庫存低於門檻的產品">
             <input type="checkbox" id="low-stock-only" onchange="loadProducts()" class="accent-[#2C2C2E]">
             <span>只顯示低庫存</span>
+            <span class="text-[10px] text-[#8A8A8C]">(依目前門檻)</span>
         </label>
     </div>
     <button onclick="loadProducts()" class="salon-btn salon-btn-secondary h-[42px]">重新載入</button>

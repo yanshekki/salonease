@@ -308,12 +308,18 @@ function renderCart() {
                 </div>
             `;
         } else {
-            // 一般收費項目 + 指派員工功能
+            // 一般收費項目 + 指派員工功能 + 低庫存警示
             const assignedName = getStaffName(item.assigned_staff_id) || '未指派';
+            const product = itemsCache.find(p => p.id == item.ref_id && p.type === 'product');
+            const isLow = product && product.stock_qty <= (product.effective_low_stock_threshold || 5);
+            const lowStockBadge = isLow 
+                ? `<span class="ml-1 text-[9px] px-1 py-0 bg-red-100 text-red-600 rounded">低庫存</span>` 
+                : '';
+
             html += `
                 <div class="flex justify-between items-center p-2 border-b">
                     <div class="flex-1">
-                        <div class="font-medium text-sm">${e(item.name)}</div>
+                        <div class="font-medium text-sm">${e(item.name)}${lowStockBadge}</div>
                         <div class="text-xs text-[#8A8A8C]">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>
                         <div class="text-[10px] mt-0.5">
                             <span class="text-[#8A8A8C]">指派：</span>
