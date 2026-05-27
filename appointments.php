@@ -181,7 +181,12 @@ $extraJs = 'hotkeys.js';
 <div id="week-view" class="hidden">
     <div class="bg-white rounded-2xl border border-gray-100 p-4">
         <div class="flex items-center justify-between mb-3 px-1">
-            <div class="font-semibold">未來七天預約概覽</div>
+            <div class="flex items-center gap-3">
+                <div class="font-semibold">未來七天預約概覽</div>
+                <select id="week-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadWeekView()">
+                    <option value="">全部美容師</option>
+                </select>
+            </div>
             <button onclick="loadWeekView()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
         </div>
         <div id="week-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
@@ -891,7 +896,23 @@ async function loadTodaySchedule() {
 
 async function loadWeekView() {
     const container = document.getElementById('week-grid');
+    const staffFilter = document.getElementById('week-staff-filter');
+
     container.innerHTML = `<div class="col-span-full py-8 text-center text-[#8A8A8C]">載入中...</div>`;
+
+    // 確保美容師選單已載入
+    if (staffFilter.options.length <= 1) {
+        try {
+            const staffRes = await SalonEase.fetch('/api/staff.php?action=list&status=1');
+            let html = '<option value="">全部美容師</option>';
+            staffRes.data.forEach(s => {
+                html += `<option value="${s.id}">${e(s.name)}</option>`;
+            });
+            staffFilter.innerHTML = html;
+        } catch (e) {}
+    }
+
+    const selectedStaff = staffFilter.value;
 
     const today = new Date();
     const days = [];
@@ -912,7 +933,10 @@ async function loadWeekView() {
     const to = days[6].date;
 
     try {
-        const res = await SalonEase.fetch(`/api/appointments.php?action=list&date_from=${from}&date_to=${to}`);
+        let url = `/api/appointments.php?action=list&date_from=${from}&date_to=${to}`;
+        if (selectedStaff) url += `&staff_id=${selectedStaff}`;
+
+        const res = await SalonEase.fetch(url);
         const allAppts = res.data || [];
 
         let html = '';
