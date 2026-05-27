@@ -726,6 +726,48 @@ async function quickTimeShift(id, minutes, viewType = 'list') {
     }
 }
 
+// 快速複製預約（+7 天）
+async function quickDuplicateAppointment(id, viewType = 'list') {
+    try {
+        const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${id}`);
+        const a = res.data;
+
+        const originalStart = new Date(a.start_time);
+        originalStart.setDate(originalStart.getDate() + 7);
+
+        const duration = new Date(a.end_time) - new Date(a.start_time);
+        const newEnd = new Date(originalStart.getTime() + duration);
+
+        const newStartStr = originalStart.toISOString().slice(0, 19).replace('T', ' ');
+        const newEndStr = newEnd.toISOString().slice(0, 19).replace('T', ' ');
+
+        await SalonEase.fetch('/api/appointments.php?action=create', {
+            method: 'POST',
+            body: {
+                customer_id: a.customer_id,
+                staff_id: a.staff_id,
+                room_id: a.room_id || '',
+                start_time: newStartStr,
+                end_time: newEndStr,
+                notes: a.notes || '',
+                services: a.items ? a.items.map(i => i.service_id) : []
+            }
+        });
+
+        SalonEase.toast('已複製預約至 +7 天');
+
+        if (viewType === 'calendar') {
+            loadTodaySchedule();
+        } else if (viewType === 'week') {
+            loadWeekView();
+        } else {
+            loadAppointments();
+        }
+    } catch (err) {
+        SalonEase.toast(err.message, 'error');
+    }
+}
+
 function openPosFromAppointment() {
     if (!currentDetailId) return;
     // 跳轉到 POS 並帶上預約 ID（Phase 3 會處理自動帶入客戶與服務）
@@ -1197,10 +1239,14 @@ async function loadTodayScheduleForDate(targetDateStr) {
                 <span onclick="event.stopImmediatePropagation(); quickTimeShift(${a.id}, 30, 'calendar')" class="px-1 py-0 text-[9px] bg-gray-200 hover:bg-gray-300 rounded">+30</span>
             `;
 
+            // 快速複製（+7 天）
+            const duplicateAction = `<span onclick="event.stopImmediatePropagation(); quickDuplicateAppointment(${a.id}, 'calendar')" class="px-1 py-0 text-[9px] bg-purple-200 hover:bg-purple-300 rounded">複製</span>`;
+
             const actionsHtml = `
                 <div class="absolute top-0.5 right-0.5 hidden group-hover:flex gap-1 text-[9px]">
                     ${quickActions.join('')}
                     ${timeShiftActions}
+                    ${duplicateAction}
                 </div>
             `;
 
