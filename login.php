@@ -48,64 +48,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登入 · SalonEase 香港美容院管理系統</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Bootstrap 5.3.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap 自訂主題 -->
+    <link rel="stylesheet" href="assets/css/bootstrap-custom.css">
+    <!-- 過渡期保留（之後移除） -->
     <link rel="stylesheet" href="assets/css/app.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
         body { font-family: "Noto Sans TC", system-ui, -apple-system, sans-serif; }
     </style>
 </head>
-<body class="bg-[#FDF8F3] min-h-screen flex items-center justify-center">
-    <div class="w-full max-w-md px-6">
+<body class="bg-body d-flex align-items-center justify-content-center min-vh-100">
+    <div class="w-100" style="max-width: 420px; padding: 0 1rem;">
         <!-- Logo 與標題 -->
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-[#2C2C2E] text-white rounded-2xl mb-4">
-                <span class="text-3xl font-bold tracking-wider">SE</span>
+        <div class="text-center mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center bg-dark text-white rounded-3 mb-3" style="width: 64px; height: 64px; font-weight: 700; font-size: 1.75rem;">
+                SE
             </div>
-            <h1 class="text-3xl font-semibold text-[#2C2C2E]">SalonEase</h1>
-            <p class="text-[#5A5A5C] mt-1">香港小型美容院管理系統</p>
+            <h1 class="h3 fw-semibold text-dark">SalonEase</h1>
+            <p class="text-muted small mt-1">香港小型美容院管理系統</p>
         </div>
 
         <!-- 登入卡片 -->
-        <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-            <h2 class="text-xl font-semibold text-[#2C2C2E] mb-6">員工登入</h2>
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 p-sm-5">
+                <h2 class="h5 fw-semibold mb-4">員工登入</h2>
 
-            <?php if ($error): ?>
-                <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">
-                    <?= e($error) ?>
+                <?php if ($error): ?>
+                    <div class="alert alert-danger small py-2">
+                        <?= e($error) ?>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">電郵地址</label>
+                        <input type="email" name="email" value="<?= e($email) ?>" required
+                               class="form-control" placeholder="admin@salonease.hk" autocomplete="email">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-medium">密碼</label>
+                        <input type="password" name="password" required
+                               class="form-control" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+
+                    <button type="submit" class="btn btn-dark w-100 py-2 fw-medium">
+                        登入系統
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 border-top text-center">
+                    <p class="small text-muted mb-0">
+                        測試帳號：<span class="font-mono">admin@salonease.hk</span><br>
+                        密碼：<span class="font-mono">admin123</span>
+                    </p>
                 </div>
-            <?php endif; ?>
-
-            <form method="POST" class="space-y-5">
-                <div>
-                    <label class="block text-sm font-medium text-[#2C2C2E] mb-1.5">電郵地址</label>
-                    <input type="email" name="email" value="<?= e($email) ?>" required
-                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8FA68F] focus:border-transparent outline-none text-sm"
-                           placeholder="admin@salonease.hk" autocomplete="email">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-[#2C2C2E] mb-1.5">密碼</label>
-                    <input type="password" name="password" required
-                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8FA68F] focus:border-transparent outline-none text-sm"
-                           placeholder="••••••••" autocomplete="current-password">
-                </div>
-
-                <button type="submit"
-                        class="w-full mt-2 py-3.5 bg-[#2C2C2E] hover:bg-black text-white font-medium rounded-xl transition-colors active:scale-[0.985]">
-                    登入系統
-                </button>
-            </form>
-
-            <div class="mt-6 pt-6 border-t text-center">
-                <p class="text-xs text-[#8A8A8C]">
-                    測試帳號：<span class="font-mono">admin@salonease.hk</span><br>
-                    密碼：<span class="font-mono">admin123</span>
-                </p>
             </div>
         </div>
 
-        <p class="text-center text-xs text-[#8A8A8C] mt-6">
+        <p class="text-center text-muted small mt-4">
             &copy; <?= date('Y') ?> SalonEase · 專業 · 簡單 · 高效
         </p>
     </div>
