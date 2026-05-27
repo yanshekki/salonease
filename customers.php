@@ -13,100 +13,105 @@ $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
-        <p class="text-[#5A5A5C] text-sm mt-1"><?= e($pageSubtitle) ?></p>
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+    <div class="mb-3 mb-md-0">
+        <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+        <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
     </div>
-    <button onclick="showAddModal()"
-            class="salon-btn salon-btn-primary flex items-center gap-x-2">
+    <button onclick="showAddModal()" class="btn btn-primary d-flex align-items-center gap-2">
         <span>+ 新增客戶</span>
-        <span class="text-xs opacity-75">[N]</span>
+        <span class="small opacity-75">[N]</span>
     </button>
 </div>
 
-<div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-    <div class="flex gap-3 items-end">
-        <div class="flex-1">
-            <label class="block text-xs text-[#5A5A5C] mb-1">搜尋客戶（姓名 / 電話 / 電郵）</label>
-            <input type="text" id="search" class="salon-input" placeholder="輸入電話最快..." oninput="debounceLoadCustomers()">
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-8">
+                <label class="form-label small text-muted mb-1">搜尋客戶（姓名 / 電話 / 電郵）</label>
+                <input type="text" id="search" class="form-control" placeholder="輸入電話最快..." oninput="debounceLoadCustomers()">
+            </div>
+            <div class="col-12 col-md-auto">
+                <button onclick="loadCustomers()" class="btn btn-outline-secondary w-100">搜尋</button>
+            </div>
         </div>
-        <button onclick="loadCustomers()" class="salon-btn salon-btn-secondary h-[42px]">搜尋</button>
     </div>
 </div>
 
-<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+<div class="card">
     <div class="table-responsive">
-        <table class="salon-table w-full">
-            <thead>
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
                 <tr>
                     <th>姓名</th>
                     <th>電話</th>
-                    <th class="hide-on-mobile">電郵</th>
-                    <th class="hide-on-mobile">最近到訪</th>
-                    <th class="text-right">累計消費</th>
+                    <th class="d-none d-md-table-cell">電郵</th>
+                    <th class="d-none d-md-table-cell">最近到訪</th>
+                    <th class="text-end">累計消費</th>
                     <th class="text-center">到訪次數</th>
-                    <th class="text-right action-col">操作</th>
+                    <th class="text-end" style="width: 90px;">操作</th>
                 </tr>
             </thead>
             <tbody id="customers-list">
-                <tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
+                <tr><td colspan="7" class="py-5 text-center text-muted">載入中...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- 新增 / 編輯 Modal -->
-<div id="customer-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideCustomerModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg" id="modal-title">新增客戶</div>
-            <button onclick="hideCustomerModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
+<!-- 新增 / 編輯 Modal (Bootstrap) -->
+<div class="modal fade" id="customerModal" tabindex="-1" aria-labelledby="customerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">新增客戶</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-        <div class="p-5 space-y-4">
-            <input type="hidden" id="customer-id">
+            <div class="modal-body">
+                <input type="hidden" id="customer-id">
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">姓名 <span class="text-red-500">*</span></label>
-                    <input type="text" id="customer-name" class="salon-input">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">姓名 <span class="text-danger">*</span></label>
+                        <input type="text" id="customer-name" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">電話 <span class="text-danger">*</span></label>
+                        <input type="text" id="customer-phone" class="form-control" placeholder="91234567">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">電話 <span class="text-red-500">*</span></label>
-                    <input type="text" id="customer-phone" class="salon-input" placeholder="91234567">
+
+                <div class="mt-3">
+                    <label class="form-label">電郵</label>
+                    <input type="email" id="customer-email" class="form-control">
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">性別</label>
+                        <select id="customer-gender" class="form-select">
+                            <option value="">未填</option>
+                            <option value="F">女</option>
+                            <option value="M">男</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">生日</label>
+                        <input type="date" id="customer-birthday" class="form-control">
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">備註</label>
+                    <textarea id="customer-notes" rows="2" class="form-control" placeholder="過敏、偏好等..."></textarea>
                 </div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium mb-1">電郵</label>
-                <input type="email" id="customer-email" class="salon-input">
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="saveCustomer()" class="btn btn-primary" id="save-btn">新增客戶</button>
             </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">性別</label>
-                    <select id="customer-gender" class="salon-input">
-                        <option value="">未填</option>
-                        <option value="F">女</option>
-                        <option value="M">男</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">生日</label>
-                    <input type="date" id="customer-birthday" class="salon-input">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium mb-1">備註</label>
-                <textarea id="customer-notes" rows="2" class="salon-input" placeholder="過敏、偏好等..."></textarea>
-            </div>
-        </div>
-
-        <div class="px-5 py-4 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-2xl">
-            <button onclick="hideCustomerModal()" class="salon-btn salon-btn-secondary w-full sm:w-auto">取消</button>
-            <button onclick="saveCustomer()" class="salon-btn salon-btn-primary w-full sm:w-auto" id="save-btn">新增客戶</button>
         </div>
     </div>
 </div>
@@ -140,7 +145,7 @@ function debounceLoadCustomers() {
 
 async function loadCustomers() {
     const tbody = document.getElementById('customers-list');
-    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-muted">載入中...</td></tr>`;
 
     const search = document.getElementById('search').value;
 
@@ -148,14 +153,14 @@ async function loadCustomers() {
         const res = await SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(search)}`);
         renderCustomersTable(res.data);
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-red-500">${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-danger">${err.message}</td></tr>`;
     }
 }
 
 function renderCustomersTable(list) {
     const tbody = document.getElementById('customers-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">沒有符合的客戶</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-muted">沒有符合的客戶</td></tr>`;
         return;
     }
 
@@ -166,14 +171,14 @@ function renderCustomersTable(list) {
 
         html += `
             <tr>
-                <td class="font-medium">${e(c.name)}</td>
-                <td class="font-mono text-sm">${e(c.phone)}</td>
-                <td class="text-sm text-[#5A5A5C]">${e(c.email || '-')}</td>
-                <td class="text-sm">${lastVisit}</td>
-                <td class="text-right font-medium">HK$ ${spent}</td>
+                <td class="fw-medium">${e(c.name)}</td>
+                <td class="font-mono small">${e(c.phone)}</td>
+                <td class="small text-muted">${e(c.email || '-')}</td>
+                <td class="small">${lastVisit}</td>
+                <td class="text-end fw-medium">HK$ ${spent}</td>
                 <td class="text-center">${c.visit_count || 0}</td>
-                <td class="text-right">
-                    <button onclick="editCustomer(${c.id})" class="text-[#8FA68F] hover:underline text-sm mr-3">編輯</button>
+                <td class="text-end">
+                    <button onclick="editCustomer(${c.id})" class="btn btn-link btn-sm text-success p-0">編輯</button>
                 </td>
             </tr>
         `;
@@ -198,9 +203,11 @@ function showAddModal() {
 
     document.getElementById('save-btn').textContent = '新增客戶';
 
-    document.getElementById('customer-modal').classList.remove('hidden');
-    document.getElementById('customer-modal').classList.add('flex');
-    setTimeout(() => document.getElementById('customer-name').focus(), 100);
+    const modalEl = document.getElementById('customerModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    setTimeout(() => document.getElementById('customer-name').focus(), 400);
 }
 
 async function editCustomer(id) {
@@ -219,17 +226,18 @@ async function editCustomer(id) {
 
         document.getElementById('save-btn').textContent = '儲存變更';
 
-        document.getElementById('customer-modal').classList.remove('hidden');
-        document.getElementById('customer-modal').classList.add('flex');
+        const modalEl = document.getElementById('customerModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
     } catch (err) {
         SalonEase.toast(err.message, 'error');
     }
 }
 
 function hideCustomerModal() {
-    const modal = document.getElementById('customer-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalEl = document.getElementById('customerModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 async function saveCustomer() {
