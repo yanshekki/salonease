@@ -773,6 +773,20 @@ async function quickDuplicateAppointment(id, viewType = 'list') {
     }
 }
 
+// 從時間軸快速開啟編輯
+async function editAppointmentFromTimeline(id) {
+    try {
+        const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${id}`);
+        currentAppointmentData = res.data;
+        currentDetailId = id;
+
+        // 重用詳情 Modal 的編輯邏輯
+        editCurrentAppointment();
+    } catch (err) {
+        SalonEase.toast(err.message, 'error');
+    }
+}
+
 function openPosFromAppointment() {
     if (!currentDetailId) return;
     // 跳轉到 POS 並帶上預約 ID（Phase 3 會處理自動帶入客戶與服務）
@@ -1246,12 +1260,14 @@ async function loadTodayScheduleForDate(targetDateStr) {
 
             // 快速複製（+7 天）
             const duplicateAction = `<span onclick="event.stopImmediatePropagation(); quickDuplicateAppointment(${a.id}, 'calendar')" class="px-1 py-0 text-[9px] bg-purple-200 hover:bg-purple-300 rounded">複製</span>`;
+            const editAction = `<span onclick="event.stopImmediatePropagation(); editAppointmentFromTimeline(${a.id})" class="px-1 py-0 text-[9px] bg-yellow-200 hover:bg-yellow-300 rounded">編輯</span>`;
 
             const actionsHtml = `
                 <div class="absolute top-0.5 right-0.5 hidden group-hover:flex gap-1 text-[9px]">
                     ${quickActions.join('')}
                     ${timeShiftActions}
                     ${duplicateAction}
+                    ${editAction}
                 </div>
             `;
 
