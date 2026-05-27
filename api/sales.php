@@ -78,8 +78,8 @@ switch ($action) {
                     WHERE id = ? AND remaining_sessions >= ?
                 ");
 
-                $total_commission_service = 0;
-                $total_commission_retail = 0;
+                // 按員工分拆佣金的累計器（A 改善）
+                $staff_commission = [];
 
                 foreach ($items as $item) {
                     $line_total = (float)$item['unit_price'] * (int)$item['qty'];
@@ -146,12 +146,16 @@ switch ($action) {
                         ]);
                     }
 
-                    // 簡單佣金計算（使用設定頁的比率）
-                    // 這裡先用 sales staff 計算，之後可支援 item 層級 staff
-                    if ($item['type'] === 'service') {
-                        $total_commission_service += $line_total * ($service_rate / 100);
-                    } elseif ($item['type'] === 'product') {
-                        $total_commission_retail += $line_total * ($retail_rate / 100);
+                    // 按員工分拆佣金計算（使用設定頁的比率）
+                    // 服務 / 零售佣金依 sale_items 儲存的 staff_id 分配
+                    if ($item['type'] === 'service' || $item['type'] === 'product') {
+                        $comm_staff = $item_staff_id;
+                        if (!isset($staff_commission[$comm_staff])) {
+                            $staff_commission[$comm_staff] = ['service' => 0, 'retail' => 0];
+                        }
+                        $rate = ($item['type'] === 'service') ? ($service_rate / 100) : ($retail_rate / 100);
+                        $type_key = ($item['type'] === 'service') ? 'service' : 'retail';
+                        $staff_commission[$comm_staff][$type_key] += $line_total * $rate;
                     }
                 }
 
@@ -168,13 +172,13 @@ switch ($action) {
                     $update_customer->execute([$total, $customer_id]);
                 }
 
-                // 4. 產生佣金（使用設定頁的比率）
+                // 4. 產生佣金（使用設定頁的比率 + 按員工分拆）
                 $commission_stmt = $pdo->prepare("
                     INSERT INTO commissions (sale_id, staff_id, amount, type, rate)
                     VALUES (?, ?, ?, ?, ?)
                 ");
 
-                // 開單佣金
+                // 開單佣金（固定給開單人）
                 $open_commission = $total * ($open_rate / 100);
                 if ($open_commission > 0) {
                     $commission_stmt->execute([
@@ -186,26 +190,26 @@ switch ($action) {
                     ]);
                 }
 
-                // 服務佣金（寫給開單人，之後可支援 item 層級 staff）
-                if ($total_commission_service > 0) {
-                    $commission_stmt->execute([
-                        $sale_id,
-                        $_SESSION['staff_id'],
-                        $total_commission_service,
-                        'service',
-                        $service_rate
-                    ]);
-                }
-
-                // 零售佣金
-                if ($total_commission_retail > 0) {
-                    $commission_stmt->execute([
-                        $sale_id,
-                        $_SESSION['staff_id'],
-                        $total_commission_retail,
-                        'retail',
-                        $retail_rate
-                    ]);
+                // 服務 / 零售佣金按實際執行員工分拆
+                foreach ($staff_commission as $s_id => $comm) {
+                    if ($comm['service'] > 0) {
+                        $commission_stmt->execute([
+                            $sale_id,
+                            $s_id,
+                            $comm['service'],
+                            'service',
+                            $service_rate
+                        ]);
+                    }
+                    if ($comm['retail'] > 0) {
+                        $commission_stmt->execute([
+                            $sale_id,
+                            $s_id,
+                            $comm['retail'],
+                            'retail',
+                            $retail_rate
+                        ]);
+                    }
                 }
 
                 return [
