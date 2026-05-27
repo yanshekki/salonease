@@ -9,7 +9,7 @@
 
 <FilesMatch "\.(sql|md|log|bak|example)$">
     Require all denied
-</Files>
+</FilesMatch>
 
 <Directory "includes">
     Require all denied
