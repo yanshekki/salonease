@@ -13,142 +13,150 @@ $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
-        <p class="text-[#5A5A5C] text-sm mt-1"><?= e($pageSubtitle) ?></p>
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+    <div class="mb-3 mb-md-0">
+        <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+        <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
     </div>
-    <button onclick="showCreateModal()"
-            class="salon-btn salon-btn-primary flex items-center gap-x-2">
+    <button onclick="showCreateModal()" class="btn btn-primary d-flex align-items-center gap-2">
         <span>+ 新增預約</span>
-        <span class="text-xs opacity-75">[N]</span>
+        <span class="small opacity-75">[N]</span>
     </button>
 </div>
 
 <!-- 檢視切換 -->
-<div class="flex items-center gap-2 mb-4">
-    <span class="text-sm text-[#5A5A5C] mr-2">檢視模式：</span>
+<div class="d-flex align-items-center gap-2 mb-3">
+    <span class="text-muted small me-2">檢視模式：</span>
     <button onclick="switchView('list')" id="btn-view-list"
-            class="px-4 py-1.5 text-sm rounded-xl border bg-[#2C2C2E] text-white">列表檢視</button>
+            class="btn btn-sm btn-dark">列表檢視</button>
     <button onclick="switchView('calendar')" id="btn-view-calendar"
-            class="px-4 py-1.5 text-sm rounded-xl border hover:bg-gray-100">今日時程</button>
+            class="btn btn-sm btn-outline-secondary">今日時程</button>
     <button onclick="switchView('week')" id="btn-view-week"
-            class="px-4 py-1.5 text-sm rounded-xl border hover:bg-gray-100">週檢視</button>
+            class="btn btn-sm btn-outline-secondary">週檢視</button>
 </div>
 
 <!-- 列表檢視容器 -->
 <div id="list-view">
 
-<!-- 篩選 -->
-<div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4 flex flex-wrap gap-3 items-end">
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">開始日期</label>
-        <input type="date" id="date-from" class="salon-input" value="<?= date('Y-m-d') ?>">
+<!-- 篩選卡片 -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">開始日期</label>
+                <input type="date" id="date-from" class="form-control" value="<?= date('Y-m-d') ?>">
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">結束日期</label>
+                <input type="date" id="date-to" class="form-control" value="<?= date('Y-m-d', strtotime('+7 days')) ?>">
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">美容師</label>
+                <select id="staff-filter" class="form-select">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">狀態</label>
+                <select id="status-filter" class="form-select">
+                    <option value="">全部</option>
+                    <option value="pending">待確認</option>
+                    <option value="confirmed">已確認</option>
+                    <option value="completed">已完成</option>
+                    <option value="cancelled">已取消</option>
+                    <option value="no_show">未到</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-auto">
+                <button onclick="loadAppointments()" class="btn btn-outline-secondary w-100">查詢</button>
+            </div>
+        </div>
     </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">結束日期</label>
-        <input type="date" id="date-to" class="salon-input" value="<?= date('Y-m-d', strtotime('+7 days')) ?>">
-    </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">美容師</label>
-        <select id="staff-filter" class="salon-input">
-            <option value="">全部</option>
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">狀態</label>
-        <select id="status-filter" class="salon-input">
-            <option value="">全部</option>
-            <option value="pending">待確認</option>
-            <option value="confirmed">已確認</option>
-            <option value="completed">已完成</option>
-            <option value="cancelled">已取消</option>
-            <option value="no_show">未到</option>
-        </select>
-    </div>
-    <button onclick="loadAppointments()" class="salon-btn salon-btn-secondary h-[42px]">查詢</button>
 </div>
 
-<!-- 列表 -->
-<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+<!-- 列表表格 -->
+<div class="card">
     <div class="table-responsive">
-        <table class="salon-table w-full">
-            <thead>
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
                 <tr>
                     <th>時間</th>
                     <th>客戶</th>
-                    <th class="hide-on-mobile">美容師</th>
-                    <th class="hide-on-mobile">房間</th>
+                    <th class="d-none d-md-table-cell">美容師</th>
+                    <th class="d-none d-md-table-cell">房間</th>
                     <th>狀態</th>
-                    <th class="text-right action-col">操作</th>
+                    <th class="text-end" style="width: 180px;">操作</th>
                 </tr>
             </thead>
             <tbody id="appointments-list">
-                <tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
+                <tr><td colspan="6" class="py-5 text-center text-muted">載入中...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- 新增/編輯 Modal -->
-<div id="appt-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideApptModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg" id="modal-title">新增預約</div>
-            <button onclick="hideApptModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
+<!-- 新增/編輯 Modal (Bootstrap) -->
+<div class="modal fade" id="apptModal" tabindex="-1" aria-labelledby="apptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">新增預約</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-        <div class="p-5 space-y-4">
-            <input type="hidden" id="appt-id">
+            <div class="modal-body">
+                <input type="hidden" id="appt-id">
 
-            <!-- 客戶搜尋 -->
-            <div>
-                <label class="block text-sm font-medium mb-1">客戶 <span class="text-red-500">*</span></label>
-                <div class="flex gap-2">
-                    <input type="text" id="customer-search" class="salon-input flex-1" placeholder="輸入姓名或電話搜尋" oninput="searchCustomers()">
-                    <input type="hidden" id="customer-id">
+                <!-- 客戶搜尋 -->
+                <div class="mb-3">
+                    <label class="form-label">客戶 <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-2">
+                        <input type="text" id="customer-search" class="form-control flex-fill" placeholder="輸入姓名或電話搜尋" oninput="searchCustomers()">
+                        <input type="hidden" id="customer-id">
+                    </div>
+                    <div id="customer-results" class="mt-1 small border rounded p-1" style="max-height: 120px; overflow:auto; display:none;"></div>
                 </div>
-                <div id="customer-results" class="mt-1 text-sm max-h-32 overflow-auto border rounded-xl hidden"></div>
-            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">美容師 <span class="text-red-500">*</span></label>
-                    <select id="staff-select" class="salon-input"></select>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">美容師 <span class="text-danger">*</span></label>
+                        <select id="staff-select" class="form-select"></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">房間</label>
+                        <select id="room-select" class="form-select">
+                            <option value="">不指定</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">開始時間 <span class="text-danger">*</span></label>
+                        <input type="datetime-local" id="start-time" class="form-control" onchange="estimateEndTime()">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">房間</label>
-                    <select id="room-select" class="salon-input">
-                        <option value="">不指定</option>
-                    </select>
+
+                <!-- 服務選擇 -->
+                <div class="mt-3">
+                    <label class="form-label">服務項目（可多選）</label>
+                    <div id="services-checkboxes" class="border rounded p-2" style="max-height: 160px; overflow:auto;"></div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">開始時間 <span class="text-red-500">*</span></label>
-                    <input type="datetime-local" id="start-time" class="salon-input" onchange="estimateEndTime()">
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label">預估結束時間</label>
+                        <input type="text" id="end-time-display" class="form-control bg-light" readonly>
+                        <input type="hidden" id="end-time">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">備註</label>
+                        <textarea id="notes" rows="2" class="form-control"></textarea>
+                    </div>
                 </div>
             </div>
 
-            <!-- 服務選擇 -->
-            <div>
-                <label class="block text-sm font-medium mb-1">服務項目（可多選）</label>
-                <div id="services-checkboxes" class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-auto border rounded-xl p-3 text-sm"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="saveAppointment()" class="btn btn-primary" id="save-btn">建立預約</button>
             </div>
-
-            <div>
-                <label class="block text-sm font-medium mb-1">預估結束時間</label>
-                <input type="text" id="end-time-display" class="salon-input bg-gray-50" readonly>
-                <input type="hidden" id="end-time">
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium mb-1">備註</label>
-                <textarea id="notes" rows="2" class="salon-input"></textarea>
-            </div>
-        </div>
-
-        <div class="px-5 py-4 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-2xl">
-            <button onclick="hideApptModal()" class="salon-btn salon-btn-secondary w-full sm:w-auto">取消</button>
-            <button onclick="saveAppointment()" class="salon-btn salon-btn-primary w-full sm:w-auto" id="save-btn">建立預約</button>
         </div>
     </div>
 </div>
@@ -215,37 +223,30 @@ $extraJs = 'hotkeys.js';
     </div>
 </div>
 
-<!-- 預約詳情 Modal -->
-<div id="detail-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideDetailModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg">預約詳情</div>
-            <button onclick="hideDetailModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
-
-        <div class="p-5 space-y-4" id="detail-content">
-            <!-- JS 動態填入 -->
-        </div>
-
-        <div class="px-5 py-4 bg-gray-50 flex flex-wrap gap-2 justify-between rounded-b-2xl">
-            <div class="flex gap-2">
-                <button onclick="quickChangeStatus('confirmed')" class="salon-btn salon-btn-secondary text-sm">標記已確認</button>
-                <button onclick="quickChangeStatus('completed')" class="salon-btn salon-btn-secondary text-sm">標記已完成</button>
-                <button onclick="quickChangeStatus('no_show')" class="salon-btn salon-btn-secondary text-sm">標記未到</button>
+<!-- 預約詳情 Modal (Bootstrap) -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">預約詳情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="flex gap-2">
-                <button onclick="editCurrentAppointment()" 
-                        class="salon-btn salon-btn-secondary text-sm">
-                    ✏️ 編輯
-                </button>
-                <button onclick="duplicateCurrentAppointment()" 
-                        class="salon-btn salon-btn-secondary text-sm">
-                    📋 複製
-                </button>
-                <button onclick="openPosFromAppointment()" 
-                        class="salon-btn salon-btn-primary text-sm flex items-center gap-1">
-                    🛒 從此預約開單
-                </button>
+
+            <div class="modal-body" id="detail-content">
+                <!-- JS 動態填入 -->
+            </div>
+
+            <div class="modal-footer flex-wrap">
+                <div class="d-flex gap-2 me-auto">
+                    <button onclick="quickChangeStatus('confirmed')" class="btn btn-sm btn-outline-secondary">標記已確認</button>
+                    <button onclick="quickChangeStatus('completed')" class="btn btn-sm btn-outline-secondary">標記已完成</button>
+                    <button onclick="quickChangeStatus('no_show')" class="btn btn-sm btn-outline-secondary">標記未到</button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button onclick="editCurrentAppointment()" class="btn btn-sm btn-outline-secondary">✏️ 編輯</button>
+                    <button onclick="duplicateCurrentAppointment()" class="btn btn-sm btn-outline-secondary">📋 複製</button>
+                    <button onclick="openPosFromAppointment()" class="btn btn-sm btn-primary">🛒 從此預約開單</button>
+                </div>
             </div>
         </div>
     </div>
@@ -259,10 +260,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadServicesForCheckbox();
     loadAppointments();
 
-    // 預設列表檢視 + 按鈕樣式
+    // 預設列表檢視 + 按鈕樣式（Bootstrap）
     const btnList = document.getElementById('btn-view-list');
     if (btnList) {
-        btnList.classList.add('bg-[#2C2C2E]', 'text-white');
+        btnList.classList.remove('btn-outline-secondary');
+        btnList.classList.add('btn-dark');
     }
 
     if (window.SalonEase && window.SalonEase.Hotkeys) {
@@ -350,7 +352,8 @@ function searchCustomers() {
     clearTimeout(customerSearchTimer);
     const keyword = document.getElementById('customer-search').value.trim();
     if (keyword.length < 1) {
-        document.getElementById('customer-results').classList.add('hidden');
+        const results = document.getElementById('customer-results');
+        results.style.display = 'none';
         return;
     }
 
@@ -369,7 +372,7 @@ function searchCustomers() {
                 });
             }
             container.innerHTML = html;
-            container.classList.remove('hidden');
+            container.style.display = 'block';
         } catch (e) {}
     }, 250);
 }
@@ -421,7 +424,7 @@ function renderAppointments(list) {
                 <td>${e(a.customer_name || '-')} <span class="text-xs text-[#8A8A8C]">(${e(a.customer_phone || '')})</span></td>
                 <td>${e(a.staff_name || '-')}</td>
                 <td>${e(a.room_name || '不指定')}</td>
-                <td><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">${statusMap[a.status] || a.status}</span></td>
+                <td><span class="badge bg-secondary-subtle text-dark small">${statusMap[a.status] || a.status}</span></td>
                 <td class="text-right" onclick="event.stopImmediatePropagation()">
                     <button onclick="showDetailModal(${a.id}); event.stopImmediatePropagation();" 
                             class="text-[#8FA68F] hover:underline text-xs mr-2">詳情</button>
@@ -473,8 +476,9 @@ function showCreateModalWithTime(startTimeStr) {
 
     document.getElementById('save-btn').textContent = '建立預約';
 
-    document.getElementById('appt-modal').classList.remove('hidden');
-    document.getElementById('appt-modal').classList.add('flex');
+    const modalEl = document.getElementById('apptModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
 }
 
 // 從週檢視快速在某日新增預約（預設早上 10:00）
@@ -521,14 +525,15 @@ function duplicateCurrentAppointment() {
 
     document.getElementById('save-btn').textContent = '建立複製預約';
 
-    document.getElementById('appt-modal').classList.remove('hidden');
-    document.getElementById('appt-modal').classList.add('flex');
+    const modalEl = document.getElementById('apptModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
 }
 
 function hideApptModal() {
-    const modal = document.getElementById('appt-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalEl = document.getElementById('apptModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 
     // 清空編輯狀態
     document.getElementById('appt-id').value = '';
@@ -617,8 +622,9 @@ async function showDetailModal(id) {
     const container = document.getElementById('detail-content');
     container.innerHTML = `<div class="py-6 text-center text-[#8A8A8C]">載入中...</div>`;
 
-    document.getElementById('detail-modal').classList.remove('hidden');
-    document.getElementById('detail-modal').classList.add('flex');
+    const modalEl = document.getElementById('detailModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
 
     try {
         const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${id}`);
@@ -667,8 +673,9 @@ async function showDetailModal(id) {
 }
 
 function hideDetailModal() {
-    document.getElementById('detail-modal').classList.add('hidden');
-    document.getElementById('detail-modal').classList.remove('flex');
+    const modalEl = document.getElementById('detailModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 function quickChangeStatus(newStatus) {
@@ -839,8 +846,9 @@ function editCurrentAppointment() {
 
     document.getElementById('save-btn').textContent = '儲存變更';
 
-    document.getElementById('appt-modal').classList.remove('hidden');
-    document.getElementById('appt-modal').classList.add('flex');
+    const modalEl = document.getElementById('apptModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
 }
 
 // ==================== 檢視切換與今日時程 ====================
@@ -863,24 +871,33 @@ function switchView(view) {
     calendarView.classList.add('hidden');
     weekView.classList.add('hidden');
 
-    // 重置按鈕樣式
+    // 重置按鈕樣式（Bootstrap）
     [btnList, btnCalendar, btnWeek].forEach(b => {
         if (b) {
-            b.classList.remove('bg-[#2C2C2E]', 'text-white');
-            b.classList.add('hover:bg-gray-100');
+            b.classList.remove('btn-dark');
+            b.classList.add('btn-outline-secondary');
         }
     });
 
     if (view === 'list') {
         listView.classList.remove('hidden');
-        if (btnList) btnList.classList.add('bg-[#2C2C2E]', 'text-white');
+        if (btnList) {
+            btnList.classList.remove('btn-outline-secondary');
+            btnList.classList.add('btn-dark');
+        }
     } else if (view === 'calendar') {
         calendarView.classList.remove('hidden');
-        if (btnCalendar) btnCalendar.classList.add('bg-[#2C2C2E]', 'text-white');
+        if (btnCalendar) {
+            btnCalendar.classList.remove('btn-outline-secondary');
+            btnCalendar.classList.add('btn-dark');
+        }
         loadTodaySchedule();
     } else if (view === 'week') {
         weekView.classList.remove('hidden');
-        if (btnWeek) btnWeek.classList.add('bg-[#2C2C2E]', 'text-white');
+        if (btnWeek) {
+            btnWeek.classList.remove('btn-outline-secondary');
+            btnWeek.classList.add('btn-dark');
+        }
         loadWeekView();
     }
 }
