@@ -146,6 +146,19 @@ function renderCustomerPackages() {
     container.innerHTML = html;
 }
 
+// 快速顯示客戶可用套票（從客戶資訊點擊觸發）
+function showCustomerPackagesQuick() {
+    // 切換到套票分類
+    filterItems('package');
+
+    // 確保顯示的是客戶的套票（而非模板）
+    setTimeout(() => {
+        if (currentCustomer && customerPackages.length > 0) {
+            renderCustomerPackages();
+        }
+    }, 50);
+}
+
 // 加入套票扣減到購物車
 function addPackageRedemption(customerPackageId, packageName, remaining) {
     // 檢查是否已經加入同一張套票
@@ -330,11 +343,16 @@ function setupCustomerSearch() {
                 if (res.data && res.data.length > 0) {
                     const c = res.data[0];
                     currentCustomer = c;
-                    document.getElementById('pos-customer-info').innerHTML = 
-                        `<span class="text-[#8FA68F]">✓ ${e(c.name)} (${e(c.phone)})</span>`;
+                    let infoHtml = `<span class="text-[#8FA68F]">✓ ${e(c.name)} (${e(c.phone)})</span>`;
 
                     // 載入客戶持有的有效套票
                     await loadCustomerPackages(c.id);
+
+                    if (customerPackages.length > 0) {
+                        infoHtml += ` <span class="text-xs text-purple-600 cursor-pointer" onclick="showCustomerPackagesQuick()">(有 ${customerPackages.length} 張可用套票)</span>`;
+                    }
+
+                    document.getElementById('pos-customer-info').innerHTML = infoHtml;
 
                     // 如果目前正在看「套票」分類，自動刷新顯示客戶套票
                     const packageBtn = document.getElementById('filter-package');
