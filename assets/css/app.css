@@ -157,4 +157,10 @@
  * 所有新開發請使用 Bootstrap 5 + bootstrap-custom.css
  * 此檔案將在 Phase 2 後刪除或大幅精簡
  * =============================================
+ *
+ * 已棄用項目：
+ * - .salon-card, .salon-btn, .salon-input
+ * - .salon-table 相關
+ * - .salon-modal
+ * - 所有 @apply 規則
  */
