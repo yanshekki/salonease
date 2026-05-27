@@ -49,6 +49,78 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- 打印與佣金預設（本輪 A 選擇） -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <div class="font-semibold text-lg">打印與佣金預設</div>
+                <div class="text-sm text-[#5A5A5C]">這些數值會作為新單據的預設值</div>
+            </div>
+        </div>
+
+        <div class="space-y-5">
+            <!-- 打印機寬度 -->
+            <div>
+                <label class="block text-sm font-medium mb-2">熱感紙打印機預設寬度</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" x-model="form.printer_width" value="58" class="accent-[#2C2C2E]">
+                        <span>58mm（最常用）</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" x-model="form.printer_width" value="80" class="accent-[#2C2C2E]">
+                        <span>80mm</span>
+                    </label>
+                </div>
+                <div class="text-xs text-[#8A8A8C] mt-1">結帳後預設打印格式會參考此設定</div>
+            </div>
+
+            <!-- 佣金預設比率 -->
+            <div>
+                <div class="text-sm font-medium mb-2">佣金預設比率（%）</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs text-[#5A5A5C] mb-1">服務項目</label>
+                        <div class="flex items-center">
+                            <input type="number" x-model.number="form.default_commission_service" 
+                                   step="0.5" min="0" max="100"
+                                   class="salon-input w-full text-right">
+                            <span class="ml-2 text-sm text-[#8A8A8C]">%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#5A5A5C] mb-1">零售產品</label>
+                        <div class="flex items-center">
+                            <input type="number" x-model.number="form.default_commission_retail" 
+                                   step="0.5" min="0" max="100"
+                                   class="salon-input w-full text-right">
+                            <span class="ml-2 text-sm text-[#8A8A8C]">%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#5A5A5C] mb-1">開單佣金</label>
+                        <div class="flex items-center">
+                            <input type="number" x-model.number="form.default_commission_open" 
+                                   step="0.5" min="0" max="100"
+                                   class="salon-input w-full text-right">
+                            <span class="ml-2 text-sm text-[#8A8A8C]">%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-xs text-[#8A8A8C] mt-1">此為全域預設，個別員工可另行覆蓋</div>
+            </div>
+
+            <div>
+                <button @click="saveShop()" 
+                        :disabled="saving"
+                        class="salon-btn px-8 disabled:opacity-60">
+                    <span x-text="saving ? '儲存中...' : '儲存打印與佣金設定'"></span>
+                </button>
+                <span x-show="saved" x-cloak class="ml-3 text-sm text-[#8FA68F]">✓ 已儲存</span>
+            </div>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <a href="/customers.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
             <div class="text-2xl mb-2">👥</div>
@@ -94,7 +166,11 @@ function shopSettings() {
         form: {
             salon_name: 'SalonEase 美容中心',
             address: '',
-            phone: ''
+            phone: '',
+            printer_width: '58',
+            default_commission_service: 40,
+            default_commission_retail: 15,
+            default_commission_open: 5
         },
         saving: false,
         saved: false,
@@ -107,12 +183,17 @@ function shopSettings() {
             try {
                 const res = await SalonEase.fetch('/api/settings.php?action=get');
                 if (res.data) {
-                    this.form.salon_name = res.data.salon_name || 'SalonEase 美容中心';
-                    this.form.address = res.data.address || '';
-                    this.form.phone = res.data.phone || '';
+                    const d = res.data;
+                    this.form.salon_name = d.salon_name || 'SalonEase 美容中心';
+                    this.form.address = d.address || '';
+                    this.form.phone = d.phone || '';
+                    this.form.printer_width = d.printer_width || '58';
+                    this.form.default_commission_service = parseFloat(d.default_commission_service) || 40;
+                    this.form.default_commission_retail  = parseFloat(d.default_commission_retail) || 15;
+                    this.form.default_commission_open    = parseFloat(d.default_commission_open) || 5;
                 }
             } catch (e) {
-                console.warn('載入店舖資訊失敗', e);
+                console.warn('載入設定失敗', e);
             }
         },
 
@@ -121,20 +202,22 @@ function shopSettings() {
             this.saved = false;
 
             try {
-                const res = await SalonEase.fetch('/api/settings.php?action=save_shop', {
+                await SalonEase.fetch('/api/settings.php?action=save_shop', {
                     method: 'POST',
                     body: {
                         salon_name: this.form.salon_name,
                         address: this.form.address,
-                        phone: this.form.phone
+                        phone: this.form.phone,
+                        printer_width: this.form.printer_width,
+                        default_commission_service: this.form.default_commission_service,
+                        default_commission_retail: this.form.default_commission_retail,
+                        default_commission_open: this.form.default_commission_open
                     }
                 });
 
-                SalonEase.toast('店舖資訊已成功更新');
+                SalonEase.toast('設定已成功儲存');
                 this.saved = true;
-
-                // 3 秒後隱藏成功提示
-                setTimeout(() => { this.saved = false; }, 3000);
+                setTimeout(() => { this.saved = false; }, 2800);
             } catch (err) {
                 SalonEase.toast(err.message || '儲存失敗', 'error');
             } finally {

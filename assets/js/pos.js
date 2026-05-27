@@ -598,12 +598,21 @@ async function checkout() {
             }
         }
 
-        // A 改進：結帳後提供清晰打印選擇（預設熱感紙 58mm，最常用）
+        // 取得系統預設打印寬度（來自設定頁）
+        let defaultWidth = '58';
+        try {
+            const cfg = await SalonEase.fetch('/api/settings.php?action=get');
+            if (cfg.data && cfg.data.printer_width) {
+                defaultWidth = cfg.data.printer_width;
+            }
+        } catch (e) {}
+
+        // A 改進：結帳後提供清晰打印選擇（預設使用設定頁的打印機寬度）
+        const defaultLabel = defaultWidth === '80' ? '80mm' : '58mm';
         setTimeout(() => {
-            if (confirm('結帳完成！是否立即打印熱感紙收據（58mm）？\n\n按「取消」可稍後選擇其他格式。')) {
-                printReceipt(res.data.id, '58');   // 最常用熱感紙
+            if (confirm(`結帳完成！是否立即打印熱感紙收據（${defaultLabel}）？\n\n按「取消」可稍後選擇其他格式。`)) {
+                printReceipt(res.data.id, defaultWidth);
             } else {
-                // 給用戶提示可手動選擇其他格式
                 setTimeout(() => {
                     if (confirm('要打印其他格式嗎？\n是 = 選擇 58mm / 80mm / A4')) {
                         showPrintFormatChoice(res.data.id);

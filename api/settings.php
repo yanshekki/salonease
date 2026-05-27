@@ -4,7 +4,7 @@
  * GET  /api/settings.php?action=get
  * POST /api/settings.php?action=save_shop
  *
- * 目前主要處理店舖基本資訊（收據用）
+ * 店舖資訊 + 打印預設 + 佣金預設比率
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -26,7 +26,10 @@ switch ($action) {
                 'salon_name' => 'SalonEase 美容中心',
                 'address' => '',
                 'phone' => '',
-                'printer_width' => '58'
+                'printer_width' => '58',
+                'default_commission_service' => 40.00,
+                'default_commission_retail' => 15.00,
+                'default_commission_open' => 5.00
             ];
         }
         json_success($settings);
@@ -43,6 +46,13 @@ switch ($action) {
         $salon_name = trim(post('salon_name', 'SalonEase 美容中心'));
         $address = trim(post('address'));
         $phone = trim(post('phone'));
+        $printer_width = post('printer_width', '58');
+        $printer_width = in_array($printer_width, ['58','80']) ? $printer_width : '58';
+
+        // 佣金預設比率（0~100）
+        $service_rate = max(0, min(100, (float)post('default_commission_service', 40)));
+        $retail_rate  = max(0, min(100, (float)post('default_commission_retail', 15)));
+        $open_rate    = max(0, min(100, (float)post('default_commission_open', 5)));
 
         if (!$salon_name) {
             json_error('店舖名稱不能為空');
@@ -51,25 +61,45 @@ switch ($action) {
         try {
             $stmt = db()->prepare("
                 UPDATE settings 
-                SET salon_name = ?, address = ?, phone = ?, updated_at = NOW()
+                SET 
+                    salon_name = ?,
+                    address = ?,
+                    phone = ?,
+                    printer_width = ?,
+                    default_commission_service = ?,
+                    default_commission_retail = ?,
+                    default_commission_open = ?,
+                    updated_at = NOW()
                 WHERE id = 1
             ");
-            $stmt->execute([$salon_name, $address, $phone]);
+            $stmt->execute([
+                $salon_name, $address, $phone, $printer_width,
+                $service_rate, $retail_rate, $open_rate
+            ]);
 
             if ($stmt->rowCount() === 0) {
-                // 萬一資料列不存在，就插入
+                // 資料列不存在則插入
                 $stmt = db()->prepare("
-                    INSERT INTO settings (id, salon_name, address, phone, printer_width) 
-                    VALUES (1, ?, ?, ?, '58')
+                    INSERT INTO settings 
+                    (id, salon_name, address, phone, printer_width, 
+                     default_commission_service, default_commission_retail, default_commission_open)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         salon_name = VALUES(salon_name),
                         address = VALUES(address),
-                        phone = VALUES(phone)
+                        phone = VALUES(phone),
+                        printer_width = VALUES(printer_width),
+                        default_commission_service = VALUES(default_commission_service),
+                        default_commission_retail = VALUES(default_commission_retail),
+                        default_commission_open = VALUES(default_commission_open)
                 ");
-                $stmt->execute([$salon_name, $address, $phone]);
+                $stmt->execute([
+                    $salon_name, $address, $phone, $printer_width,
+                    $service_rate, $retail_rate, $open_rate
+                ]);
             }
 
-            json_success(null, '店舖資訊已更新');
+            json_success(null, '設定已成功儲存');
         } catch (Exception $e) {
             json_error('儲存失敗：' . $e->getMessage());
         }

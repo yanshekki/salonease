@@ -387,6 +387,7 @@ switch ($action) {
                     <div style="font-size: <?= $is80 ? '14px' : '13px' ?>; font-weight:700;"><?= e($shop['name']) ?></div>
                     <div style="font-size:8.5px; margin-top:1px;"><?= e($shop['address']) ?></div>
                     <div style="font-size:8.5px;">Tel: <?= e($shop['phone']) ?>　　收據 #<?= $id ?></div>
+                    <div style="font-size:7.5px; color:#888;">打印機設定：<?= $shopRow['printer_width'] ?? '58' ?>mm</div>
                 </div>
 
                 <div style="border-top:1px dashed #333; margin:2mm 0;"></div>
