@@ -6,10 +6,12 @@ $extraJs = 'settings.js';   // 稍後可獨立抽離，目前先用內聯 Alpine
 include __DIR__ . '/includes/header.php'; 
 ?>
 <div class="max-w-3xl mx-auto" x-data="shopSettings()">
-    <div class="flex items-center justify-between mb-2">
+    <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold">系統設定</h2>
-        <div class="text-xs text-[#8A8A8C]">
-            版本：<span class="font-mono">v1.0.0</span>　最後更新：2025 年 5 月
+        <div class="px-3 py-1 bg-[#F8F5F0] rounded-xl text-xs text-[#5A5A5C] flex items-center gap-2">
+            <span class="font-medium">SalonEase</span>
+            <span class="font-mono text-[#8FA68F]">v1.0.0</span>
+            <span class="text-[#8A8A8C]">· 2025 年 5 月</span>
         </div>
     </div>
 
