@@ -58,14 +58,11 @@ window.SalonEase.toast = function(message, type = 'success', duration = 2400) {
     }, duration);
 };
 
-// 顯示全域熱鍵幫助（由 footer 呼叫）
+// 顯示全域熱鍵幫助（使用 Bootstrap Modal）
 window.showHotkeyHelp = function() {
-    const modal = document.getElementById('hotkey-modal');
+    const modalEl = document.getElementById('hotkeyModal');
     const content = document.getElementById('hotkey-content');
-    if (!modal || !content) return;
-
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+    if (!modalEl || !content) return;
 
     // 如果 hotkeys.js 已載入，會覆寫內容
     if (window.SalonEase.Hotkeys && typeof window.SalonEase.Hotkeys.renderHelp === 'function') {
@@ -74,23 +71,26 @@ window.showHotkeyHelp = function() {
         content.innerHTML = `
             <div class="space-y-4">
                 <div class="font-medium">全域快捷鍵</div>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                    <div><span class="font-mono font-semibold">?</span> 顯示本頁熱鍵</div>
-                    <div><span class="font-mono font-semibold">Ctrl+K</span> 命令面板</div>
-                    <div><span class="font-mono font-semibold">Esc</span> 關閉彈窗</div>
-                    <div><span class="font-mono font-semibold">Alt+P</span> 前往 POS</div>
+                <div class="row g-2 small">
+                    <div class="col-6"><span class="font-mono fw-semibold">?</span> 顯示本頁熱鍵</div>
+                    <div class="col-6"><span class="font-mono fw-semibold">Ctrl+K</span> 命令面板</div>
+                    <div class="col-6"><span class="font-mono fw-semibold">Esc</span> 關閉彈窗</div>
+                    <div class="col-6"><span class="font-mono fw-semibold">Alt+P</span> 前往 POS</div>
                 </div>
-                <div class="pt-3 text-xs text-[#8A8A8C]">提示：每頁都有專屬快捷鍵，按「?」查看完整列表。</div>
+                <div class="pt-2 small text-muted">提示：每頁都有專屬快捷鍵，按「?」查看完整列表。</div>
             </div>
         `;
     }
+
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
 };
 
 window.hideHotkeyHelp = function() {
-    const modal = document.getElementById('hotkey-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+    const modalEl = document.getElementById('hotkeyModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
     }
 };
 

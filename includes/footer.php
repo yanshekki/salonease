@@ -6,46 +6,44 @@
 ?>
     </div><!-- /.max-w-screen-2xl -->
 
-    <!-- 全域熱鍵提示列（手機版極致精簡） -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[60] shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.03)]">
-        <div class="max-w-screen-2xl mx-auto px-3 sm:px-6 h-9 sm:h-10 flex items-center justify-between text-xs text-[#5A5A5C]">
-            <!-- 手機版：只顯示大按鈕 -->
-            <div class="flex items-center">
+    <!-- 全域熱鍵提示列（Bootstrap 版本） -->
+    <div class="fixed-bottom bg-white border-top shadow-sm" style="z-index: 1040;">
+        <div class="container-fluid d-flex align-items-center justify-content-between px-3" style="height: 42px; max-width: 1400px; margin: 0 auto;">
+            <div class="d-flex align-items-center">
                 <button onclick="showHotkeyHelp()" 
-                        class="flex items-center justify-center px-4 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 font-medium text-[#2C2C2E] active:scale-[0.985] transition text-sm min-h-[36px]">
-                    <span class="font-mono text-base mr-1">?</span>
-                    <span>快捷鍵</span>
+                        class="btn btn-light btn-sm d-flex align-items-center gap-1 px-3 py-1">
+                    <span class="fw-bold">?</span>
+                    <span class="d-none d-sm-inline">快捷鍵</span>
                 </button>
             </div>
 
-            <!-- 平板以上才顯示詳細熱鍵 -->
-            <div class="hidden md:flex items-center gap-x-3 text-[10px]">
-                <span><span class="font-semibold">Ctrl+K</span> 命令面板</span>
-                <span class="text-gray-300">|</span>
-                <span><span class="font-semibold">Esc</span> 關閉</span>
+            <div class="d-none d-md-flex align-items-center gap-3 small text-muted">
+                <span><strong>Ctrl+K</strong> 命令面板</span>
+                <span class="text-secondary">|</span>
+                <span><strong>Esc</strong> 關閉</span>
             </div>
             
-            <div class="text-right text-[10px] sm:text-xs">
-                <span class="hidden sm:inline">SalonEase v<?= e(APP_VERSION ?? '0.1') ?> · </span>
-                <span class="text-[#8A8A8C]">專業 · 簡單 · 高效</span>
+            <div class="small text-muted text-end">
+                <span class="d-none d-sm-inline">SalonEase v<?= e(APP_VERSION ?? '0.1') ?> · </span>
+                專業 · 簡單 · 高效
             </div>
         </div>
     </div>
 
-    <!-- 熱鍵幫助 Modal（手機優化版） -->
-    <div id="hotkey-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-2 sm:p-4" onclick="hideHotkeyHelp()">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-2 sm:mx-4 overflow-hidden max-h-[85vh] flex flex-col" onclick="event.stopImmediatePropagation()">
-            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between flex-shrink-0">
-                <div class="font-semibold text-lg">快捷鍵說明</div>
-                <button onclick="hideHotkeyHelp()" class="text-3xl leading-none text-gray-400 hover:text-gray-600 px-2 -mr-2">×</button>
-            </div>
-            <div class="p-4 sm:p-5 text-sm overflow-auto flex-1" id="hotkey-content">
-                <!-- 由 assets/js/hotkeys.js 動態填入 -->
-                <p class="text-[#5A5A5C]">正在載入快捷鍵清單...</p>
-            </div>
-            <div class="bg-gray-50 px-4 sm:px-5 py-3 text-xs text-[#8A8A8C] flex flex-col sm:flex-row sm:justify-between gap-1 flex-shrink-0">
-                <div>所有頁面皆支援 Esc 與 ?</div>
-                <div>按 <span class="font-mono font-medium">Esc</span> 關閉</div>
+    <!-- 熱鍵幫助 Modal（Bootstrap Modal） -->
+    <div class="modal fade" id="hotkeyModal" tabindex="-1" aria-labelledby="hotkeyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="hotkeyModalLabel">快捷鍵說明</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="hotkey-content">
+                    <p class="text-muted">正在載入快捷鍵清單...</p>
+                </div>
+                <div class="modal-footer">
+                    <small class="text-muted">所有頁面皆支援 Esc 與 ?</small>
+                </div>
             </div>
         </div>
     </div>
