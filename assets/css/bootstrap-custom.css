@@ -1,0 +1,136 @@
+/**
+ * SalonEase - Bootstrap 5 自訂主題
+ * 保留原有品牌顏色與質感
+ * 逐步取代原有 Tailwind + 自訂 CSS
+ */
+
+/* ==================== 品牌顏色變數 ==================== */
+:root {
+    /* 主色系 - 保留原有感覺 */
+    --salon-dark: #2C2C2E;
+    --salon-sage: #8FA68F;
+    --salon-gold: #C9A86C;
+    --salon-rose: #C9A8A0;
+    --salon-bg: #FDF8F3;
+    --salon-border: #EDE5DC;
+    --salon-text-muted: #5A5A5C;
+
+    /* Bootstrap 覆蓋 */
+    --bs-primary: #2C2C2E;
+    --bs-primary-rgb: 44, 44, 46;
+    --bs-secondary: #8FA68F;
+    --bs-success: #8FA68F;
+    --bs-danger: #c62828;
+    --bs-warning: #C9A86C;
+    --bs-info: #6C7A89;
+    --bs-body-bg: #FDF8F3;
+    --bs-body-color: #2C2C2E;
+    --bs-border-color: #EDE5DC;
+    --bs-font-sans-serif: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ==================== 基礎佈局 ==================== */
+body {
+    background-color: var(--salon-bg);
+    color: var(--salon-dark);
+}
+
+/* ==================== 核心元件覆蓋 ==================== */
+
+/* 按鈕 */
+.btn-primary {
+    background-color: var(--salon-dark);
+    border-color: var(--salon-dark);
+}
+
+.btn-primary:hover {
+    background-color: #1f1f21;
+    border-color: #1f1f21;
+}
+
+.btn-outline-secondary {
+    color: var(--salon-dark);
+    border-color: var(--salon-border);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--salon-border);
+    color: var(--salon-dark);
+}
+
+/* 輸入框 */
+.form-control,
+.form-select {
+    border-radius: 0.75rem;
+    border-color: var(--salon-border);
+    background-color: #fff;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--salon-sage);
+    box-shadow: 0 0 0 0.2rem rgba(143, 166, 143, 0.25);
+}
+
+/* 卡片 */
+.card {
+    border-radius: 1rem;
+    border-color: var(--salon-border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom-color: var(--salon-border);
+}
+
+/* 表格 */
+.table {
+    --bs-table-bg: #fff;
+    --bs-table-hover-bg: #F8F5F0;
+}
+
+.table > :not(caption) > * > * {
+    border-bottom-color: var(--salon-border);
+}
+
+.table thead th {
+    background-color: #F8F5F0;
+    color: var(--salon-text-muted);
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Modal */
+.modal-content {
+    border-radius: 1rem;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    border-bottom-color: var(--salon-border);
+}
+
+/* 導航 */
+.navbar {
+    background-color: #fff;
+    border-bottom: 1px solid var(--salon-border);
+}
+
+/* 熱鍵列（底部固定） */
+.hotkey-bar {
+    background-color: #fff;
+    border-top: 1px solid var(--salon-border);
+}
+
+/* 響應式調整（保留部分原有優化） */
+@media (max-width: 768px) {
+    .form-control,
+    .form-select,
+    .btn {
+        min-height: 42px;
+    }
+}

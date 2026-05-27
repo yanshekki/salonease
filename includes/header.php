@@ -29,7 +29,10 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- 共用樣式 -->
+    <!-- Bootstrap 自訂主題（品牌顏色 + 元件覆蓋） -->
+    <link rel="stylesheet" href="/assets/css/bootstrap-custom.css">
+
+    <!-- 共用樣式（過渡期，之後逐步移除 app.css） -->
     <link rel="stylesheet" href="/assets/css/app.css">
     <?php if (isset($extraCss) && $extraCss): ?>
         <link rel="stylesheet" href="/assets/css/<?= e($extraCss) ?>">
@@ -63,7 +66,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
         }
     </style>
 </head>
-<body class="bg-[#FDF8F3] text-[#2C2C2E] min-h-screen flex flex-col">
+<body class="bg-body min-vh-100 d-flex flex-column">
     
     <!-- 頂部導覽列 -->
     <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
