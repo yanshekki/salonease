@@ -32,6 +32,8 @@ $extraJs = 'hotkeys.js';
             class="px-4 py-1.5 text-sm rounded-xl border bg-[#2C2C2E] text-white">列表檢視</button>
     <button onclick="switchView('calendar')" id="btn-view-calendar"
             class="px-4 py-1.5 text-sm rounded-xl border hover:bg-gray-100">今日時程</button>
+    <button onclick="switchView('week')" id="btn-view-week"
+            class="px-4 py-1.5 text-sm rounded-xl border hover:bg-gray-100">週檢視</button>
 </div>
 
 <!-- 列表檢視容器 -->
@@ -166,6 +168,19 @@ $extraJs = 'hotkeys.js';
         </div>
     </div>
     <div class="text-xs text-[#8A8A8C] mt-3">空白時段可點擊直接新增預約 • 點擊預約區塊查看詳情</div>
+</div>
+
+<!-- 週檢視 -->
+<div id="week-view" class="hidden">
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-3 px-1">
+            <div class="font-semibold">未來七天預約概覽</div>
+            <button onclick="loadWeekView()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
+        </div>
+        <div id="week-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+            <!-- JS 動態渲染 7 天卡片 -->
+        </div>
+    </div>
 </div>
 
 <!-- 預約詳情 Modal -->
@@ -570,25 +585,36 @@ function switchView(view) {
 
     const listView = document.getElementById('list-view');
     const calendarView = document.getElementById('calendar-view');
+    const weekView = document.getElementById('week-view');
+
     const btnList = document.getElementById('btn-view-list');
     const btnCalendar = document.getElementById('btn-view-calendar');
+    const btnWeek = document.getElementById('btn-view-week');
+
+    // 隱藏所有視圖
+    listView.classList.add('hidden');
+    calendarView.classList.add('hidden');
+    weekView.classList.add('hidden');
+
+    // 重置按鈕樣式
+    [btnList, btnCalendar, btnWeek].forEach(b => {
+        if (b) {
+            b.classList.remove('bg-[#2C2C2E]', 'text-white');
+            b.classList.add('hover:bg-gray-100');
+        }
+    });
 
     if (view === 'list') {
         listView.classList.remove('hidden');
-        calendarView.classList.add('hidden');
-        btnList.classList.add('bg-[#2C2C2E]', 'text-white');
-        btnList.classList.remove('hover:bg-gray-100');
-        btnCalendar.classList.remove('bg-[#2C2C2E]', 'text-white');
-        btnCalendar.classList.add('hover:bg-gray-100');
-    } else {
-        listView.classList.add('hidden');
+        if (btnList) btnList.classList.add('bg-[#2C2C2E]', 'text-white');
+    } else if (view === 'calendar') {
         calendarView.classList.remove('hidden');
-        btnList.classList.remove('bg-[#2C2C2E]', 'text-white');
-        btnList.classList.add('hover:bg-gray-100');
-        btnCalendar.classList.add('bg-[#2C2C2E]', 'text-white');
-        btnCalendar.classList.remove('hover:bg-gray-100');
-
+        if (btnCalendar) btnCalendar.classList.add('bg-[#2C2C2E]', 'text-white');
         loadTodaySchedule();
+    } else if (view === 'week') {
+        weekView.classList.remove('hidden');
+        if (btnWeek) btnWeek.classList.add('bg-[#2C2C2E]', 'text-white');
+        loadWeekView();
     }
 }
 
@@ -670,6 +696,89 @@ async function loadTodaySchedule() {
     } catch (err) {
         container.innerHTML = `<div class="text-red-500 py-4">載入失敗：${err.message}</div>`;
     }
+}
+
+async function loadWeekView() {
+    const container = document.getElementById('week-grid');
+    container.innerHTML = `<div class="col-span-full py-8 text-center text-[#8A8A8C]">載入中...</div>`;
+
+    const today = new Date();
+    const days = [];
+
+    // 產生未來 7 天
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        days.push({
+            date: dateStr,
+            label: d.toLocaleDateString('zh-HK', { weekday: 'short', month: 'numeric', day: 'numeric' }),
+            isToday: i === 0
+        });
+    }
+
+    const from = days[0].date;
+    const to = days[6].date;
+
+    try {
+        const res = await SalonEase.fetch(`/api/appointments.php?action=list&date_from=${from}&date_to=${to}`);
+        const allAppts = res.data || [];
+
+        let html = '';
+
+        days.forEach(day => {
+            const dayAppts = allAppts.filter(a => a.start_time.startsWith(day.date));
+            const count = dayAppts.length;
+
+            let apptHtml = '';
+            if (count === 0) {
+                apptHtml = `<div class="text-xs text-[#8A8A8C] mt-1">無預約</div>`;
+            } else {
+                dayAppts.slice(0, 3).forEach(a => {
+                    const time = new Date(a.start_time).toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+                    apptHtml += `
+                        <div onclick="showDetailModal(${a.id}); event.stopImmediatePropagation();" 
+                             class="text-xs truncate px-2 py-0.5 mt-1 rounded bg-[#E8F0E8] hover:bg-[#D4E6D4] cursor-pointer">
+                            ${time} ${e(a.customer_name || '')}
+                        </div>
+                    `;
+                });
+                if (count > 3) {
+                    apptHtml += `<div class="text-xs text-[#8A8A8C] mt-1">+${count-3} 更多</div>`;
+                }
+            }
+
+            const todayClass = day.isToday ? 'ring-2 ring-[#8FA68F]' : '';
+
+            html += `
+                <div onclick="filterListByDate('${day.date}')" 
+                     class="border rounded-2xl p-3 hover:border-[#8FA68F] cursor-pointer transition ${todayClass}">
+                    <div class="font-semibold text-sm flex justify-between">
+                        <span>${day.label}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded-full ${count > 0 ? 'bg-[#8FA68F] text-white' : 'bg-gray-200'}">${count}</span>
+                    </div>
+                    <div class="mt-2 min-h-[60px]">
+                        ${apptHtml}
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (err) {
+        container.innerHTML = `<div class="col-span-full text-red-500">載入失敗：${err.message}</div>`;
+    }
+}
+
+function filterListByDate(dateStr) {
+    // 切換回列表檢視，並設定日期篩選
+    switchView('list');
+    setTimeout(() => {
+        document.getElementById('date-from').value = dateStr;
+        document.getElementById('date-to').value = dateStr;
+        loadAppointments();
+    }, 100);
 }
 
 // 熱鍵
