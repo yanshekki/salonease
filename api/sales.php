@@ -51,6 +51,16 @@ switch ($action) {
                 ]);
                 $sale_id = $pdo->lastInsertId();
 
+                // === A 選擇：讀取佣金率（全域預設 + 員工個人覆蓋） ===
+                $globalRates = $pdo->query("SELECT default_commission_service, default_commission_retail, default_commission_open FROM settings WHERE id = 1")->fetch();
+                $staffRates = $pdo->prepare("SELECT commission_rate_service, commission_rate_retail, commission_rate_open FROM staff WHERE id = ?");
+                $staffRates->execute([$_SESSION['staff_id']]);
+                $staffRateRow = $staffRates->fetch();
+
+                $service_rate = $staffRateRow['commission_rate_service'] ?? $globalRates['default_commission_service'] ?? 40.00;
+                $retail_rate  = $staffRateRow['commission_rate_retail']  ?? $globalRates['default_commission_retail']  ?? 15.00;
+                $open_rate    = $staffRateRow['commission_rate_open']    ?? $globalRates['default_commission_open']    ?? 5.00;
+
                 // 2. 插入銷售明細 + 處理套票扣減
                 $item_stmt = $pdo->prepare("
                     INSERT INTO sale_items (sale_id, item_type, ref_id, name, qty, unit_price, line_total, staff_id)
@@ -136,12 +146,12 @@ switch ($action) {
                         ]);
                     }
 
-                    // 簡單佣金計算（之後可優化）
+                    // 簡單佣金計算（使用設定頁的比率）
                     // 這裡先用 sales staff 計算，之後可支援 item 層級 staff
                     if ($item['type'] === 'service') {
-                        $total_commission_service += $line_total * 0.4; // 暫時用 40%
+                        $total_commission_service += $line_total * ($service_rate / 100);
                     } elseif ($item['type'] === 'product') {
-                        $total_commission_retail += $line_total * 0.15; // 暫時用 15%
+                        $total_commission_retail += $line_total * ($retail_rate / 100);
                     }
                 }
 
@@ -158,32 +168,32 @@ switch ($action) {
                     $update_customer->execute([$total, $customer_id]);
                 }
 
-                // 4. 產生佣金（簡單版本）
+                // 4. 產生佣金（使用設定頁的比率）
                 $commission_stmt = $pdo->prepare("
                     INSERT INTO commissions (sale_id, staff_id, amount, type, rate)
                     VALUES (?, ?, ?, ?, ?)
                 ");
 
-                // 開單佣金（5%）
-                $open_commission = $total * 0.05;
+                // 開單佣金
+                $open_commission = $total * ($open_rate / 100);
                 if ($open_commission > 0) {
                     $commission_stmt->execute([
                         $sale_id,
                         $_SESSION['staff_id'],
                         $open_commission,
                         'open',
-                        5.00
+                        $open_rate
                     ]);
                 }
 
-                // 服務佣金（暫時寫給開單人，之後可改）
+                // 服務佣金（寫給開單人，之後可支援 item 層級 staff）
                 if ($total_commission_service > 0) {
                     $commission_stmt->execute([
                         $sale_id,
                         $_SESSION['staff_id'],
                         $total_commission_service,
                         'service',
-                        40.00
+                        $service_rate
                     ]);
                 }
 
@@ -194,7 +204,7 @@ switch ($action) {
                         $_SESSION['staff_id'],
                         $total_commission_retail,
                         'retail',
-                        15.00
+                        $retail_rate
                     ]);
                 }
 
