@@ -20,26 +20,14 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(APP_NAME ?? 'SalonEase') ?> · <?= e($pageTitle ?? '管理系統') ?></title>
     
-    <!-- Tailwind CSS CDN + 自訂主題 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'salon-dark': '#2C2C2E',
-                        'salon-sage': '#8FA68F',
-                        'salon-gold': '#C9A86C',
-                        'salon-rose': '#C9A8A0',
-                        'salon-bg': '#FDF8F3',
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Bootstrap 5.3.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Alpine.js CDN -->
+    <!-- Alpine.js CDN（暫時保留，之後可逐步移除） -->
     <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+    
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- 共用樣式 -->
     <link rel="stylesheet" href="/assets/css/app.css">
@@ -49,9 +37,30 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
-        :root { --font-sans: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { font-family: var(--font-sans); }
-        .nav-active { background-color: #2C2C2E; color: white; }
+        
+        :root {
+            --font-sans: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            
+            /* Bootstrap 品牌顏色覆蓋 - 保留原有 SalonEase 感覺 */
+            --bs-primary: #2C2C2E;
+            --bs-primary-rgb: 44, 44, 46;
+            --bs-secondary: #8FA68F;
+            --bs-success: #8FA68F;
+            --bs-danger: #c62828;
+            --bs-body-bg: #FDF8F3;
+            --bs-body-color: #2C2C2E;
+            --bs-border-color: #EDE5DC;
+        }
+        
+        body { 
+            font-family: var(--font-sans); 
+        }
+        
+        /* 保留原有導航 active 樣式 */
+        .nav-active { 
+            background-color: #2C2C2E; 
+            color: white; 
+        }
     </style>
 </head>
 <body class="bg-[#FDF8F3] text-[#2C2C2E] min-h-screen flex flex-col">
