@@ -928,9 +928,11 @@ async function loadWeekView() {
                 dayAppts.slice(0, 4).forEach(a => {
                     const start = new Date(a.start_time).toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
                     const end = new Date(a.end_time).toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+                    const bg = getStaffColor(a.staff_name || '');
                     apptHtml += `
                         <div onclick="showDetailModal(${a.id}); event.stopImmediatePropagation();" 
-                             class="text-xs truncate px-2 py-0.5 mt-1 rounded bg-[#E8F0E8] hover:bg-[#D4E6D4] cursor-pointer">
+                             class="text-xs truncate px-2 py-0.5 mt-1 rounded cursor-pointer border"
+                             style="background-color: ${bg};">
                             ${start}-${end} ${e(a.customer_name || '')}
                         </div>
                     `;
@@ -1087,8 +1089,8 @@ async function loadTodayScheduleForDate(targetDateStr) {
             const left = lane * colWidth + 2;
             const width = colWidth - 4;
 
-            const statusColor = a.status === 'confirmed' ? '#C6E2C6' : 
-                               (a.status === 'pending' ? '#FFF3C6' : '#E5E5E5');
+            // 根據美容師產生淺色背景，方便快速辨識
+            const staffColor = getStaffColor(a.staff_name || 'default');
 
             const quickActions = [];
             if (a.status === 'pending') quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'confirmed', 'calendar')" class="px-1 py-0 text-[9px] bg-green-200 hover:bg-green-300 rounded">確認</span>`);
@@ -1100,7 +1102,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
             html += `
                 <div onclick="showDetailModal(${a.id})" 
                      class="group absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
-                     style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${statusColor}; z-index: ${10 + lane};">
+                     style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${staffColor}; z-index: ${10 + lane};">
                     <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
                     <div class="text-[10px] text-[#555] truncate">${e(a.staff_name || '')}</div>
                     ${actionsHtml}
@@ -1126,6 +1128,17 @@ document.addEventListener('keydown', function(e) {
 
 function e(str) {
     return str ? str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
+}
+
+// 根據美容師名稱產生一致的淺色（方便視覺辨識）
+function getStaffColor(name) {
+    if (!name) return '#F3EDE6';
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 88%)`; // 淺色系
 }
 </script>
 
