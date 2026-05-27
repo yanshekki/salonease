@@ -201,7 +201,11 @@ $extraJs = 'hotkeys.js';
                 <button onclick="quickChangeStatus('completed')" class="salon-btn salon-btn-secondary text-sm">標記已完成</button>
                 <button onclick="quickChangeStatus('no_show')" class="salon-btn salon-btn-secondary text-sm">標記未到</button>
             </div>
-            <div>
+            <div class="flex gap-2">
+                <button onclick="editCurrentAppointment()" 
+                        class="salon-btn salon-btn-secondary text-sm">
+                    ✏️ 編輯
+                </button>
                 <button onclick="openPosFromAppointment()" 
                         class="salon-btn salon-btn-primary text-sm flex items-center gap-1">
                     🛒 從此預約開單
@@ -447,9 +451,15 @@ function hideApptModal() {
     const modal = document.getElementById('appt-modal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+
+    // 清空編輯狀態
+    document.getElementById('appt-id').value = '';
 }
 
 async function saveAppointment() {
+    const apptId = document.getElementById('appt-id').value;
+    const isEdit = !!apptId;
+
     const customerId = document.getElementById('customer-id').value;
     const staffId = document.getElementById('staff-select').value;
     const roomId = document.getElementById('room-select').value;
@@ -478,15 +488,28 @@ async function saveAppointment() {
         services: services
     };
 
+    if (isEdit) {
+        payload.id = apptId;
+    }
+
     try {
-        await SalonEase.fetch('/api/appointments.php?action=create', {
+        const action = isEdit ? 'update' : 'create';
+        await SalonEase.fetch(`/api/appointments.php?action=${action}`, {
             method: 'POST',
             body: payload
         });
 
         hideApptModal();
-        SalonEase.toast('預約建立成功');
-        loadAppointments();
+        SalonEase.toast(isEdit ? '預約已更新' : '預約建立成功');
+
+        // 重新載入目前視圖
+        if (currentView === 'week') {
+            loadWeekView();
+        } else if (currentView === 'calendar') {
+            loadTodaySchedule();
+        } else {
+            loadAppointments();
+        }
     } catch (err) {
         SalonEase.toast(err.message, 'error');
     }
@@ -509,6 +532,7 @@ async function changeStatus(id, status) {
 
 // 顯示詳情 Modal
 let currentDetailId = null;
+let currentAppointmentData = null; // 用於編輯時的資料
 
 async function showDetailModal(id) {
     currentDetailId = id;
@@ -520,6 +544,7 @@ async function showDetailModal(id) {
 
     try {
         const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${id}`);
+        currentAppointmentData = res.data;
         const a = res.data;
 
         const statusMap = {
@@ -578,6 +603,44 @@ function openPosFromAppointment() {
     if (!currentDetailId) return;
     // 跳轉到 POS 並帶上預約 ID（Phase 3 會處理自動帶入客戶與服務）
     window.location.href = `/pos.php?appointment_id=${currentDetailId}`;
+}
+
+function editCurrentAppointment() {
+    if (!currentDetailId || !currentAppointmentData) return;
+
+    hideDetailModal();
+
+    const a = currentAppointmentData;
+
+    // 重用新增 Modal 做編輯
+    document.getElementById('modal-title').textContent = '編輯預約';
+    document.getElementById('appt-id').value = a.id;
+    document.getElementById('customer-id').value = a.customer_id;
+    document.getElementById('customer-search').value = `${a.customer_name} (${a.customer_phone || ''})`;
+    document.getElementById('staff-select').value = a.staff_id || '';
+    document.getElementById('room-select').value = a.room_id || '';
+    document.getElementById('notes').value = a.notes || '';
+
+    // 設定時間
+    const startDT = a.start_time.replace(' ', 'T').slice(0, 16);
+    const endDT = a.end_time.replace(' ', 'T').slice(0, 16);
+    document.getElementById('start-time').value = startDT;
+    document.getElementById('end-time').value = endDT.replace('T', ' ') + ':00';
+    document.getElementById('end-time-display').value = endDT.replace('T', ' ');
+
+    // 清空並勾選服務
+    document.querySelectorAll('#services-checkboxes input').forEach(cb => cb.checked = false);
+    if (a.items && a.items.length > 0) {
+        a.items.forEach(item => {
+            const cb = document.querySelector(`#services-checkboxes input[value="${item.service_id}"]`);
+            if (cb) cb.checked = true;
+        });
+    }
+
+    document.getElementById('save-btn').textContent = '儲存變更';
+
+    document.getElementById('appt-modal').classList.remove('hidden');
+    document.getElementById('appt-modal').classList.add('flex');
 }
 
 // ==================== 檢視切換與今日時程 ====================

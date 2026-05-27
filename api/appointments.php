@@ -151,6 +151,60 @@ switch ($action) {
         json_success(null, '狀態已更新');
         break;
 
+    // 更新預約
+    case 'update':
+        if (!is_post()) json_error('只接受 POST 請求', 405);
+
+        $id = (int)post('id');
+        $customer_id = (int)post('customer_id');
+        $staff_id    = (int)post('staff_id');
+        $room_id     = (int)post('room_id') ?: null;
+        $start_time  = post('start_time');
+        $end_time    = post('end_time');
+        $notes       = trim(post('notes'));
+        $services    = $_POST['services'] ?? [];
+
+        if (!$id || !$customer_id || !$staff_id || !$start_time || !$end_time) {
+            json_error('資料不完整');
+        }
+
+        // 衝突檢查（排除自己）
+        $conflict = check_appointment_conflict($id, $staff_id, $room_id, $start_time, $end_time);
+        if ($conflict) {
+            json_error('時間衝突：該美容師或房間在指定時間已有其他預約', 409);
+        }
+
+        try {
+            db_transaction(function($pdo) use ($id, $customer_id, $staff_id, $room_id, $start_time, $end_time, $notes, $services) {
+                // 更新主表
+                $stmt = $pdo->prepare("
+                    UPDATE appointments 
+                    SET customer_id = ?, staff_id = ?, room_id = ?, start_time = ?, end_time = ?, notes = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$customer_id, $staff_id, $room_id, $start_time, $end_time, $notes, $id]);
+
+                // 刪除舊服務項目
+                $pdo->prepare("DELETE FROM appointment_items WHERE appointment_id = ?")->execute([$id]);
+
+                // 插入新服務項目
+                if (is_array($services) && count($services) > 0) {
+                    $item_stmt = $pdo->prepare("
+                        INSERT INTO appointment_items (appointment_id, service_id, price_at_time, duration_min)
+                        SELECT ?, id, price, duration_min FROM services WHERE id = ?
+                    ");
+                    foreach ($services as $sid) {
+                        $item_stmt->execute([$id, (int)$sid]);
+                    }
+                }
+            });
+
+            json_success(['id' => $id], '預約已更新');
+        } catch (Exception $e) {
+            json_error('更新失敗：' . $e->getMessage());
+        }
+        break;
+
     default:
         json_error('未知的操作', 400);
 }
