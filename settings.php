@@ -12,6 +12,7 @@ include __DIR__ . '/includes/header.php';
             <span class="font-medium">SalonEase</span>
             <span class="font-mono text-[#8FA68F]">v1.0.0</span>
             <span class="text-[#8A8A8C]">· 2025 年 5 月</span>
+            <span class="text-[#8FA68F] ml-1">(維護階段)</span>
         </div>
     </div>
 
