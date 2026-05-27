@@ -925,17 +925,18 @@ async function loadWeekView() {
             if (count === 0) {
                 apptHtml = `<div class="text-xs text-[#8A8A8C] mt-1">無預約</div>`;
             } else {
-                dayAppts.slice(0, 3).forEach(a => {
-                    const time = new Date(a.start_time).toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+                dayAppts.slice(0, 4).forEach(a => {
+                    const start = new Date(a.start_time).toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+                    const end = new Date(a.end_time).toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
                     apptHtml += `
                         <div onclick="showDetailModal(${a.id}); event.stopImmediatePropagation();" 
                              class="text-xs truncate px-2 py-0.5 mt-1 rounded bg-[#E8F0E8] hover:bg-[#D4E6D4] cursor-pointer">
-                            ${time} ${e(a.customer_name || '')}
+                            ${start}-${end} ${e(a.customer_name || '')}
                         </div>
                     `;
                 });
-                if (count > 3) {
-                    apptHtml += `<div class="text-xs text-[#8A8A8C] mt-1">+${count-3} 更多</div>`;
+                if (count > 4) {
+                    apptHtml += `<div class="text-xs text-[#8A8A8C] mt-1">+${count-4} 更多</div>`;
                 }
             }
 
