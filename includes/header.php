@@ -106,7 +106,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                 <!-- 手機版選單按鈕 -->
                 <div class="md:hidden flex items-center">
                     <button onclick="toggleMobileNav()" 
-                            class="w-10 h-10 flex items-center justify-center text-2xl text-[#2C2C2E] hover:bg-gray-100 rounded-xl transition"
+                            class="w-10 h-10 flex items-center justify-center text-2xl text-[#2C2C2E] hover:bg-gray-100 active:bg-gray-200 rounded-xl transition active:scale-95"
                             aria-label="選單">
                         ☰
                     </button>
@@ -133,17 +133,17 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 
             <!-- 手機版下拉選單 -->
             <div id="mobile-nav" class="hidden md:hidden border-t bg-white">
-                <div class="px-4 py-2 flex flex-col text-sm">
-                    <a href="/dashboard.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'dashboard' ? 'font-medium text-[#2C2C2E]' : '' ?>">概覽</a>
-                    <a href="/pos.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'pos' ? 'font-medium text-[#2C2C2E]' : '' ?>">POS 銷售</a>
-                    <a href="/appointments.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'appointments' ? 'font-medium text-[#2C2C2E]' : '' ?>">預約管理</a>
-                    <a href="/customers.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'customers' ? 'font-medium text-[#2C2C2E]' : '' ?>">客戶</a>
-                    <a href="/reports.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'reports' ? 'font-medium text-[#2C2C2E]' : '' ?>">報表</a>
-                    <a href="/commissions.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'commissions' ? 'font-medium text-[#2C2C2E]' : '' ?>">佣金</a>
-                    <a href="/staff.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'staff' ? 'font-medium text-[#2C2C2E]' : '' ?>">員工</a>
-                    <div class="border-t my-1"></div>
-                    <a href="/settings.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100">系統設定</a>
-                    <a href="/logout.php" class="py-2.5 px-3 rounded-lg text-red-600 hover:bg-red-50" onclick="return confirm('確定要登出嗎？')">登出</a>
+                <div class="px-2 py-1 flex flex-col text-sm">
+                    <a href="/dashboard.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'dashboard' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">概覽</a>
+                    <a href="/pos.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'pos' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">POS 銷售</a>
+                    <a href="/appointments.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'appointments' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">預約管理</a>
+                    <a href="/customers.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'customers' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">客戶</a>
+                    <a href="/reports.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'reports' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">報表</a>
+                    <a href="/commissions.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'commissions' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">佣金</a>
+                    <a href="/staff.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'staff' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">員工</a>
+                    <div class="border-t my-1 mx-2"></div>
+                    <a href="/settings.php" class="py-3 px-4 rounded-xl active:bg-gray-100">系統設定</a>
+                    <a href="/logout.php" class="py-3 px-4 rounded-xl text-red-600 active:bg-red-50" onclick="return confirm('確定要登出嗎？')">登出</a>
                 </div>
             </div>
         </div>
