@@ -53,6 +53,7 @@ $extraJs = 'hotkeys.js';
             <span>只顯示低庫存</span>
             <span class="text-[10px] text-[#8A8A8C]">(依目前門檻)</span>
         </label>
+        <span class="text-[10px] text-[#8A8A8C] pt-5">（產品低於門檻時會顯示紅色警示）</span>
     </div>
     <button onclick="loadProducts()" class="salon-btn salon-btn-secondary h-[42px]">重新載入</button>
 </div>

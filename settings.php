@@ -158,6 +158,7 @@ include __DIR__ . '/includes/header.php';
                     </div>
                     <div>
                         <label class="block text-xs text-[#5A5A5C] mb-1" title="產品庫存低於此數量時會顯示警示（可被個別產品的低庫存門檻覆蓋）。建議設定為日常平均每日銷量的 3-7 天份。">低庫存預設門檻</label>
+                        <div class="text-[10px] text-[#8A8A8C]">低於此數量會在產品列表及 POS 顯示警示</div>
                         <div class="flex items-center">
                             <input type="number" x-model.number="form.default_low_stock_threshold" 
                                    step="1" min="0" 
