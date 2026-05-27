@@ -152,75 +152,63 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
     </div>
-                        <label class="block text-xs text-[#5A5A5C] mb-1">開單佣金</label>
-                        <div class="flex items-center">
-                            <input type="number" x-model.number="form.default_commission_open" 
-                                   step="0.5" min="0" max="100"
-                                   class="salon-input w-full text-right">
-                            <span class="ml-2 text-sm text-[#8A8A8C]">%</span>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-[#5A5A5C] mb-1" title="產品庫存低於此數量時會顯示警示（可被個別產品的低庫存門檻覆蓋）。建議設定為日常平均每日銷量的 3-7 天份。">低庫存預設門檻</label>
-                        <div class="text-[10px] text-[#8A8A8C]">低於此數量會在產品列表及 POS 顯示警示</div>
-                        <div class="flex items-center">
-                            <input type="number" x-model.number="form.default_low_stock_threshold" 
-                                   step="1" min="0" 
-                                   class="salon-input w-full text-right" title="產品庫存低於此數量時會顯示警示（建議 3-10）">
-                            <span class="ml-2 text-sm text-[#8A8A8C]">件</span>
-                        </div>
-                    </div>
+
+    <!-- 管理功能快速入口 -->
+    <div class="row g-3">
+        <div class="col-md-6 col-lg-4">
+            <a href="/customers.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">👥</div>
+                    <div class="fw-semibold">客戶管理</div>
+                    <div class="small text-muted">客戶資料、新增與編輯</div>
                 </div>
-                <div class="text-xs text-[#8A8A8C] mt-1">此為全域預設，個別員工可另行覆蓋</div>
-            </div>
-
-            <div>
-                <button @click="saveShop()" 
-                        :disabled="saving"
-                        class="salon-btn px-8 disabled:opacity-60">
-                    <span x-text="saving ? '儲存中...' : '儲存打印與佣金設定'"></span>
-                </button>
-                <span x-show="saved" x-cloak class="ml-3 text-sm text-[#8FA68F]">✓ 已儲存</span>
-            </div>
+            </a>
         </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <a href="/customers.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
-            <div class="text-2xl mb-2">👥</div>
-            <div class="font-semibold group-hover:text-[#8FA68F]">客戶管理</div>
-            <div class="text-sm text-[#5A5A5C] mt-1">客戶資料、新增與編輯</div>
-        </a>
-
-        <a href="/staff.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
-            <div class="text-2xl mb-2">🧑‍💼</div>
-            <div class="font-semibold group-hover:text-[#8FA68F]">員工管理</div>
-            <div class="text-sm text-[#5A5A5C] mt-1">新增、編輯、啟用/停用員工帳號及角色</div>
-        </a>
-
-        <a href="/rooms.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
-            <div class="text-2xl mb-2">🏠</div>
-            <div class="font-semibold group-hover:text-[#8FA68F]">房間管理</div>
-            <div class="text-sm text-[#5A5A5C] mt-1">管理房間名稱與容量（用於預約）</div>
-        </a>
-
-        <a href="/services.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
-            <div class="text-2xl mb-2">💆</div>
-            <div class="font-semibold group-hover:text-[#8FA68F]">服務項目管理</div>
-            <div class="text-sm text-[#5A5A5C] mt-1">管理療程名稱、時長與價格</div>
-        </a>
-
-        <a href="/products.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
-            <div class="text-2xl mb-2">🛍️</div>
-            <div class="font-semibold group-hover:text-[#8FA68F]">零售產品管理</div>
-            <div class="text-sm text-[#5A5A5C] mt-1">管理產品、售價與庫存</div>
-        </a>
-
-        <a href="/packages.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
-            <div class="text-2xl mb-2">🎫</div>
-            <div class="font-semibold group-hover:text-[#8FA68F]">套票管理</div>
-            <div class="text-sm text-[#5A5A5C] mt-1">療程卡（套票）定義與定價</div>
-        </a>
+        <div class="col-md-6 col-lg-4">
+            <a href="/staff.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🧑‍💼</div>
+                    <div class="fw-semibold">員工管理</div>
+                    <div class="small text-muted">新增、編輯、啟用/停用員工帳號及角色</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/rooms.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🏠</div>
+                    <div class="fw-semibold">房間管理</div>
+                    <div class="small text-muted">管理房間名稱與容量（用於預約）</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/services.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">💆</div>
+                    <div class="fw-semibold">服務項目管理</div>
+                    <div class="small text-muted">管理療程名稱、時長與價格</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/products.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🛍️</div>
+                    <div class="fw-semibold">零售產品管理</div>
+                    <div class="small text-muted">管理產品、售價與庫存</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/packages.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🎫</div>
+                    <div class="fw-semibold">套票管理</div>
+                    <div class="small text-muted">療程卡（套票）定義與定價</div>
+                </div>
+            </a>
+        </div>
     </div>
 </div>
 
