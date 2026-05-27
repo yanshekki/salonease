@@ -745,6 +745,28 @@ async function loadTodaySchedule() {
 
         html += `</div><div class="relative" style="height: ${totalSlots * 28}px;">`;
 
+        // 簡單重疊處理：為重疊的預約分配左右欄位
+        const placed = [];
+        const getLane = (appt) => {
+            const aStart = new Date(appt.start_time);
+            const aEnd = new Date(appt.end_time);
+            for (let lane = 0; lane < 3; lane++) {
+                const conflict = placed.some(p => {
+                    if (p.lane !== lane) return false;
+                    const pStart = new Date(p.start_time);
+                    const pEnd = new Date(p.end_time);
+                    return Math.max(aStart, pStart) < Math.min(aEnd, pEnd);
+                });
+                if (!conflict) return lane;
+            }
+            return 0;
+        };
+
+        appts.forEach(a => {
+            a._lane = getLane(a);
+            placed.push(a);
+        });
+
         // 渲染預約區塊
         appts.forEach(a => {
             const aStart = new Date(a.start_time);
@@ -756,13 +778,18 @@ async function loadTodaySchedule() {
             const top = Math.max(0, (startMinutes / slotMinutes) * 28);
             const height = Math.max(28, ((endMinutes - startMinutes) / slotMinutes) * 28);
 
+            const lane = a._lane || 0;
+            const colWidth = 100 / 3;
+            const left = lane * colWidth + 2;
+            const width = colWidth - 4;
+
             const statusColor = a.status === 'confirmed' ? '#C6E2C6' : 
                                (a.status === 'pending' ? '#FFF3C6' : '#E5E5E5');
 
             html += `
                 <div onclick="showDetailModal(${a.id})" 
-                     class="absolute left-1 right-1 rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center"
-                     style="top: ${top}px; height: ${height}px; background-color: ${statusColor};">
+                     class="absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
+                     style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${statusColor}; z-index: ${10 + lane};">
                     <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
                     <div class="text-[10px] text-[#555] truncate">${e(a.staff_name || '')}</div>
                 </div>
