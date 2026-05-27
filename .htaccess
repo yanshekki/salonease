@@ -39,10 +39,9 @@ AddDefaultCharset UTF-8
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# 7. 禁止執行上傳目錄內的 PHP（如果 uploads 有獨立 .htaccess 就更安全）
-<FilesMatch "\.php$">
-    Require all denied
-</FilesMatch>
+# 注意：
+# - uploads/ 目錄內的 PHP 執行已被 uploads/.htaccess 禁止
+# - 根目錄不應有全域禁止 PHP 的規則，否則會影響整個網站
 
 # 8. （可選）簡單 SPA 重寫，如日後要做前端路由可開啟
 # RewriteEngine On
