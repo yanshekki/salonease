@@ -1,0 +1,47 @@
+# SalonEase - 香港小型美容院管理系統
+# 共享主機安全保護 + 基本設定
+# 部署到 salonease.ysk.hk 時請確保此檔案存在
+
+# 禁止直接存取敏感檔案與目錄
+<Files "config.php">
+    Require all denied
+</Files>
+
+<FilesMatch "\.(sql|md|log|bak|example)$">
+    Require all denied
+</Files>
+
+<Directory "includes">
+    Require all denied
+</Directory>
+
+<Directory "sql">
+    Require all denied
+</Directory>
+
+<Directory "uploads">
+    # 允許圖片 / 文件存取，但限制執行
+    <FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
+        Require all denied
+    </FilesMatch>
+</Directory>
+
+# 基本 PHP 設定（共享主機常見）
+<IfModule mod_php.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 10M
+    php_value max_execution_time 60
+    php_value max_input_vars 1000
+</IfModule>
+
+# 關閉目錄索引
+Options -Indexes
+
+# 字符集
+AddDefaultCharset UTF-8
+
+# 簡單 SPA-like 感覺（可選，MVP 先不啟用 rewrite）
+# RewriteEngine On
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteRule ^(.*)$ index.php [QSA,L]

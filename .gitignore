@@ -1,0 +1,29 @@
+# SalonEase - 香港小型美容院管理系統
+# 嚴禁 commit 敏感檔案
+
+# 資料庫設定（絕對不能 commit）
+config.php
+
+# 上傳檔案（僅保留目錄）
+uploads/*
+!uploads/.gitkeep
+
+# 開發 / 系統檔案
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+.idea/
+.vscode/
+*.swp
+
+# Composer（本專案嚴禁使用，除非極度必要）
+vendor/
+composer.lock
+composer.json
+
+# 其他
+.env
+.env.local
+*.sql.bak

@@ -1,0 +1,2 @@
+# 此檔案確保 uploads/ 目錄被 git 追蹤
+# 實際上傳的圖片、Logo 會被 .gitignore 忽略

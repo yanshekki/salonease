@@ -1,0 +1,55 @@
+/**
+ * SalonEase - 共用樣式
+ * 所有頁面共用的元件、排版、覆蓋 Tailwind 的樣式
+ */
+
+/* 基本元件 */
+.salon-card {
+    @apply bg-white border border-gray-100 rounded-2xl p-5;
+}
+
+.salon-btn {
+    @apply inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-medium text-sm transition active:scale-[0.985];
+}
+
+.salon-btn-primary {
+    @apply bg-[#2C2C2E] text-white hover:bg-black;
+}
+
+.salon-btn-secondary {
+    @apply border border-gray-200 hover:bg-gray-50;
+}
+
+.salon-input {
+    @apply w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#8FA68F] focus:border-transparent outline-none;
+}
+
+/* 表格 */
+.salon-table {
+    @apply w-full text-sm;
+}
+.salon-table thead th {
+    @apply bg-gray-50 text-[#5A5A5C] font-medium text-xs uppercase tracking-wider py-3 px-4 text-left border-b;
+}
+.salon-table tbody td {
+    @apply py-3 px-4 border-b border-gray-100;
+}
+.salon-table tbody tr:hover {
+    @apply bg-[#F8F5F0];
+}
+
+/* Modal 基本樣式 */
+.salon-modal {
+    @apply bg-white rounded-2xl shadow-xl overflow-hidden;
+}
+
+/* Toast 已由 JS 動態產生 */
+
+/* 打印時隱藏 */
+@media print {
+    .no-print,
+    nav,
+    .fixed.bottom-0 {
+        display: none !important;
+    }
+}
