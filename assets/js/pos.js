@@ -178,10 +178,11 @@ function addCustomPackageRedemption(customerPackageId, packageName, maxSessions)
         id: Date.now(),
         ref_id: customerPackageId,
         type: 'package',
-        name: `套票扣減 - ${packageName}`,
+        name: packageName,
         subtitle: `扣減 ${sessions} 次`,
         unit_price: 0,
-        qty: sessions
+        qty: sessions,
+        max_sessions: maxSessions
     });
 
     renderCart();
@@ -220,10 +221,11 @@ function addPackageRedemption(customerPackageId, packageName, remaining) {
         id: Date.now(),
         ref_id: customerPackageId,
         type: 'package',
-        name: `套票扣減 - ${packageName}`,
-        subtitle: `扣減 1 次（剩 ${remaining} 次）`,
+        name: packageName,
+        subtitle: `扣減 1 次`,
         unit_price: 0,
-        qty: 1
+        qty: 1,
+        max_sessions: remaining
     });
 
     renderCart();
@@ -260,24 +262,30 @@ function renderCart() {
         const isPackage = item.type === 'package';
 
         if (isPackage) {
-            // 套票扣減項目 - 特殊樣式
+            // 套票扣減項目 - 清晰紫色區分 + 扣 X 次 + 可調整次數 + 移除
+            const deducted = item.qty || 1;
+            const maxS = item.max_sessions || 99;
             html += `
-                <div class="flex justify-between items-center p-2 border-b bg-purple-50">
-                    <div class="flex-1">
-                        <div class="font-medium text-sm text-purple-700 flex items-center gap-1">
-                            <span>📋</span>
-                            <span>${e(item.name)}</span>
-                        </div>
-                        <div class="text-xs text-purple-600">
-                            ${e(item.subtitle || '套票扣減')} <span class="font-medium">（不計費）</span>
+                <div class="flex justify-between items-center p-2 border-b bg-purple-50 border-l-4 border-purple-400">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm text-purple-700">${e(item.name)}</div>
+                        <div class="text-[11px] text-purple-500">套票扣減</div>
+                        <div class="mt-0.5 text-sm font-semibold text-purple-700">
+                            扣 <span class="text-base">${deducted}</span> 次
+                            <span class="font-normal text-purple-500">（不計費）</span>
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="font-semibold text-purple-700 text-sm">扣減</div>
-                        <div class="flex gap-1 mt-1 justify-end">
+                        <div class="flex items-center gap-1 justify-end">
+                            <button onclick="changeQty(${index}, -1)" 
+                                    class="w-6 h-6 text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95">-</button>
+                            <span class="inline-block w-6 text-center text-sm font-semibold text-purple-700">${deducted}</span>
+                            <button onclick="changeQty(${index}, 1)" 
+                                    class="w-6 h-6 text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95">+</button>
                             <button onclick="removeFromCart(${index})" 
-                                    class="w-5 h-5 text-xs text-red-500 hover:text-red-700">×</button>
+                                    class="ml-1 w-6 h-6 text-sm text-red-500 hover:bg-red-50 rounded border border-transparent hover:border-red-200">×</button>
                         </div>
+                        <div class="text-[10px] text-purple-400 mt-0.5">最多 ${maxS} 次</div>
                     </div>
                 </div>
             `;
@@ -305,9 +313,15 @@ function renderCart() {
     container.innerHTML = html;
 }
 
-// 改變數量
+// 改變數量（一般項目 + 套票扣減次數支援）
 function changeQty(index, delta) {
-    cart[index].qty = Math.max(1, cart[index].qty + delta);
+    const item = cart[index];
+    if (item.type === 'package') {
+        const max = item.max_sessions || 99;
+        item.qty = Math.max(1, Math.min(max, item.qty + delta));
+    } else {
+        item.qty = Math.max(1, item.qty + delta);
+    }
     renderCart();
     updateCartTotals();
 }
