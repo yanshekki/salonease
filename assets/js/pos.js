@@ -161,6 +161,12 @@ function showCustomerPackagesQuick() {
 
 // 加入套票扣減到購物車
 function addPackageRedemption(customerPackageId, packageName, remaining) {
+    // 防呆 1：必須選擇客戶才能使用套票扣減
+    if (!currentCustomer) {
+        SalonEase.toast('請先選擇客戶，才能使用套票扣減', 'error');
+        return;
+    }
+
     // 檢查是否已經加入同一張套票
     const alreadyAdded = cart.some(item => item.type === 'package' && item.ref_id === customerPackageId);
     if (alreadyAdded) {
@@ -342,6 +348,15 @@ function setupCustomerSearch() {
         const keyword = this.value.trim();
 
         if (!keyword) {
+            // A1-1h 防呆：清除客戶時，如果購物車有套票扣減，自動移除並提示
+            const hadPackageRedemption = cart.some(item => item.type === 'package');
+            if (hadPackageRedemption) {
+                cart = cart.filter(item => item.type !== 'package');
+                renderCart();
+                updateCartTotals();
+                SalonEase.toast('已清除購物車中的套票扣減項目（客戶已清除）', 'info');
+            }
+
             currentCustomer = null;
             customerPackages = [];
             document.getElementById('pos-customer-info').innerHTML = '';
@@ -359,6 +374,15 @@ function setupCustomerSearch() {
                 const res = await SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(keyword)}`);
                 if (res.data && res.data.length > 0) {
                     const c = res.data[0];
+                    // A1-1h 防呆：切換客戶時，如果購物車有套票扣減，清除它們
+                    const hadPackageRedemption = cart.some(item => item.type === 'package');
+                    if (hadPackageRedemption) {
+                        cart = cart.filter(item => item.type !== 'package');
+                        renderCart();
+                        updateCartTotals();
+                        SalonEase.toast('已清除之前客戶的套票扣減項目', 'info');
+                    }
+
                     currentCustomer = c;
                     let infoHtml = `<span class="text-[#8FA68F]">✓ ${e(c.name)} (${e(c.phone)})</span>`;
 
@@ -450,7 +474,14 @@ async function quickCreateCustomer() {
 // 結帳
 async function checkout() {
     if (cart.length === 0) {
-        alert('購物車是空的');
+        SalonEase.toast('購物車是空的', 'error');
+        return;
+    }
+
+    // A1-1h 防呆：如果有套票扣減項目，必須選擇客戶
+    const hasPackageRedemption = cart.some(item => item.type === 'package');
+    if (hasPackageRedemption && !currentCustomer) {
+        SalonEase.toast('使用套票扣減必須先選擇客戶', 'error');
         return;
     }
 
@@ -460,7 +491,7 @@ async function checkout() {
     const notes = document.getElementById('sale-notes').value;
 
     if (received < total) {
-        alert('實收金額不足');
+        SalonEase.toast('實收金額不足', 'error');
         return;
     }
 
