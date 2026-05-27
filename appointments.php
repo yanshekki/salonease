@@ -25,6 +25,18 @@ $extraJs = 'hotkeys.js';
     </button>
 </div>
 
+<!-- 檢視切換 -->
+<div class="flex items-center gap-2 mb-4">
+    <span class="text-sm text-[#5A5A5C] mr-2">檢視模式：</span>
+    <button onclick="switchView('list')" id="btn-view-list"
+            class="px-4 py-1.5 text-sm rounded-xl border bg-[#2C2C2E] text-white">列表檢視</button>
+    <button onclick="switchView('calendar')" id="btn-view-calendar"
+            class="px-4 py-1.5 text-sm rounded-xl border hover:bg-gray-100">今日時程</button>
+</div>
+
+<!-- 列表檢視容器 -->
+<div id="list-view">
+
 <!-- 篩選 -->
 <div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4 flex flex-wrap gap-3 items-end">
     <div>
@@ -137,6 +149,23 @@ $extraJs = 'hotkeys.js';
     </div>
 </div>
 
+<!-- 今日時程卡片式檢視 -->
+<div id="calendar-view" class="hidden mt-2">
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <span class="font-semibold">今日時程</span>
+                <span id="today-date" class="text-sm text-[#5A5A5C] ml-2"></span>
+            </div>
+            <button onclick="loadTodaySchedule()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
+        </div>
+        <div id="today-timeline" class="space-y-3 min-h-[280px]">
+            <!-- 由 JS 渲染時間軸卡片 -->
+        </div>
+    </div>
+    <div class="text-xs text-[#8A8A8C] mt-3">點擊卡片可查看詳情及直接開單</div>
+</div>
+
 <!-- 預約詳情 Modal -->
 <div id="detail-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideDetailModal()">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl mx-4" onclick="event.stopImmediatePropagation()">
@@ -172,6 +201,12 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRoomOptions();
     loadServicesForCheckbox();
     loadAppointments();
+
+    // 預設列表檢視 + 按鈕樣式
+    const btnList = document.getElementById('btn-view-list');
+    if (btnList) {
+        btnList.classList.add('bg-[#2C2C2E]', 'text-white');
+    }
 
     if (window.SalonEase && window.SalonEase.Hotkeys) {
         window.SalonEase.Hotkeys.registerPage([
@@ -499,6 +534,92 @@ function openPosFromAppointment() {
     if (!currentDetailId) return;
     // 跳轉到 POS 並帶上預約 ID（Phase 3 會處理自動帶入客戶與服務）
     window.location.href = `/pos.php?appointment_id=${currentDetailId}`;
+}
+
+// ==================== 檢視切換與今日時程 ====================
+
+let currentView = 'list';
+
+function switchView(view) {
+    currentView = view;
+
+    const listView = document.getElementById('list-view');
+    const calendarView = document.getElementById('calendar-view');
+    const btnList = document.getElementById('btn-view-list');
+    const btnCalendar = document.getElementById('btn-view-calendar');
+
+    if (view === 'list') {
+        listView.classList.remove('hidden');
+        calendarView.classList.add('hidden');
+        btnList.classList.add('bg-[#2C2C2E]', 'text-white');
+        btnList.classList.remove('hover:bg-gray-100');
+        btnCalendar.classList.remove('bg-[#2C2C2E]', 'text-white');
+        btnCalendar.classList.add('hover:bg-gray-100');
+    } else {
+        listView.classList.add('hidden');
+        calendarView.classList.remove('hidden');
+        btnList.classList.remove('bg-[#2C2C2E]', 'text-white');
+        btnList.classList.add('hover:bg-gray-100');
+        btnCalendar.classList.add('bg-[#2C2C2E]', 'text-white');
+        btnCalendar.classList.remove('hover:bg-gray-100');
+
+        loadTodaySchedule();
+    }
+}
+
+async function loadTodaySchedule() {
+    const container = document.getElementById('today-timeline');
+    const dateEl = document.getElementById('today-date');
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    dateEl.textContent = today.toLocaleDateString('zh-HK', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    container.innerHTML = `<div class="py-8 text-center text-[#8A8A8C]">載入今日時程中...</div>`;
+
+    try {
+        const res = await SalonEase.fetch(`/api/appointments.php?action=list&date_from=${todayStr}&date_to=${todayStr}`);
+        const appts = res.data || [];
+
+        if (appts.length === 0) {
+            container.innerHTML = `<div class="py-10 text-center text-[#8A8A8C] border border-dashed rounded-2xl">今日暫無預約</div>`;
+            return;
+        }
+
+        // 簡單排序
+        appts.sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+        let html = '';
+        appts.forEach(a => {
+            const start = new Date(a.start_time);
+            const end = new Date(a.end_time);
+            const timeStr = start.toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'}) + ' - ' + 
+                           end.toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+
+            const statusColor = a.status === 'confirmed' ? 'bg-green-100 text-green-700' : 
+                               (a.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600');
+
+            html += `
+                <div onclick="showDetailModal(${a.id})" 
+                     class="flex items-center gap-4 p-3 rounded-2xl border hover:border-[#8FA68F] cursor-pointer transition">
+                    <div class="w-20 text-right font-mono text-sm text-[#5A5A5C]">${timeStr}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium truncate">${e(a.customer_name || '未知客戶')}</div>
+                        <div class="text-xs text-[#5A5A5C] truncate">${e(a.staff_name || '')} ${a.room_name ? '・' + e(a.room_name) : ''}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-block px-2.5 py-0.5 text-xs rounded-full ${statusColor}">
+                            ${a.status === 'pending' ? '待確認' : (a.status === 'confirmed' ? '已確認' : '其他')}
+                        </span>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `<div class="text-red-500 py-4">載入失敗：${err.message}</div>`;
+    }
 }
 
 // 熱鍵
