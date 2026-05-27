@@ -282,53 +282,51 @@ function renderCart() {
         const isPackage = item.type === 'package';
 
         if (isPackage) {
-            // 套票扣減項目 - 清晰紫色區分 + 扣 X 次 + 可調整次數 + 移除
+            // 套票扣減項目 - 使用 Bootstrap + 紫色語義區分
             const deducted = item.qty || 1;
             const maxS = item.max_sessions || 99;
             html += `
-                <div class="flex justify-between items-center p-2 border-b bg-purple-50 border-l-4 border-purple-400">
-                    <div class="flex-1 min-w-0">
-                        <div class="font-medium text-sm text-purple-700">${e(item.name)}</div>
-                        <div class="text-[11px] text-purple-500">套票扣減</div>
-                        <div class="mt-0.5 text-sm font-semibold text-purple-700">
-                            扣 <span class="text-base">${deducted}</span> 次
-                            <span class="font-normal text-purple-500">（不計費）</span>
+                <div class="d-flex justify-content-between align-items-center p-2 border-bottom" style="background-color: #f8f0ff; border-left: 4px solid #c084fc;">
+                    <div class="flex-fill min-w-0">
+                        <div class="fw-medium small text-dark">${e(item.name)}</div>
+                        <div class="text-purple small" style="font-size: 11px;">套票扣減</div>
+                        <div class="mt-1 small fw-semibold" style="color: #7e22ce;">
+                            扣 <span class="fs-6">${deducted}</span> 次
+                            <span class="fw-normal text-muted">（不計費）</span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="flex items-center gap-1.5 justify-end">
+                    <div class="text-end">
+                        <div class="d-flex align-items-center gap-1 justify-content-end">
                             <button onclick="changeQty(${index}, -1)" 
-                                    class="w-8 h-8 sm:w-6 sm:h-6 text-lg sm:text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95 flex items-center justify-center">-</button>
-                            <span class="inline-block w-7 text-center text-sm font-semibold text-purple-700">${deducted}</span>
+                                    class="btn btn-sm btn-outline-secondary p-0" style="width:26px;height:26px;">−</button>
+                            <span class="d-inline-block text-center fw-semibold" style="width:28px; color:#7e22ce;">${deducted}</span>
                             <button onclick="changeQty(${index}, 1)" 
-                                    class="w-8 h-8 sm:w-6 sm:h-6 text-lg sm:text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95 flex items-center justify-center">+</button>
+                                    class="btn btn-sm btn-outline-secondary p-0" style="width:26px;height:26px;">+</button>
                             <button onclick="removeFromCart(${index})" 
-                                    class="ml-1 w-8 h-8 sm:w-6 sm:h-6 text-lg sm:text-sm text-red-500 hover:bg-red-50 rounded border border-transparent hover:border-red-200 flex items-center justify-center">×</button>
+                                    class="btn btn-sm text-danger p-0 ms-1" style="width:26px;height:26px;">×</button>
                         </div>
-                        <div class="text-[10px] text-purple-400 mt-0.5">最多 ${maxS} 次</div>
+                        <div class="text-muted" style="font-size: 10px;">最多 ${maxS} 次</div>
                     </div>
                 </div>
             `;
         } else {
-            // 一般收費項目 + 指派員工功能 + 低庫存警示
-            const assignedName = getStaffName(item.assigned_staff_id) || '未指派';
+            // 一般收費項目 + 指派員工 + 低庫存
             const product = itemsCache.find(p => p.id == item.ref_id && p.type === 'product');
             const isLow = product && product.stock_qty <= (product.effective_low_stock_threshold || 5);
             const lowStockBadge = isLow 
-                ? `<span class="ml-1 text-[9px] px-1 py-0 bg-red-100 text-red-600 rounded">低庫存</span>` 
+                ? `<span class="badge bg-danger-subtle text-danger ms-1" style="font-size: 9px;">低庫存</span>` 
                 : '';
 
             html += `
-                <div class="flex justify-between items-center p-2 border-b">
-                    <div class="flex-1">
-                        <div class="font-medium text-sm">${e(item.name)}${lowStockBadge}</div>
-                        <div class="text-xs text-[#8A8A8C]">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>
-                        <div class="text-[10px] mt-0.5">
-                            <span class="text-[#8A8A8C]">指派：</span>
+                <div class="d-flex justify-content-between align-items-start p-2 border-bottom">
+                    <div class="flex-fill">
+                        <div class="fw-medium small">${e(item.name)}${lowStockBadge}</div>
+                        <div class="text-muted" style="font-size: 12px;">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>
+                        <div class="mt-1 d-flex align-items-center gap-1" style="font-size: 11px;">
+                            <span class="text-muted">指派：</span>
                             <select onchange="changeAssignedStaff(${index}, this.value)" 
-                                    class="text-xs border rounded px-1 py-0 bg-white"
-                                    title="指派負責此項目的員工（影響佣金計算）"
-                                    aria-label="指派員工">
+                                    class="form-select form-select-sm" style="width: auto; font-size: 11px; padding-top:1px; padding-bottom:1px;"
+                                    title="指派負責此項目的員工（影響佣金計算）">
                                 <option value="">開單人</option>
                                 ${staffList.map(s => 
                                     `<option value="${s.id}" ${item.assigned_staff_id == s.id ? 'selected' : ''}>${e(s.name)}</option>`
@@ -336,12 +334,12 @@ function renderCart() {
                             </select>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="font-semibold">HK$ ${lineTotal.toFixed(0)}</div>
-                        <div class="flex gap-1.5 mt-1 justify-end">
-                            <button onclick="changeQty(${index}, -1)" class="w-7 h-7 sm:w-5 sm:h-5 text-base sm:text-xs border rounded flex items-center justify-center active:scale-95">-</button>
-                            <button onclick="changeQty(${index}, 1)" class="w-7 h-7 sm:w-5 sm:h-5 text-base sm:text-xs border rounded flex items-center justify-center active:scale-95">+</button>
-                            <button onclick="removeFromCart(${index})" class="w-7 h-7 sm:w-5 sm:h-5 text-base sm:text-xs text-red-500 flex items-center justify-center">×</button>
+                    <div class="text-end">
+                        <div class="fw-semibold small">HK$ ${lineTotal.toFixed(0)}</div>
+                        <div class="d-flex gap-1 mt-1 justify-content-end">
+                            <button onclick="changeQty(${index}, -1)" class="btn btn-sm btn-outline-secondary p-0" style="width:22px;height:22px;font-size:13px;">−</button>
+                            <button onclick="changeQty(${index}, 1)" class="btn btn-sm btn-outline-secondary p-0" style="width:22px;height:22px;font-size:13px;">+</button>
+                            <button onclick="removeFromCart(${index})" class="btn btn-sm text-danger p-0" style="width:22px;height:22px;font-size:14px;">×</button>
                         </div>
                     </div>
                 </div>
@@ -381,34 +379,79 @@ function changeAssignedStaff(index, staffId) {
     }
 }
 
-// 批量指派員工給所有非套票項目
+// 批量指派員工給所有非套票項目（Bootstrap Modal 版本）
 function bulkAssignStaff() {
     if (staffList.length === 0) {
         SalonEase.toast('尚未載入員工清單', 'error');
         return;
     }
 
-    // 簡單用 prompt 選擇員工（輕量做法）
-    let options = staffList.map((s, i) => `${i+1}. ${s.name}`).join('\n');
-    let choice = prompt(
-        '請輸入數字選擇要批量指派的員工：\n' + options + '\n\n或直接輸入 0 取消指派'
-    );
-
-    if (choice === null) return;
-
-    let staffId = null;
-    let idx = parseInt(choice) - 1;
-
-    if (choice === '0') {
-        staffId = null;
-    } else if (!isNaN(idx) && staffList[idx]) {
-        staffId = staffList[idx].id;
-        lastAssignedStaffId = staffId;
-    } else {
-        SalonEase.toast('輸入無效', 'error');
-        return;
+    // 建立或重用 Modal
+    let modalEl = document.getElementById('bulkAssignModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'bulkAssignModal';
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">批量指派員工</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">選擇要指派給目前購物車內所有一般項目的員工：</p>
+                        <div id="bulk-staff-list" class="list-group"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" id="bulk-clear-btn" class="btn btn-outline-danger">清除所有指派</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
     }
 
+    const listContainer = modalEl.querySelector('#bulk-staff-list');
+    listContainer.innerHTML = '';
+
+    // 加入「清除指派」選項
+    const clearItem = document.createElement('button');
+    clearItem.className = 'list-group-item list-group-item-action text-danger';
+    clearItem.textContent = '清除所有指派（開單人）';
+    clearItem.onclick = () => {
+        bootstrap.Modal.getInstance(modalEl).hide();
+        applyBulkStaff(null);
+    };
+    listContainer.appendChild(clearItem);
+
+    staffList.forEach(staff => {
+        const btn = document.createElement('button');
+        btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+        btn.innerHTML = `
+            <span>${e(staff.name)}</span>
+            ${staff.id === lastAssignedStaffId ? '<span class="badge bg-success-subtle text-success small">上次使用</span>' : ''}
+        `;
+        btn.onclick = () => {
+            bootstrap.Modal.getInstance(modalEl).hide();
+            lastAssignedStaffId = staff.id;
+            applyBulkStaff(staff.id);
+        };
+        listContainer.appendChild(btn);
+    });
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    // 綁定清除按鈕
+    modalEl.querySelector('#bulk-clear-btn').onclick = () => {
+        modal.hide();
+        applyBulkStaff(null);
+    };
+}
+
+function applyBulkStaff(staffId) {
     let changed = 0;
     cart.forEach(item => {
         if (item.type !== 'package') {
@@ -419,7 +462,7 @@ function bulkAssignStaff() {
 
     if (changed > 0) {
         renderCart();
-        SalonEase.toast(`已為 ${changed} 項指派員工`);
+        SalonEase.toast(staffId ? `已為 ${changed} 項指派員工` : `已清除 ${changed} 項指派`);
     }
 }
 
@@ -432,7 +475,7 @@ function removeFromCart(index) {
 
     // 如果目前正在顯示客戶套票列表，且移除的是套票，刷新列表
     const packageBtn = document.getElementById('filter-package');
-    if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]') && removedItem.type === 'package') {
+    if (packageBtn && packageBtn.classList.contains('btn-dark') && removedItem.type === 'package') {
         renderCustomerPackages();
     }
 }
@@ -451,7 +494,7 @@ function clearCart() {
 
     // 如果正在看套票列表且之前有套票，刷新列表
     const packageBtn = document.getElementById('filter-package');
-    if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]') && hadPackages) {
+    if (packageBtn && packageBtn.classList.contains('btn-dark') && hadPackages) {
         renderCustomerPackages();
     }
 }
@@ -707,7 +750,7 @@ async function checkout() {
 
             // 如果目前正在顯示客戶的套票列表，刷新它
             const packageBtn = document.getElementById('filter-package');
-            if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]')) {
+            if (packageBtn && packageBtn.classList.contains('btn-dark')) {
                 renderCustomerPackages();
             }
         }
