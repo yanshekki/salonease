@@ -156,9 +156,11 @@ $extraJs = 'hotkeys.js';
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
-                <div>
-                    <span class="font-semibold">今日時程</span>
-                    <span id="today-date" class="text-sm text-[#5A5A5C] ml-2"></span>
+                <div class="flex items-center gap-1">
+                    <button onclick="navigateTodayDay(-1)" class="px-2 py-0.5 text-sm rounded hover:bg-gray-100">←</button>
+                    <span class="font-semibold">時程</span>
+                    <span id="today-date" class="text-sm text-[#5A5A5C] ml-1"></span>
+                    <button onclick="navigateTodayDay(1)" class="px-2 py-0.5 text-sm rounded hover:bg-gray-100">→</button>
                 </div>
                 <select id="today-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadTodaySchedule()">
                     <option value="">全部美容師</option>
@@ -896,13 +898,13 @@ async function loadWeekView() {
             html += `
                 <div class="border rounded-2xl p-3 hover:border-[#8FA68F] transition ${todayClass}">
                     <div class="font-semibold text-sm flex justify-between items-center">
-                        <span onclick="filterListByDate('${day.date}')" class="cursor-pointer hover:underline">${day.label}</span>
+                        <span onclick="switchToDayTimeline('${day.date}')" class="cursor-pointer hover:underline">${day.label}</span>
                         <button onclick="showCreateForDate('${day.date}'); event.stopImmediatePropagation();" 
                                 class="text-xs px-2 py-0.5 rounded-lg bg-[#8FA68F] text-white hover:bg-[#7A947A] flex items-center gap-1">
                             <span>+</span>
                         </button>
                     </div>
-                    <div onclick="filterListByDate('${day.date}')" class="mt-2 min-h-[60px] cursor-pointer">
+                    <div onclick="switchToDayTimeline('${day.date}')" class="mt-2 min-h-[60px] cursor-pointer">
                         ${apptHtml}
                     </div>
                 </div>
@@ -924,6 +926,147 @@ function filterListByDate(dateStr) {
         document.getElementById('date-to').value = dateStr;
         loadAppointments();
     }, 100);
+}
+
+// 從週檢視切換到該日的詳細時間軸
+function switchToDayTimeline(dateStr) {
+    switchView('calendar');
+
+    // 強制載入指定日期的時間軸
+    setTimeout(() => {
+        loadTodayScheduleForDate(dateStr);
+    }, 50);
+}
+
+// 支援載入指定日期的今日時程（非只限今天）
+function navigateTodayDay(offset) {
+    const dateEl = document.getElementById('today-date');
+    // 從目前顯示的日期推算
+    const currentText = dateEl.textContent;
+    // 簡單做法：使用一個隱藏的日期 input 或全域變數
+    if (!window.currentTimelineDate) {
+        window.currentTimelineDate = new Date();
+    }
+    window.currentTimelineDate.setDate(window.currentTimelineDate.getDate() + offset);
+
+    const newDateStr = window.currentTimelineDate.toISOString().split('T')[0];
+    loadTodayScheduleForDate(newDateStr);
+}
+
+async function loadTodayScheduleForDate(targetDateStr) {
+    const container = document.getElementById('today-timeline');
+    const dateEl = document.getElementById('today-date');
+    const staffFilter = document.getElementById('today-staff-filter');
+
+    dateEl.textContent = new Date(targetDateStr).toLocaleDateString('zh-HK', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    if (staffFilter.options.length <= 1) {
+        try {
+            const staffRes = await SalonEase.fetch('/api/staff.php?action=list&status=1');
+            let html = '<option value="">全部美容師</option>';
+            staffRes.data.forEach(s => {
+                html += `<option value="${s.id}">${e(s.name)}</option>`;
+            });
+            staffFilter.innerHTML = html;
+        } catch (e) {}
+    }
+
+    const selectedStaff = staffFilter.value;
+
+    container.innerHTML = `<div class="py-8 text-center text-[#8A8A8C]">載入時程中...</div>`;
+
+    try {
+        let url = `/api/appointments.php?action=list&date_from=${targetDateStr}&date_to=${targetDateStr}`;
+        if (selectedStaff) url += `&staff_id=${selectedStaff}`;
+
+        const res = await SalonEase.fetch(url);
+        const appts = (res.data || []).sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+        // 使用和 loadTodaySchedule 相同的區塊渲染邏輯
+        const startHour = 9;
+        const endHour = 21;
+        const slotMinutes = 30;
+        const totalSlots = ((endHour - startHour) * 60) / slotMinutes;
+
+        let html = `
+            <div class="grid" style="grid-template-columns: 60px 1fr; font-size: 13px;">
+                <div class="border-r bg-[#F8F5F0]">
+        `;
+
+        for (let i = 0; i <= totalSlots; i++) {
+            const minutes = i * slotMinutes;
+            const hour = startHour + Math.floor(minutes / 60);
+            const min = minutes % 60;
+            const timeLabel = `${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+            html += `<div class="h-[28px] flex items-center justify-end pr-2 text-[#5A5A5C] border-b text-xs">${timeLabel}</div>`;
+        }
+
+        html += `</div><div class="relative" style="height: ${totalSlots * 28}px;">`;
+
+        // 重疊處理
+        const placed = [];
+        const getLane = (appt) => {
+            const aStart = new Date(appt.start_time);
+            const aEnd = new Date(appt.end_time);
+            for (let lane = 0; lane < 3; lane++) {
+                const conflict = placed.some(p => {
+                    if (p.lane !== lane) return false;
+                    const pStart = new Date(p.start_time);
+                    const pEnd = new Date(p.end_time);
+                    return Math.max(aStart, pStart) < Math.min(aEnd, pEnd);
+                });
+                if (!conflict) return lane;
+            }
+            return 0;
+        };
+
+        appts.forEach(a => {
+            a._lane = getLane(a);
+            placed.push(a);
+        });
+
+        appts.forEach(a => {
+            const aStart = new Date(a.start_time);
+            const aEnd = new Date(a.end_time);
+
+            const startMinutes = (aStart.getHours() - startHour) * 60 + aStart.getMinutes();
+            const endMinutes = (aEnd.getHours() - startHour) * 60 + aEnd.getMinutes();
+
+            const top = Math.max(0, (startMinutes / slotMinutes) * 28);
+            const height = Math.max(28, ((endMinutes - startMinutes) / slotMinutes) * 28);
+
+            const lane = a._lane || 0;
+            const colWidth = 100 / 3;
+            const left = lane * colWidth + 2;
+            const width = colWidth - 4;
+
+            const statusColor = a.status === 'confirmed' ? '#C6E2C6' : 
+                               (a.status === 'pending' ? '#FFF3C6' : '#E5E5E5');
+
+            const quickActions = [];
+            if (a.status === 'pending') quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'confirmed', 'calendar')" class="px-1 py-0 text-[9px] bg-green-200 hover:bg-green-300 rounded">確認</span>`);
+            if (a.status === 'pending' || a.status === 'confirmed') quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'completed', 'calendar')" class="px-1 py-0 text-[9px] bg-blue-200 hover:bg-blue-300 rounded">完成</span>`);
+            if (a.status !== 'cancelled' && a.status !== 'no_show') quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'cancelled', 'calendar')" class="px-1 py-0 text-[9px] bg-red-200 hover:bg-red-300 rounded">取消</span>`);
+
+            const actionsHtml = quickActions.length > 0 ? `<div class="absolute top-0.5 right-0.5 hidden group-hover:flex gap-1 text-[9px]">${quickActions.join('')}</div>` : '';
+
+            html += `
+                <div onclick="showDetailModal(${a.id})" 
+                     class="group absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
+                     style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${statusColor}; z-index: ${10 + lane};">
+                    <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
+                    <div class="text-[10px] text-[#555] truncate">${e(a.staff_name || '')}</div>
+                    ${actionsHtml}
+                </div>
+            `;
+        });
+
+        html += `</div></div>`;
+        container.innerHTML = html;
+
+    } catch (err) {
+        container.innerHTML = `<div class="text-red-500 py-4">載入失敗：${err.message}</div>`;
+    }
 }
 
 // 熱鍵
