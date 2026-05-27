@@ -21,7 +21,7 @@ define('DB_CHARSET', 'utf8mb4');
 // 應用程式設定
 define('APP_NAME', 'SalonEase 美容中心');
 define('APP_VERSION', '0.1.0');
-define('APP_TIMEZONE', 'Asia/Hong Kong');
+define('APP_TIMEZONE', 'Asia/Hong_Kong');
 
 // Session 安全設定
 ini_set('session.cookie_httponly', 1);
@@ -33,8 +33,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);   // 開發階段開啟，上線改 0
 ini_set('log_errors', 1);
 
-// 時區
-date_default_timezone_set(APP_TIMEZONE);
+// 時區（使用正確 IANA 名稱 + 防禦性處理，某些共享主機 tzdata 不完整）
+$timezone = defined('APP_TIMEZONE') ? APP_TIMEZONE : 'Asia/Hong_Kong';
+if (!@date_default_timezone_set($timezone)) {
+    // 極端情況 fallback，避免 Notice 影響頁面
+    date_default_timezone_set('UTC');
+}
 
 // 建立 uploads 目錄（如不存在）
 if (!is_dir(__DIR__ . '/uploads')) {
