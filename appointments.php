@@ -604,6 +604,27 @@ function quickChangeStatus(newStatus) {
     changeStatus(currentDetailId, newStatus);
 }
 
+// 時間軸上的快速狀態變更
+async function quickStatusChange(id, status, viewType = 'list') {
+    try {
+        await SalonEase.fetch('/api/appointments.php?action=change_status', {
+            method: 'POST',
+            body: { id, status }
+        });
+        SalonEase.toast('狀態已更新');
+
+        if (viewType === 'calendar') {
+            loadTodaySchedule();
+        } else if (viewType === 'week') {
+            loadWeekView();
+        } else {
+            loadAppointments();
+        }
+    } catch (err) {
+        SalonEase.toast(err.message, 'error');
+    }
+}
+
 function openPosFromAppointment() {
     if (!currentDetailId) return;
     // 跳轉到 POS 並帶上預約 ID（Phase 3 會處理自動帶入客戶與服務）
@@ -786,12 +807,28 @@ async function loadTodaySchedule() {
             const statusColor = a.status === 'confirmed' ? '#C6E2C6' : 
                                (a.status === 'pending' ? '#FFF3C6' : '#E5E5E5');
 
+            const quickActions = [];
+            if (a.status === 'pending') {
+                quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'confirmed', 'calendar')" class="px-1.5 py-0 text-[10px] bg-green-200 hover:bg-green-300 rounded">確認</span>`);
+            }
+            if (a.status === 'pending' || a.status === 'confirmed') {
+                quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'completed', 'calendar')" class="px-1.5 py-0 text-[10px] bg-blue-200 hover:bg-blue-300 rounded">完成</span>`);
+            }
+            if (a.status !== 'cancelled' && a.status !== 'no_show') {
+                quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'cancelled', 'calendar')" class="px-1.5 py-0 text-[10px] bg-red-200 hover:bg-red-300 rounded">取消</span>`);
+            }
+
+            const actionsHtml = quickActions.length > 0 
+                ? `<div class="absolute top-0.5 right-0.5 hidden group-hover:flex gap-1 text-[9px]">${quickActions.join('')}</div>` 
+                : '';
+
             html += `
                 <div onclick="showDetailModal(${a.id})" 
-                     class="absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
+                     class="group absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
                      style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${statusColor}; z-index: ${10 + lane};">
                     <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
                     <div class="text-[10px] text-[#555] truncate">${e(a.staff_name || '')}</div>
+                    ${actionsHtml}
                 </div>
             `;
         });
