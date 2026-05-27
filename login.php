@@ -15,9 +15,11 @@ if (!empty($_SESSION['staff_id'])) {
 $error = '';
 $email = '';
 
+// 無論 GET 或 POST，都需要 functions.php（e() 函數）
+require_once __DIR__ . '/includes/functions.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once __DIR__ . '/includes/auth.php';
-    require_once __DIR__ . '/includes/functions.php';
 
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -28,6 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = attempt_login($email, $password);
         if ($result['success']) {
             $redirect = $_GET['redirect'] ?? '/dashboard.php';
+            // 簡單防止 Open Redirect，只允許內部路徑
+            if (!str_starts_with($redirect, '/') || str_contains($redirect, '//')) {
+                $redirect = '/dashboard.php';
+            }
             header('Location: ' . $redirect);
             exit;
         } else {
@@ -105,11 +111,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
-        // 簡單全域熱鍵提示
+        // 登入頁熱鍵（使用項目統一的 toast）
         document.addEventListener('keydown', function(e) {
-            if (e.key === '?') {
-                alert('登入頁快捷鍵：\nEsc - 清除欄位\nEnter - 提交表單');
+            // 避免在 input/textarea 內觸發 ? 提示
+            if (document.activeElement.tagName === 'INPUT' || 
+                document.activeElement.tagName === 'TEXTAREA') {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('input').forEach(i => i.value = '');
+                }
+                return;
             }
+
+            if (e.key === '?') {
+                e.preventDefault();
+                if (typeof SalonEase !== 'undefined' && SalonEase.toast) {
+                    SalonEase.toast('登入頁快捷鍵：\nEsc - 清除欄位\nEnter - 提交表單', 'info');
+                } else {
+                    alert('登入頁快捷鍵：\nEsc - 清除欄位\nEnter - 提交表單');
+                }
+            }
+
             if (e.key === 'Escape') {
                 document.querySelectorAll('input').forEach(i => i.value = '');
             }
