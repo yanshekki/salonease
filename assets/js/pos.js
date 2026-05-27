@@ -127,16 +127,29 @@ function renderCustomerPackages() {
                 </div>
             `;
         } else {
+            // 支援自訂扣減次數（1 ~ 剩餘次數）
+            const maxSessions = cp.remaining_sessions;
             html += `
-                <div onclick="addPackageRedemption(${cp.id}, '${cp.name.replace(/'/g, "\\'")}', ${cp.remaining_sessions})" 
-                     class="flex justify-between items-center p-3 border-b hover:bg-[#F8F5F0] cursor-pointer">
-                    <div>
-                        <div class="font-medium">${e(cp.name)}</div>
-                        <div class="text-xs text-[#8A8A8C]">剩餘 ${cp.remaining_sessions} 次 ｜ 到期 ${cp.expiry_date}</div>
+                <div class="p-3 border-b hover:bg-[#F8F5F0]">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-medium">${e(cp.name)}</div>
+                            <div class="text-xs text-[#8A8A8C]">剩餘 ${maxSessions} 次 ｜ 到期 ${cp.expiry_date}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-semibold text-purple-600">扣減套票</div>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <div class="font-semibold text-purple-600">扣減套票</div>
-                        <div class="text-[10px] text-purple-600">扣 1 次</div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span class="text-sm">扣</span>
+                        <input type="number" id="sessions-${cp.id}" 
+                               class="w-16 border rounded px-2 py-1 text-sm" 
+                               value="1" min="1" max="${maxSessions}">
+                        <span class="text-sm">次</span>
+                        <button onclick="addCustomPackageRedemption(${cp.id}, '${cp.name.replace(/'/g, "\\'")}', ${maxSessions})" 
+                                class="ml-2 px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700">
+                            加入購物車
+                        </button>
                     </div>
                 </div>
             `;
@@ -144,6 +157,35 @@ function renderCustomerPackages() {
     });
 
     container.innerHTML = html;
+}
+
+// 加入自訂次數的套票扣減
+function addCustomPackageRedemption(customerPackageId, packageName, maxSessions) {
+    const input = document.getElementById(`sessions-${customerPackageId}`);
+    let sessions = parseInt(input.value) || 1;
+
+    if (sessions < 1) sessions = 1;
+    if (sessions > maxSessions) sessions = maxSessions;
+
+    // 檢查是否已經加入同一張套票
+    const alreadyAdded = cart.some(item => item.type === 'package' && item.ref_id === customerPackageId);
+    if (alreadyAdded) {
+        SalonEase.toast('此套票已經在購物車中', 'error');
+        return;
+    }
+
+    cart.push({
+        id: Date.now(),
+        ref_id: customerPackageId,
+        type: 'package',
+        name: `套票扣減 - ${packageName}`,
+        subtitle: `扣減 ${sessions} 次`,
+        unit_price: 0,
+        qty: sessions
+    });
+
+    renderCart();
+    updateCartTotals();
 }
 
 // 快速顯示客戶可用套票（從客戶資訊點擊觸發）
@@ -530,6 +572,17 @@ async function checkout() {
 
         // 儲存最後一張收據 ID，方便打印
         window.lastSaleId = res.data.id;
+
+        // A1-1k：結帳成功後，如果仍有選擇客戶，重新載入其套票剩餘次數
+        if (currentCustomer) {
+            await loadCustomerPackages(currentCustomer.id);
+
+            // 如果目前正在顯示客戶的套票列表，刷新它
+            const packageBtn = document.getElementById('filter-package');
+            if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]')) {
+                renderCustomerPackages();
+            }
+        }
 
         // 自動跳出打印選擇
         setTimeout(() => {
