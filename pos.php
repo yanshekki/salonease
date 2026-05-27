@@ -52,7 +52,7 @@ $extraJs = 'pos.js';
             <div class="flex items-center justify-between mb-3">
                 <div class="font-semibold text-lg">購物車</div>
                 <div class="flex gap-2 text-sm">
-                    <button onclick="bulkAssignStaff()" class="text-[#8FA68F] hover:underline">批量指派</button>
+                    <button onclick="bulkAssignStaff()" class="text-[#8FA68F] hover:underline" title="S 鍵也可快速觸發">批量指派</button>
                     <button onclick="clearCart()" class="text-red-500 hover:underline">清空</button>
                 </div>
             </div>
@@ -148,13 +148,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCustomerSearch();
     loadStaffForAssignment();   // 載入員工清單供指派使用
 
-    // 註冊 POS 頁專屬熱鍵（F9 已全域，但這裡再強調）
+    // 註冊 POS 頁專屬熱鍵
     if (window.SalonEase && window.SalonEase.Hotkeys && window.SalonEase.Hotkeys.registerPage) {
         window.SalonEase.Hotkeys.registerPage([
             { key: 'F9', desc: '快速打印上一張收據（58mm 熱感紙）' },
             { key: 'Ctrl+P', desc: '選擇格式打印收據' },
+            { key: 'S', desc: '批量指派員工' },
         ]);
     }
+
+    // POS 專屬快速鍵：S = 批量指派
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (e.key.toUpperCase() === 'S') {
+            e.preventDefault();
+            if (window.bulkAssignStaff) window.bulkAssignStaff();
+        }
+    });
 });
 </script>
 

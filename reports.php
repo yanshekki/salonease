@@ -287,6 +287,7 @@ if (window.SalonEase && window.SalonEase.Hotkeys && window.SalonEase.Hotkeys.reg
         { key: 'W', desc: '切換至本週' },
         { key: 'M', desc: '切換至本月' },
         { key: 'R', desc: '重新載入報表' },
+        { key: 'F5', desc: '重新載入資料（不刷新頁面）' },
     ]);
 }
 
@@ -304,6 +305,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key.toUpperCase() === 'W') { e.preventDefault(); data.setQuickRange('week'); }
     if (e.key.toUpperCase() === 'M') { e.preventDefault(); data.setQuickRange('month'); }
     if (e.key.toUpperCase() === 'R') { e.preventDefault(); data.loadAll(); }
+    if (e.key === 'F5') { e.preventDefault(); data.loadAll(); }
 });
 
 

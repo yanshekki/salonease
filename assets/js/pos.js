@@ -802,3 +802,4 @@ window.calculateChange = calculateChange;
 window.checkout = checkout;
 window.printLastReceipt = printLastReceipt;
 window.showPrintFormatChoice = showPrintFormatChoice;
+window.bulkAssignStaff = bulkAssignStaff;
