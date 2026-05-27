@@ -62,13 +62,13 @@ function renderItems(items) {
 
         html += `
             <div onclick="addToCart('${item.type}', ${item.id}, '${item.name.replace(/'/g, "\\'")}', ${price})" 
-                 class="flex justify-between items-center p-3 border-b hover:bg-[#F8F5F0] cursor-pointer">
-                <div>
-                    <div class="font-medium">${e(item.name)}</div>
-                    <div class="text-xs text-[#8A8A8C]">${subtitle}</div>
+                 class="flex justify-between items-center p-3 sm:p-3.5 border-b hover:bg-[#F8F5F0] active:bg-[#F0E9E0] cursor-pointer touch-manipulation">
+                <div class="flex-1 min-w-0 pr-2">
+                    <div class="font-medium text-[15px] sm:text-sm leading-tight">${e(item.name)}</div>
+                    <div class="text-xs text-[#8A8A8C] mt-0.5">${subtitle}</div>
                 </div>
-                <div class="text-right">
-                    <div class="font-semibold">HK$ ${parseFloat(price).toFixed(0)}</div>
+                <div class="text-right flex-shrink-0">
+                    <div class="font-semibold text-[15px] sm:text-sm">HK$ ${parseFloat(price).toFixed(0)}</div>
                     <div class="text-[10px] text-[#8FA68F]">${item.type === 'service' ? '服務' : (item.type === 'product' ? '產品' : '套票')}</div>
                 </div>
             </div>
@@ -294,14 +294,14 @@ function renderCart() {
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="flex items-center gap-1 justify-end">
+                        <div class="flex items-center gap-1.5 justify-end">
                             <button onclick="changeQty(${index}, -1)" 
-                                    class="w-6 h-6 text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95">-</button>
-                            <span class="inline-block w-6 text-center text-sm font-semibold text-purple-700">${deducted}</span>
+                                    class="w-8 h-8 sm:w-6 sm:h-6 text-lg sm:text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95 flex items-center justify-center">-</button>
+                            <span class="inline-block w-7 text-center text-sm font-semibold text-purple-700">${deducted}</span>
                             <button onclick="changeQty(${index}, 1)" 
-                                    class="w-6 h-6 text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95">+</button>
+                                    class="w-8 h-8 sm:w-6 sm:h-6 text-lg sm:text-sm border border-purple-300 rounded bg-white hover:bg-purple-100 active:scale-95 flex items-center justify-center">+</button>
                             <button onclick="removeFromCart(${index})" 
-                                    class="ml-1 w-6 h-6 text-sm text-red-500 hover:bg-red-50 rounded border border-transparent hover:border-red-200">×</button>
+                                    class="ml-1 w-8 h-8 sm:w-6 sm:h-6 text-lg sm:text-sm text-red-500 hover:bg-red-50 rounded border border-transparent hover:border-red-200 flex items-center justify-center">×</button>
                         </div>
                         <div class="text-[10px] text-purple-400 mt-0.5">最多 ${maxS} 次</div>
                     </div>
@@ -336,10 +336,10 @@ function renderCart() {
                     </div>
                     <div class="text-right">
                         <div class="font-semibold">HK$ ${lineTotal.toFixed(0)}</div>
-                        <div class="flex gap-1 mt-1 justify-end">
-                            <button onclick="changeQty(${index}, -1)" class="w-5 h-5 text-xs border rounded">-</button>
-                            <button onclick="changeQty(${index}, 1)" class="w-5 h-5 text-xs border rounded">+</button>
-                            <button onclick="removeFromCart(${index})" class="w-5 h-5 text-xs text-red-500">×</button>
+                        <div class="flex gap-1.5 mt-1 justify-end">
+                            <button onclick="changeQty(${index}, -1)" class="w-7 h-7 sm:w-5 sm:h-5 text-base sm:text-xs border rounded flex items-center justify-center active:scale-95">-</button>
+                            <button onclick="changeQty(${index}, 1)" class="w-7 h-7 sm:w-5 sm:h-5 text-base sm:text-xs border rounded flex items-center justify-center active:scale-95">+</button>
+                            <button onclick="removeFromCart(${index})" class="w-7 h-7 sm:w-5 sm:h-5 text-base sm:text-xs text-red-500 flex items-center justify-center">×</button>
                         </div>
                     </div>
                 </div>

@@ -15,31 +15,31 @@ $extraJs = 'pos.js';
 
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-    <!-- 左側：商品/服務選擇區 -->
-    <div class="lg:col-span-5">
-        <div class="bg-white rounded-2xl border border-gray-100 p-4">
-            <div class="flex items-center justify-between mb-3">
+    <!-- 左側：商品/服務選擇區（手機優先顯示） -->
+    <div class="lg:col-span-5 order-1">
+        <div class="bg-white rounded-2xl border border-gray-100 p-3 sm:p-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-1">
                 <div class="font-semibold text-lg">加入項目</div>
-                <div class="text-sm text-[#8A8A8C]">搜尋服務或產品</div>
+                <div class="text-xs sm:text-sm text-[#8A8A8C]">搜尋服務或產品</div>
             </div>
 
             <input type="text" id="item-search" 
-                   class="salon-input mb-3" 
+                   class="salon-input mb-3 text-base" 
                    placeholder="輸入服務或產品名稱搜尋...">
 
-            <!-- 分類標籤 -->
-            <div class="flex gap-2 mb-3">
+            <!-- 分類標籤 - 手機自動換行 + 更大觸控 -->
+            <div class="flex flex-wrap gap-2 mb-3">
                 <button onclick="filterItems('all')" id="filter-all"
-                        class="px-3 py-1 text-sm rounded-xl bg-[#2C2C2E] text-white">全部</button>
+                        class="px-4 py-2 text-sm rounded-xl bg-[#2C2C2E] text-white active:scale-95 transition">全部</button>
                 <button onclick="filterItems('service')" id="filter-service"
-                        class="px-3 py-1 text-sm rounded-xl border hover:bg-gray-100">服務</button>
+                        class="px-4 py-2 text-sm rounded-xl border hover:bg-gray-100 active:scale-95 transition">服務</button>
                 <button onclick="filterItems('product')" id="filter-product"
-                        class="px-3 py-1 text-sm rounded-xl border hover:bg-gray-100">產品</button>
+                        class="px-4 py-2 text-sm rounded-xl border hover:bg-gray-100 active:scale-95 transition">產品</button>
                 <button onclick="filterItems('package')" id="filter-package"
-                        class="px-3 py-1 text-sm rounded-xl border hover:bg-gray-100">套票</button>
+                        class="px-4 py-2 text-sm rounded-xl border hover:bg-gray-100 active:scale-95 transition">套票</button>
             </div>
 
-            <div id="items-list" class="max-h-[420px] overflow-auto border rounded-xl">
+            <div id="items-list" class="max-h-[320px] sm:max-h-[420px] overflow-auto border rounded-xl">
                 <!-- 由 JS 動態載入項目 -->
                 <div class="p-4 text-center text-[#8A8A8C]">載入中...</div>
             </div>
@@ -47,17 +47,17 @@ $extraJs = 'pos.js';
     </div>
 
     <!-- 中間：購物車 -->
-    <div class="lg:col-span-4">
-        <div class="bg-white rounded-2xl border border-gray-100 p-4 h-full flex flex-col">
+    <div class="lg:col-span-4 order-2">
+        <div class="bg-white rounded-2xl border border-gray-100 p-3 sm:p-4 h-full flex flex-col">
             <div class="flex items-center justify-between mb-3">
                 <div class="font-semibold text-lg">購物車</div>
-                <div class="flex gap-2 text-sm">
-                    <button onclick="bulkAssignStaff()" class="text-[#8FA68F] hover:underline" title="S 鍵也可快速觸發">批量指派</button>
-                    <button onclick="clearCart()" class="text-red-500 hover:underline">清空</button>
+                <div class="flex gap-3 text-sm">
+                    <button onclick="bulkAssignStaff()" class="text-[#8FA68F] hover:underline active:text-[#6d8a6d] px-1 py-1 -mx-1" title="S 鍵也可快速觸發">批量指派</button>
+                    <button onclick="clearCart()" class="text-red-500 hover:underline active:text-red-600 px-1 py-1 -mx-1">清空</button>
                 </div>
             </div>
 
-            <div id="cart-items" class="flex-1 overflow-auto min-h-[280px] border rounded-xl p-2 mb-3">
+            <div id="cart-items" class="flex-1 overflow-auto min-h-[220px] sm:min-h-[280px] border rounded-xl p-2 mb-3">
                 <!-- 購物車項目由 JS 渲染 -->
                 <div class="h-full flex items-center justify-center text-[#8A8A8C]">
                     購物車是空的
