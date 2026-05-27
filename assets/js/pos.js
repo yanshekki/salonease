@@ -135,8 +135,8 @@ function renderCustomerPackages() {
                         <div class="text-xs text-[#8A8A8C]">剩餘 ${cp.remaining_sessions} 次 ｜ 到期 ${cp.expiry_date}</div>
                     </div>
                     <div class="text-right">
-                        <div class="font-semibold text-[#8FA68F]">使用套票</div>
-                        <div class="text-[10px] text-[#8FA68F]">扣 1 次</div>
+                        <div class="font-semibold text-purple-600">扣減套票</div>
+                        <div class="text-[10px] text-purple-600">扣 1 次</div>
                     </div>
                 </div>
             `;
@@ -172,7 +172,7 @@ function addPackageRedemption(customerPackageId, packageName, remaining) {
         id: Date.now(),
         ref_id: customerPackageId,
         type: 'package',
-        name: `使用套票：${packageName}`,
+        name: `套票扣減 - ${packageName}`,
         subtitle: `扣減 1 次（剩 ${remaining} 次）`,
         unit_price: 0,
         qty: 1
@@ -211,36 +211,47 @@ function renderCart() {
         const lineTotal = item.unit_price * item.qty;
         const isPackage = item.type === 'package';
 
-        let nameHtml = `<div class="font-medium text-sm">${e(item.name)}</div>`;
-        let subtitleHtml = '';
-
         if (isPackage) {
-            subtitleHtml = `<div class="text-xs text-purple-600">${e(item.subtitle || '套票扣減')}</div>`;
-            nameHtml = `<div class="font-medium text-sm text-purple-700">${e(item.name)}</div>`;
-        } else {
-            subtitleHtml = `<div class="text-xs text-[#8A8A8C]">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>`;
-        }
-
-        html += `
-            <div class="flex justify-between items-center p-2 border-b ${isPackage ? 'bg-purple-50' : ''}">
-                <div class="flex-1">
-                    ${nameHtml}
-                    ${subtitleHtml}
-                </div>
-                <div class="text-right">
-                    <div class="font-semibold ${isPackage ? 'text-purple-700' : ''}">
-                        ${isPackage ? '扣減' : 'HK$ ' + lineTotal.toFixed(0)}
+            // 套票扣減項目 - 特殊樣式
+            html += `
+                <div class="flex justify-between items-center p-2 border-b bg-purple-50">
+                    <div class="flex-1">
+                        <div class="font-medium text-sm text-purple-700 flex items-center gap-1">
+                            <span>📋</span>
+                            <span>${e(item.name)}</span>
+                        </div>
+                        <div class="text-xs text-purple-600">
+                            ${e(item.subtitle || '套票扣減')} <span class="font-medium">（不計費）</span>
+                        </div>
                     </div>
-                    <div class="flex gap-1 mt-1 justify-end">
-                        ${!isPackage ? `
+                    <div class="text-right">
+                        <div class="font-semibold text-purple-700 text-sm">扣減</div>
+                        <div class="flex gap-1 mt-1 justify-end">
+                            <button onclick="removeFromCart(${index})" 
+                                    class="w-5 h-5 text-xs text-red-500 hover:text-red-700">×</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // 一般收費項目
+            html += `
+                <div class="flex justify-between items-center p-2 border-b">
+                    <div class="flex-1">
+                        <div class="font-medium text-sm">${e(item.name)}</div>
+                        <div class="text-xs text-[#8A8A8C]">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold">HK$ ${lineTotal.toFixed(0)}</div>
+                        <div class="flex gap-1 mt-1 justify-end">
                             <button onclick="changeQty(${index}, -1)" class="w-5 h-5 text-xs border rounded">-</button>
                             <button onclick="changeQty(${index}, 1)" class="w-5 h-5 text-xs border rounded">+</button>
-                        ` : ''}
-                        <button onclick="removeFromCart(${index})" class="w-5 h-5 text-xs text-red-500">×</button>
+                            <button onclick="removeFromCart(${index})" class="w-5 h-5 text-xs text-red-500">×</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     });
 
     container.innerHTML = html;
