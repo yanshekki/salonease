@@ -221,12 +221,12 @@ switch ($action) {
         $isA4 = ($format === 'a4');
         $is80 = ($format === '80');
 
-        // 店舖基本資訊（目前直接寫死，之後可從設定表或 config 讀取）
-        // 建議日後搬到 settings 表或 config.php，方便老闆自行修改
+        // 從 settings 表讀取店舖資訊（單一資料列 id=1）
+        $shopRow = db_query_one("SELECT salon_name, address, phone FROM settings WHERE id = 1");
         $shop = [
-            'name'    => 'SalonEase 美容中心',
-            'address' => '香港九龍尖沙咀彌敦道 100 號 8 樓',
-            'phone'   => '2345 6789',
+            'name'    => $shopRow['salon_name'] ?? 'SalonEase 美容中心',
+            'address' => $shopRow['address'] ?? '',
+            'phone'   => $shopRow['phone'] ?? '',
             'footer'  => '專業 · 貼心 · 值得信賴'
         ];
 

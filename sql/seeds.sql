@@ -67,3 +67,11 @@ INSERT INTO `customer_packages` (`customer_id`, `package_id`, `purchase_date`, `
 -- 完成提示
 SELECT 'SalonEase 種子資料插入完成！' AS message;
 SELECT '預設登入帳號：admin@salonease.hk / admin123' AS login_info;
+
+-- 10. 店舖基本資訊（收據用）
+INSERT INTO `settings` (`id`, `salon_name`, `address`, `phone`, `printer_width`) 
+VALUES (1, 'SalonEase 美容中心', '香港九龍尖沙咀彌敦道 100 號 8 樓', '2123 4567', '58')
+ON DUPLICATE KEY UPDATE 
+    salon_name = VALUES(salon_name),
+    address = VALUES(address),
+    phone = VALUES(phone);
