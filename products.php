@@ -47,6 +47,12 @@ $extraJs = 'hotkeys.js';
             <option value="0">已停用</option>
         </select>
     </div>
+    <div class="flex items-center pt-5">
+        <label class="flex items-center gap-2 text-sm cursor-pointer" title="只顯示庫存低於門檻的產品">
+            <input type="checkbox" id="low-stock-only" onchange="loadProducts()" class="accent-[#2C2C2E]">
+            <span>只顯示低庫存</span>
+        </label>
+    </div>
     <button onclick="loadProducts()" class="salon-btn salon-btn-secondary h-[42px]">重新載入</button>
 </div>
 
@@ -154,10 +160,17 @@ async function loadProducts() {
     const search = document.getElementById('search').value;
     const category = document.getElementById('category-filter').value;
     const status = document.getElementById('status-filter').value;
+    const lowStockOnly = document.getElementById('low-stock-only').checked;
 
     try {
         const res = await SalonEase.fetch(`/api/products.php?action=list&search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}&status=${status}`);
-        renderProductsTable(res.data);
+        let data = res.data;
+
+        if (lowStockOnly) {
+            data = data.filter(p => p.stock_qty <= (p.effective_low_stock_threshold || 5));
+        }
+
+        renderProductsTable(data);
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-red-500">${err.message}</td></tr>`;
     }

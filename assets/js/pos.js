@@ -256,7 +256,7 @@ function addToCart(type, id, name, price) {
         if (product) {
             const threshold = product.effective_low_stock_threshold || 5;
             if (product.stock_qty <= threshold) {
-                SalonEase.toast(`⚠ ${name} 目前庫存偏低（剩 ${product.stock_qty} 件）`, 'info');
+                SalonEase.toast(`⚠ 低庫存：${name}（剩餘 ${product.stock_qty} 件，門檻 ${threshold}）`, 'error');
             }
         }
     }
