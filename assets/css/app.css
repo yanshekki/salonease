@@ -1,9 +1,16 @@
 /**
- * SalonEase - 共用樣式
- * 所有頁面共用的元件、排版、覆蓋 Tailwind 的樣式
+ * SalonEase - 共用樣式（過渡期 - 正在逐步棄用）
+ *
+ * 注意：此檔案目前仍包含大量 Tailwind @apply 樣式。
+ * 我們正在從 Tailwind 遷移到 Bootstrap 5 + bootstrap-custom.css。
+ * 新頁面請優先使用 Bootstrap 類別 + bootstrap-custom.css。
+ *
+ * 此檔案將逐步清理。舊樣式會在遷移完成後移除。
  */
 
-/* 基本元件 */
+/* 基本元件（已棄用 - 請改用 Bootstrap + bootstrap-custom.css） */
+
+/* 
 .salon-card {
     @apply bg-white border border-gray-100 rounded-2xl p-5;
 }
@@ -23,8 +30,11 @@
 .salon-input {
     @apply w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#8FA68F] focus:border-transparent outline-none;
 }
+*/
 
-/* 表格 - 加強手機響應式 */
+/* 表格樣式（已棄用 - 請改用 Bootstrap table + bootstrap-custom.css） */
+
+/*
 .salon-table {
     @apply w-full text-sm;
 }
@@ -38,13 +48,11 @@
     @apply bg-[#F8F5F0];
 }
 
-/* 表格容器 - 手機自動橫向捲動 */
 .table-responsive {
     @apply overflow-x-auto -mx-1 px-1;
     -webkit-overflow-scrolling: touch;
 }
 
-/* 手機優化：隱藏較不重要的欄位 */
 @media (max-width: 640px) {
     .salon-table .hide-on-mobile {
         display: none;
@@ -54,18 +62,21 @@
         width: 90px;
     }
 
-    /* 表格內操作按鈕加大觸控 */
     .salon-table .action-btn {
         padding: 6px 10px;
         font-size: 13px;
         min-width: 32px;
     }
 }
+*/
 
-/* Modal 基本樣式 */
+/* Modal 樣式（已棄用 - 請改用 Bootstrap Modal + bootstrap-custom.css） */
+
+/*
 .salon-modal {
     @apply bg-white rounded-2xl shadow-xl overflow-hidden;
 }
+*/
 
 /* Toast 已由 JS 動態產生 */
 
