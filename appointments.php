@@ -1263,6 +1263,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
             // 快速複製（+7 天）
             const duplicateAction = `<span onclick="event.stopImmediatePropagation(); quickDuplicateAppointment(${a.id}, 'calendar')" class="px-1 py-0 text-[9px] bg-purple-200 hover:bg-purple-300 rounded">複製</span>`;
             const editAction = `<span onclick="event.stopImmediatePropagation(); editAppointmentFromTimeline(${a.id})" class="px-1 py-0 text-[9px] bg-yellow-200 hover:bg-yellow-300 rounded">編輯</span>`;
+            const reassignAction = `<span onclick="event.stopImmediatePropagation(); editAppointmentFromTimeline(${a.id})" class="px-1 py-0 text-[9px] bg-orange-200 hover:bg-orange-300 rounded">換人</span>`;
 
             const actionsHtml = `
                 <div class="absolute top-0.5 right-0.5 hidden group-hover:flex gap-1 text-[9px]">
@@ -1270,6 +1271,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
                     ${timeShiftActions}
                     ${duplicateAction}
                     ${editAction}
+                    ${reassignAction}
                 </div>
             `;
 
