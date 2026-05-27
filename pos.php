@@ -51,7 +51,10 @@ $extraJs = 'pos.js';
         <div class="bg-white rounded-2xl border border-gray-100 p-4 h-full flex flex-col">
             <div class="flex items-center justify-between mb-3">
                 <div class="font-semibold text-lg">購物車</div>
-                <button onclick="clearCart()" class="text-sm text-red-500 hover:underline">清空</button>
+                <div class="flex gap-2 text-sm">
+                    <button onclick="bulkAssignStaff()" class="text-[#8FA68F] hover:underline">批量指派</button>
+                    <button onclick="clearCart()" class="text-red-500 hover:underline">清空</button>
+                </div>
             </div>
 
             <div id="cart-items" class="flex-1 overflow-auto min-h-[280px] border rounded-xl p-2 mb-3">

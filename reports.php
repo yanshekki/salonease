@@ -274,6 +274,39 @@ function reportsApp() {
             }
         },
 
+        // 暴露給熱鍵系統使用
+        setQuickRange: function(type) { this.setQuickRange(type); },
+        loadAll: function() { this.loadAll(); }
+    }
+}
+
+// 註冊報表頁熱鍵
+if (window.SalonEase && window.SalonEase.Hotkeys && window.SalonEase.Hotkeys.registerPage) {
+    window.SalonEase.Hotkeys.registerPage([
+        { key: 'T', desc: '切換至今日' },
+        { key: 'W', desc: '切換至本週' },
+        { key: 'M', desc: '切換至本月' },
+        { key: 'R', desc: '重新載入報表' },
+    ]);
+}
+
+document.addEventListener('keydown', function(e) {
+    if (!document.getElementById('reports-app') && !document.querySelector('[x-data="reportsApp()"]')) return;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+    const app = document.querySelector('[x-data="reportsApp()"]');
+    if (!app || !app.__x) return;
+
+    const data = app.__x.$data;
+    if (!data) return;
+
+    if (e.key.toUpperCase() === 'T') { e.preventDefault(); data.setQuickRange('today'); }
+    if (e.key.toUpperCase() === 'W') { e.preventDefault(); data.setQuickRange('week'); }
+    if (e.key.toUpperCase() === 'M') { e.preventDefault(); data.setQuickRange('month'); }
+    if (e.key.toUpperCase() === 'R') { e.preventDefault(); data.loadAll(); }
+});
+
+
         async loadSummary() {
             try {
                 const res = await SalonEase.fetch(`/api/reports.php?action=summary&from=${this.from}&to=${this.to}`);

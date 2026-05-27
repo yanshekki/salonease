@@ -8,6 +8,7 @@ let itemsCache = [];
 let customerPackages = [];   // 客戶持有的有效套票
 let staffList = [];          // 員工清單（供指派使用）
 let currentStaffId = null;   // 目前登入員工 ID
+let lastAssignedStaffId = null;  // 記住上次指派的員工（方便連續指派）
 
 // 載入所有可銷售項目
 async function loadItems() {
@@ -236,6 +237,9 @@ function addPackageRedemption(customerPackageId, packageName, remaining) {
 
 // 加入購物車
 function addToCart(type, id, name, price) {
+    // 優先使用上次指派的員工，其次目前登入員工
+    const defaultStaff = lastAssignedStaffId || currentStaffId || null;
+
     cart.push({
         id: Date.now(), // 購物車內部 ID
         ref_id: id,
@@ -243,7 +247,7 @@ function addToCart(type, id, name, price) {
         name: name,
         unit_price: parseFloat(price),
         qty: 1,
-        assigned_staff_id: currentStaffId || null   // 預設指派目前員工
+        assigned_staff_id: defaultStaff
     });
 
     renderCart();
@@ -347,10 +351,55 @@ function getStaffName(staffId) {
     return s ? s.name : null;
 }
 
-// 改變項目指派的員工
+// 改變項目指派的員工（同時記住選擇，方便下次加入項目）
 function changeAssignedStaff(index, staffId) {
-    cart[index].assigned_staff_id = staffId ? parseInt(staffId) : null;
-    // 不需要重繪整個 cart，因為 select 已經變了
+    const val = staffId ? parseInt(staffId) : null;
+    cart[index].assigned_staff_id = val;
+    if (val) {
+        lastAssignedStaffId = val;
+    }
+}
+
+// 批量指派員工給所有非套票項目
+function bulkAssignStaff() {
+    if (staffList.length === 0) {
+        SalonEase.toast('尚未載入員工清單', 'error');
+        return;
+    }
+
+    // 簡單用 prompt 選擇員工（輕量做法）
+    let options = staffList.map((s, i) => `${i+1}. ${s.name}`).join('\n');
+    let choice = prompt(
+        '請輸入數字選擇要批量指派的員工：\n' + options + '\n\n或直接輸入 0 取消指派'
+    );
+
+    if (choice === null) return;
+
+    let staffId = null;
+    let idx = parseInt(choice) - 1;
+
+    if (choice === '0') {
+        staffId = null;
+    } else if (!isNaN(idx) && staffList[idx]) {
+        staffId = staffList[idx].id;
+        lastAssignedStaffId = staffId;
+    } else {
+        SalonEase.toast('輸入無效', 'error');
+        return;
+    }
+
+    let changed = 0;
+    cart.forEach(item => {
+        if (item.type !== 'package') {
+            item.assigned_staff_id = staffId;
+            changed++;
+        }
+    });
+
+    if (changed > 0) {
+        renderCart();
+        SalonEase.toast(`已為 ${changed} 項指派員工`);
+    }
 }
 
 // 移除項目

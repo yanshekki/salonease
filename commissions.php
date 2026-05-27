@@ -259,7 +259,7 @@ function commissionsApp() {
 
         exportCSV() {
             if (!this.staffCommissions.length) {
-                alert('目前沒有可匯出的資料');
+                SalonEase.toast('目前沒有可匯出的資料', 'error');
                 return;
             }
 
@@ -308,6 +308,33 @@ function commissionsApp() {
         }
     }
 }
+
+// 註冊佣金頁熱鍵
+if (window.SalonEase && window.SalonEase.Hotkeys && window.SalonEase.Hotkeys.registerPage) {
+    window.SalonEase.Hotkeys.registerPage([
+        { key: 'T', desc: '切換至今日' },
+        { key: 'W', desc: '切換至本週' },
+        { key: 'M', desc: '切換至本月' },
+        { key: 'R', desc: '重新載入佣金報表' },
+    ]);
+}
+
+document.addEventListener('keydown', function(e) {
+    if (!document.querySelector('[x-data="commissionsApp()"]')) return;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+    const app = document.querySelector('[x-data="commissionsApp()"]');
+    if (!app || !app.__x) return;
+
+    const data = app.__x.$data;
+    if (!data) return;
+
+    if (e.key.toUpperCase() === 'T') { e.preventDefault(); data.setQuickRange('today'); }
+    if (e.key.toUpperCase() === 'W') { e.preventDefault(); data.setQuickRange('week'); }
+    if (e.key.toUpperCase() === 'M') { e.preventDefault(); data.setQuickRange('month'); }
+    if (e.key.toUpperCase() === 'R') { e.preventDefault(); data.loadAll(); }
+});
+
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
