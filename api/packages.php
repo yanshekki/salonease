@@ -81,6 +81,32 @@ switch ($action) {
         json_success(null, $newStatus ? '套票已啟用' : '套票已停用');
         break;
 
+    // 取得客戶持有的有效套票（給 POS 使用）
+    case 'customer_packages':
+        $customer_id = (int)get('customer_id');
+        if (!$customer_id) {
+            json_error('缺少客戶 ID');
+        }
+
+        $sql = "
+            SELECT 
+                cp.id,
+                cp.remaining_sessions,
+                cp.expiry_date,
+                p.name,
+                p.total_sessions
+            FROM customer_packages cp
+            JOIN packages p ON cp.package_id = p.id
+            WHERE cp.customer_id = ?
+              AND cp.remaining_sessions > 0
+              AND cp.expiry_date >= CURDATE()
+            ORDER BY cp.expiry_date ASC
+        ";
+
+        $packages = db_query($sql, [$customer_id]);
+        json_success($packages);
+        break;
+
     default:
         json_error('未知的操作', 400);
 }

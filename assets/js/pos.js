@@ -5,6 +5,7 @@
 let cart = [];
 let currentCustomer = null;
 let itemsCache = [];
+let customerPackages = [];   // 客戶持有的有效套票
 
 // 載入所有可銷售項目
 async function loadItems() {
@@ -90,12 +91,67 @@ function filterItems(type) {
         targetBtn.classList.add('bg-[#2C2C2E]', 'text-white');
     }
 
-    let filtered = itemsCache;
-    if (type !== 'all') {
-        filtered = itemsCache.filter(i => i.type === type);
+    if (type === 'package' && currentCustomer && customerPackages.length > 0) {
+        // 特殊處理：顯示客戶持有的套票（而非套票模板）
+        renderCustomerPackages();
+    } else {
+        let filtered = itemsCache;
+        if (type !== 'all') {
+            filtered = itemsCache.filter(i => i.type === type);
+        }
+        renderItems(filtered);
+    }
+}
+
+// 渲染客戶持有的套票（供扣減使用）
+function renderCustomerPackages() {
+    const container = document.getElementById('items-list');
+
+    if (!customerPackages || customerPackages.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-[#8A8A8C]">此客戶目前沒有可用套票</div>`;
+        return;
     }
 
-    renderItems(filtered);
+    let html = '';
+    customerPackages.forEach(cp => {
+        html += `
+            <div onclick="addPackageRedemption(${cp.id}, '${cp.name.replace(/'/g, "\\'")}', ${cp.remaining_sessions})" 
+                 class="flex justify-between items-center p-3 border-b hover:bg-[#F8F5F0] cursor-pointer">
+                <div>
+                    <div class="font-medium">${e(cp.name)}</div>
+                    <div class="text-xs text-[#8A8A8C]">剩餘 ${cp.remaining_sessions} 次 ｜ 到期 ${cp.expiry_date}</div>
+                </div>
+                <div class="text-right">
+                    <div class="font-semibold text-[#8FA68F]">使用套票</div>
+                    <div class="text-[10px] text-[#8FA68F]">扣 1 次</div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// 加入套票扣減到購物車
+function addPackageRedemption(customerPackageId, packageName, remaining) {
+    // 檢查是否已經加入同一張套票
+    const alreadyAdded = cart.some(item => item.type === 'package' && item.ref_id === customerPackageId);
+    if (alreadyAdded) {
+        alert('此套票已經在購物車中');
+        return;
+    }
+
+    cart.push({
+        id: Date.now(),
+        ref_id: customerPackageId,
+        type: 'package',
+        name: `使用套票：${packageName}（剩 ${remaining} 次）`,
+        unit_price: 0,
+        qty: 1
+    });
+
+    renderCart();
+    updateCartTotals();
 }
 
 // 加入購物車
@@ -216,6 +272,7 @@ function setupCustomerSearch() {
 
         if (!keyword) {
             currentCustomer = null;
+            customerPackages = [];
             document.getElementById('pos-customer-info').innerHTML = '';
             return;
         }
@@ -228,8 +285,12 @@ function setupCustomerSearch() {
                     currentCustomer = c;
                     document.getElementById('pos-customer-info').innerHTML = 
                         `<span class="text-[#8FA68F]">✓ ${e(c.name)} (${e(c.phone)})</span>`;
+
+                    // 載入客戶持有的有效套票
+                    await loadCustomerPackages(c.id);
                 } else {
                     currentCustomer = null;
+                    customerPackages = [];
                     document.getElementById('pos-customer-info').innerHTML = 
                         `<span class="text-[#8A8A8C]">找不到客戶</span>`;
                 }
@@ -238,6 +299,24 @@ function setupCustomerSearch() {
             }
         }, 300);
     });
+}
+
+// 載入客戶持有的有效套票
+async function loadCustomerPackages(customerId) {
+    customerPackages = [];
+    try {
+        const res = await SalonEase.fetch(`/api/packages.php?action=customer_packages&customer_id=${customerId}`);
+        if (res.data) {
+            // 只保留還有剩餘次數且未過期的
+            const today = new Date().toISOString().split('T')[0];
+            customerPackages = res.data.filter(p => 
+                p.remaining_sessions > 0 && p.expiry_date >= today
+            );
+        }
+    } catch (err) {
+        console.error('載入客戶套票失敗', err);
+        customerPackages = [];
+    }
 }
 
 // 快速建立新客戶
