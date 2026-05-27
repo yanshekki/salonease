@@ -69,7 +69,7 @@
 
 /* Toast 已由 JS 動態產生 */
 
-/* ===== 手機 / 平板響應式優化 ===== */
+/* ===== 手機 / 平板響應式優化 (A4 - Modal / Form / Button) ===== */
 @media (max-width: 768px) {
     /* 按鈕在手機加大觸控區域 */
     .salon-btn {
@@ -78,10 +78,18 @@
         font-size: 0.9375rem;
     }
 
-    /* Modal 在手機更滿版 */
+    /* Modal 在手機更滿版 + 更好內距 */
     .salon-modal {
         margin: 0.5rem;
         border-radius: 1rem;
+        max-height: calc(100vh - 1rem);
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Modal 內容區自動捲動 */
+    .salon-modal > div {
+        overflow-y: auto;
     }
 
     /* 減小標題在手機的空間 */
@@ -96,12 +104,38 @@
         padding-bottom: 0.625rem;
         font-size: 1rem;
     }
+
+    /* Modal 內 grid 自動堆疊 */
+    .salon-modal .grid.grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
 }
 
-/* 確保所有頁面內容在極小螢幕有足夠底部空間 */
+/* 極小螢幕進一步優化 */
 @media (max-width: 640px) {
+    /* Modal 幾乎滿版 */
+    .salon-modal {
+        margin: 0.25rem;
+        border-radius: 0.75rem;
+    }
+
+    /* 內容區底部多留空間避免被熱鍵列擋住 */
     .flex-1.max-w-screen-2xl {
         padding-bottom: 4.5rem !important;
+    }
+
+    /* Modal 內按鈕全寬 */
+    .salon-modal .salon-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Modal 底部按鈕區在手機自動堆疊 */
+    .salon-modal .px-5.py-4.bg-gray-50.flex {
+        flex-direction: column-reverse;
+    }
+    .salon-modal .px-5.py-4.bg-gray-50.flex > button {
+        width: 100%;
     }
 }
 

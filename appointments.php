@@ -146,9 +146,9 @@ $extraJs = 'hotkeys.js';
             </div>
         </div>
 
-        <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-            <button onclick="hideApptModal()" class="salon-btn salon-btn-secondary">取消</button>
-            <button onclick="saveAppointment()" class="salon-btn salon-btn-primary" id="save-btn">建立預約</button>
+        <div class="px-5 py-4 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-2xl">
+            <button onclick="hideApptModal()" class="salon-btn salon-btn-secondary w-full sm:w-auto">取消</button>
+            <button onclick="saveAppointment()" class="salon-btn salon-btn-primary w-full sm:w-auto" id="save-btn">建立預約</button>
         </div>
     </div>
 </div>
