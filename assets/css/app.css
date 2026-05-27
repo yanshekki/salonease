@@ -142,11 +142,16 @@
 }
 */
 
-/* 打印時隱藏 */
+/* 打印時隱藏（保留此區，因為打印需求特殊） */
 @media print {
     .no-print,
     nav,
-    .fixed.bottom-0 {
+    .fixed-bottom {
         display: none !important;
     }
 }
+
+/* 
+ * 以下為舊 Tailwind 樣式，已逐步棄用。
+ * 所有新開發請使用 Bootstrap 5 + bootstrap-custom.css
+ */
