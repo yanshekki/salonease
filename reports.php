@@ -415,7 +415,7 @@ document.addEventListener('keydown', function(e) {
         // 匯出員工排行 CSV
         exportStaffRankingCSV() {
             if (!this.staffRanking.length) {
-                alert('目前沒有可匯出的排行資料');
+                SalonEase.toast('目前沒有可匯出的排行資料', 'error');
                 return;
             }
 

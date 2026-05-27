@@ -49,6 +49,49 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- 常用熱鍵一覽（A 收尾） -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
+        <div class="font-semibold text-lg mb-4">常用熱鍵一覽</div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <div>
+                <div class="font-medium mb-2 text-[#2C2C2E]">全域熱鍵</div>
+                <div class="space-y-1 text-[#5A5A5C]">
+                    <div><span class="font-mono text-[#8FA68F]">?</span>　顯示目前頁面熱鍵說明</div>
+                    <div><span class="font-mono text-[#8FA68F]">Ctrl + K</span>　開啟命令面板</div>
+                    <div><span class="font-mono text-[#8FA68F]">Alt + H</span>　返回概覽</div>
+                    <div><span class="font-mono text-[#8FA68F]">Alt + P</span>　前往 POS</div>
+                    <div><span class="font-mono text-[#8FA68F]">Alt + A</span>　前往預約</div>
+                    <div><span class="font-mono text-[#8FA68F]">Alt + C</span>　前往客戶</div>
+                    <div><span class="font-mono text-[#8FA68F]">Alt + R</span>　前往報表</div>
+                    <div><span class="font-mono text-[#8FA68F]">Alt + M</span>　前往佣金查詢</div>
+                    <div><span class="font-mono text-[#8FA68F]">Alt + S</span>　前往設定</div>
+                    <div><span class="font-mono text-[#8FA68F]">F9</span>　打印上一張收據（58mm）</div>
+                </div>
+            </div>
+            <div>
+                <div class="font-medium mb-2 text-[#2C2C2E]">報表 / 佣金頁</div>
+                <div class="space-y-1 text-[#5A5A5C]">
+                    <div><span class="font-mono text-[#8FA68F]">T</span>　切換至今日</div>
+                    <div><span class="font-mono text-[#8FA68F]">W</span>　切換至本週</div>
+                    <div><span class="font-mono text-[#8FA68F]">M</span>　切換至本月</div>
+                    <div><span class="font-mono text-[#8FA68F]">R</span>　重新載入資料</div>
+                    <div><span class="font-mono text-[#8FA68F]">F5</span>　重新載入資料（不刷新頁面）</div>
+                </div>
+                
+                <div class="font-medium mt-4 mb-2 text-[#2C2C2E]">POS 頁</div>
+                <div class="space-y-1 text-[#5A5A5C]">
+                    <div><span class="font-mono text-[#8FA68F]">S</span>　批量指派員工</div>
+                    <div><span class="font-mono text-[#8FA68F]">F9</span>　打印上一張收據</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-xs text-[#8A8A8C]">
+            提示：按 <span class="font-mono">?</span> 鍵可隨時查看目前頁面的完整熱鍵說明。
+        </div>
+    </div>
+
     <!-- 打印與佣金預設（本輪 A 選擇） -->
     <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
         <div class="flex items-center justify-between mb-4">

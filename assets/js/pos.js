@@ -307,7 +307,9 @@ function renderCart() {
                         <div class="text-[10px] mt-0.5">
                             <span class="text-[#8A8A8C]">指派：</span>
                             <select onchange="changeAssignedStaff(${index}, this.value)" 
-                                    class="text-xs border rounded px-1 py-0 bg-white">
+                                    class="text-xs border rounded px-1 py-0 bg-white"
+                                    title="指派負責此項目的員工（影響佣金計算）"
+                                    aria-label="指派員工">
                                 <option value="">開單人</option>
                                 ${staffList.map(s => 
                                     `<option value="${s.id}" ${item.assigned_staff_id == s.id ? 'selected' : ''}>${e(s.name)}</option>`
