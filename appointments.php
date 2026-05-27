@@ -155,9 +155,14 @@ $extraJs = 'hotkeys.js';
 <div id="calendar-view" class="hidden mt-2">
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
         <div class="flex items-center justify-between mb-4">
-            <div>
-                <span class="font-semibold">今日時程</span>
-                <span id="today-date" class="text-sm text-[#5A5A5C] ml-2"></span>
+            <div class="flex items-center gap-3">
+                <div>
+                    <span class="font-semibold">今日時程</span>
+                    <span id="today-date" class="text-sm text-[#5A5A5C] ml-2"></span>
+                </div>
+                <select id="today-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadTodaySchedule()">
+                    <option value="">全部美容師</option>
+                </select>
             </div>
             <button onclick="loadTodaySchedule()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
         </div>
@@ -688,15 +693,34 @@ function switchView(view) {
 async function loadTodaySchedule() {
     const container = document.getElementById('today-timeline');
     const dateEl = document.getElementById('today-date');
+    const staffFilter = document.getElementById('today-staff-filter');
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     dateEl.textContent = today.toLocaleDateString('zh-HK', { weekday: 'long', month: 'long', day: 'numeric' });
 
+    // 確保今日時程的美容師選單已載入
+    if (staffFilter.options.length <= 1) {
+        try {
+            const staffRes = await SalonEase.fetch('/api/staff.php?action=list&status=1');
+            let html = '<option value="">全部美容師</option>';
+            staffRes.data.forEach(s => {
+                html += `<option value="${s.id}">${e(s.name)}</option>`;
+            });
+            staffFilter.innerHTML = html;
+        } catch (e) {}
+    }
+
+    const selectedStaff = staffFilter.value;
+
     container.innerHTML = `<div class="py-8 text-center text-[#8A8A8C]">載入今日時程中...</div>`;
 
     try {
-        const res = await SalonEase.fetch(`/api/appointments.php?action=list&date_from=${todayStr}&date_to=${todayStr}`);
+        let url = `/api/appointments.php?action=list&date_from=${todayStr}&date_to=${todayStr}`;
+        if (selectedStaff) {
+            url += `&staff_id=${selectedStaff}`;
+        }
+        const res = await SalonEase.fetch(url);
         const appts = (res.data || []).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
         // 建立時間格：09:00 ~ 21:00，每 30 分鐘
@@ -723,35 +747,44 @@ async function loadTodaySchedule() {
             });
 
             if (overlapping.length > 0) {
-                // 顯示第一個重疊的預約（簡單處理）
+                // 顯示第一個預約，並註明是否有更多
                 const a = overlapping[0];
                 const start = new Date(a.start_time);
-                const isStart = slotTime === start.toTimeString().slice(0,5);
+                const isStartSlot = slotTime === start.toTimeString().slice(0,5);
 
-                if (isStart) {
-                    const durationMins = Math.round((new Date(a.end_time) - start) / 60000);
-                    const rowSpan = Math.ceil(durationMins / 30);
-
-                    html += `
-                        <div onclick="showDetailModal(${a.id})" 
-                             class="flex items-center px-3 py-2 bg-[#E8F0E8] hover:bg-[#D4E6D4] cursor-pointer transition"
-                             style="min-height: ${rowSpan * 28}px">
-                            <div class="w-16 font-mono text-xs text-[#5A5A5C] flex-shrink-0">${slotTime}</div>
-                            <div class="flex-1 pl-2 border-l-2 border-[#8FA68F]">
-                                <div class="font-medium text-sm">${e(a.customer_name || '客戶')}</div>
-                                <div class="text-xs text-[#4A6A4A]">${e(a.staff_name || '')}</div>
-                            </div>
+                let content = '';
+                if (isStartSlot) {
+                    const more = overlapping.length > 1 ? ` +${overlapping.length - 1}` : '';
+                    content = `
+                        <div class="flex-1 pl-2 border-l-2 border-[#8FA68F]">
+                            <div class="font-medium text-sm">${e(a.customer_name || '客戶')}${more}</div>
+                            <div class="text-xs text-[#4A6A4A]">${e(a.staff_name || '')}</div>
+                        </div>
+                    `;
+                } else {
+                    // 延續時段
+                    content = `
+                        <div class="flex-1 pl-2 text-[#8A8A8C]">
+                            <div class="text-xs">↓ ${e(a.customer_name || '')}</div>
                         </div>
                     `;
                 }
+
+                html += `
+                    <div onclick="showDetailModal(${a.id})" 
+                         class="flex items-center px-3 py-1.5 bg-[#E8F0E8] hover:bg-[#D4E6D4] cursor-pointer transition">
+                        <div class="w-16 font-mono text-xs text-[#5A5A5C] flex-shrink-0">${slotTime}</div>
+                        ${content}
+                    </div>
+                `;
             } else {
                 // 空白時段，可點擊新增
                 const clickableStart = `${todayStr} ${slotTime}:00`;
                 html += `
                     <div onclick="showCreateModalWithTime('${clickableStart}')"
-                         class="flex items-center px-3 py-[6px] text-[#8A8A8C] hover:bg-white hover:text-[#2C2C2E] cursor-pointer transition group">
+                         class="flex items-center px-3 py-[5px] text-[#8A8A8C] hover:bg-white hover:text-[#2C2C2E] cursor-pointer transition group">
                         <div class="w-16 font-mono text-xs flex-shrink-0">${slotTime}</div>
-                        <div class="flex-1 pl-2 text-xs group-hover:text-[#8FA68F]">＋ 新增預約</div>
+                        <div class="flex-1 pl-2 text-xs group-hover:text-[#8FA68F]">＋ 新增</div>
                     </div>
                 `;
             }
