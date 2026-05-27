@@ -104,7 +104,7 @@ switch ($action) {
 
         // 使用交易建立預約 + 服務項目
         try {
-            $new_id = db_transaction(function($pdo) use ($customer_id, $staff_id, $room_id, $start_time, $end_time, $notes, $services, $start_time) {
+            $new_id = db_transaction(function($pdo) use ($customer_id, $staff_id, $room_id, $start_time, $end_time, $notes, $services) {
                 // 插入主表
                 $stmt = $pdo->prepare("
                     INSERT INTO appointments (customer_id, staff_id, room_id, start_time, end_time, status, notes, created_by)

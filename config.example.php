@@ -23,10 +23,12 @@ define('APP_NAME', 'SalonEase 美容中心');
 define('APP_VERSION', '0.1.0');
 define('APP_TIMEZONE', 'Asia/Hong_Kong');
 
-// Session 安全設定
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_strict_mode', 1);
-ini_set('session.cookie_samesite', 'Lax');
+// Session 安全設定（必須在任何 session_start() 之前執行）
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.use_strict_mode', 1);
+    ini_set('session.cookie_samesite', 'Lax');
+}
 
 // 錯誤顯示（上線務必設為 0）
 error_reporting(E_ALL);
