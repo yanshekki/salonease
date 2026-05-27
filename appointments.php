@@ -169,6 +169,9 @@ $extraJs = 'hotkeys.js';
             <button onclick="loadTodaySchedule()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
         </div>
 
+        <!-- 美容師顏色圖例 -->
+        <div id="today-staff-legend" class="flex flex-wrap gap-2 mb-3 text-xs"></div>
+
         <!-- 時間軸容器 -->
         <div id="today-timeline" class="border rounded-xl bg-white min-h-[420px]">
             <!-- JS 會渲染專業時間軸 -->
@@ -795,6 +798,28 @@ async function loadTodaySchedule() {
         const res = await SalonEase.fetch(url);
         const appts = (res.data || []).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
+        // 產生美容師顏色圖例
+        const uniqueStaff = {};
+        appts.forEach(a => {
+            if (a.staff_name && !uniqueStaff[a.staff_name]) {
+                uniqueStaff[a.staff_name] = getStaffColor(a.staff_name);
+            }
+        });
+
+        const legendContainer = document.getElementById('today-staff-legend');
+        if (legendContainer) {
+            let legendHtml = '';
+            Object.keys(uniqueStaff).forEach(name => {
+                legendHtml += `
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px]" style="background-color: ${uniqueStaff[name]}">
+                        <span class="w-2 h-2 rounded-full bg-current opacity-70"></span>
+                        ${e(name)}
+                    </span>
+                `;
+            });
+            legendContainer.innerHTML = legendHtml;
+        }
+
         // 建立時間格（09:00 - 21:00，每 30 分鐘）
         const startHour = 9;
         const endHour = 21;
@@ -957,7 +982,7 @@ async function loadWeekView() {
                         <div onclick="showDetailModal(${a.id}); event.stopImmediatePropagation();" 
                              class="text-xs truncate px-2 py-0.5 mt-1 rounded cursor-pointer border"
                              style="background-color: ${bg};">
-                            ${start}-${end} ${e(a.customer_name || '')}
+                            ${start}-${end} ${e(a.customer_name || '')} <span class="text-[10px] opacity-70">(${e(a.staff_name || '')})</span>
                         </div>
                     `;
                 });
