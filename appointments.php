@@ -413,10 +413,8 @@ function showCreateModalWithTime(startTimeStr) {
 
     // 預填開始時間
     if (startTimeStr) {
-        // 轉成 datetime-local 格式
         const dt = startTimeStr.replace(' ', 'T');
         document.getElementById('start-time').value = dt;
-        // 自動預估結束時間（預設 60 分鐘）
         setTimeout(() => {
             const startInput = document.getElementById('start-time');
             if (startInput.value) {
@@ -437,6 +435,12 @@ function showCreateModalWithTime(startTimeStr) {
 
     document.getElementById('appt-modal').classList.remove('hidden');
     document.getElementById('appt-modal').classList.add('flex');
+}
+
+// 從週檢視快速在某日新增預約（預設早上 10:00）
+function showCreateForDate(dateStr) {
+    const defaultTime = `${dateStr} 10:00:00`;
+    showCreateModalWithTime(defaultTime);
 }
 
 function hideApptModal() {
@@ -751,13 +755,15 @@ async function loadWeekView() {
             const todayClass = day.isToday ? 'ring-2 ring-[#8FA68F]' : '';
 
             html += `
-                <div onclick="filterListByDate('${day.date}')" 
-                     class="border rounded-2xl p-3 hover:border-[#8FA68F] cursor-pointer transition ${todayClass}">
-                    <div class="font-semibold text-sm flex justify-between">
-                        <span>${day.label}</span>
-                        <span class="text-xs px-1.5 py-0.5 rounded-full ${count > 0 ? 'bg-[#8FA68F] text-white' : 'bg-gray-200'}">${count}</span>
+                <div class="border rounded-2xl p-3 hover:border-[#8FA68F] transition ${todayClass}">
+                    <div class="font-semibold text-sm flex justify-between items-center">
+                        <span onclick="filterListByDate('${day.date}')" class="cursor-pointer hover:underline">${day.label}</span>
+                        <button onclick="showCreateForDate('${day.date}'); event.stopImmediatePropagation();" 
+                                class="text-xs px-2 py-0.5 rounded-lg bg-[#8FA68F] text-white hover:bg-[#7A947A] flex items-center gap-1">
+                            <span>+</span>
+                        </button>
                     </div>
-                    <div class="mt-2 min-h-[60px]">
+                    <div onclick="filterListByDate('${day.date}')" class="mt-2 min-h-[60px] cursor-pointer">
                         ${apptHtml}
                     </div>
                 </div>
