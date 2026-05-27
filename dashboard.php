@@ -18,7 +18,11 @@ $today = date('Y-m-d');
 $todaySales = db_query_one("SELECT COALESCE(SUM(total),0) AS total FROM sales WHERE sale_date = ?", [$today]);
 $todayAppointments = db_query_one("SELECT COUNT(*) AS cnt FROM appointments WHERE DATE(start_time) = ? AND status IN ('pending','confirmed')", [$today]);
 $activeCustomers = db_query_one("SELECT COUNT(*) AS cnt FROM customers");
-$lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty < 10 AND is_active = 1");
+
+// 使用全域低庫存門檻（而非硬編碼 10）
+$lowStockThreshold = db_query_one("SELECT default_low_stock_threshold FROM settings WHERE id = 1");
+$threshold = (int)($lowStockThreshold['default_low_stock_threshold'] ?? 5);
+$lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <= ? AND is_active = 1", [$threshold]);
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -51,9 +55,9 @@ $lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <
 
     <!-- 低庫存警示 -->
     <div class="bg-white rounded-2xl p-5 border border-gray-100">
-        <div class="text-xs uppercase tracking-wider text-[#8A8A8C] mb-1">庫存警示</div>
+        <div class="text-xs uppercase tracking-wider text-[#8A8A8C] mb-1">低庫存警示</div>
         <div class="text-3xl font-semibold text-[#C97C7C]"><?= (int)($lowStock['cnt'] ?? 0) ?> 項</div>
-        <div class="text-xs mt-3">零售產品庫存不足 10 件</div>
+        <div class="text-xs mt-3">低於設定門檻的零售產品</div>
     </div>
 </div>
 
