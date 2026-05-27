@@ -166,6 +166,14 @@ $extraJs = 'hotkeys.js';
                 <select id="today-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadTodaySchedule()">
                     <option value="">全部美容師</option>
                 </select>
+                <select id="today-status-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadTodaySchedule()">
+                    <option value="">全部狀態</option>
+                    <option value="pending">待確認</option>
+                    <option value="confirmed">已確認</option>
+                    <option value="completed">已完成</option>
+                    <option value="cancelled">已取消</option>
+                    <option value="no_show">未到</option>
+                </select>
             </div>
             <button onclick="loadTodaySchedule()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
         </div>
@@ -896,12 +904,15 @@ async function loadTodaySchedule() {
     }
 
     const selectedStaff = staffFilter.value;
+    const statusFilter = document.getElementById('today-status-filter');
+    const selectedStatus = statusFilter ? statusFilter.value : '';
 
     container.innerHTML = `<div class="py-8 text-center text-[#8A8A8C]">載入今日時程中...</div>`;
 
     try {
         let url = `/api/appointments.php?action=list&date_from=${todayStr}&date_to=${todayStr}`;
         if (selectedStaff) url += `&staff_id=${selectedStaff}`;
+        if (selectedStatus) url += `&status=${selectedStatus}`;
 
         const res = await SalonEase.fetch(url);
         const appts = (res.data || []).sort((a, b) => a.start_time.localeCompare(b.start_time));
