@@ -28,14 +28,14 @@ switch ($action) {
         }
 
         try {
-            $sale_id = db_transaction(function($pdo) use ($customer_id, $items, $discount, $payment_method, $amount_received, $notes) {
+            $result = db_transaction(function($pdo) use ($customer_id, $items, $discount, $payment_method, $amount_received, $notes) {
                 $subtotal = 0;
                 foreach ($items as $item) {
                     $subtotal += (float)$item['unit_price'] * (int)$item['qty'];
                 }
                 $total = max(0, $subtotal - $discount);
 
-                // 建立銷售單
+                // 1. 建立銷售單
                 $stmt = $pdo->prepare("
                     INSERT INTO sales (customer_id, staff_id, sale_date, subtotal, discount, total, payment_method, notes)
                     VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?)
@@ -51,32 +51,165 @@ switch ($action) {
                 ]);
                 $sale_id = $pdo->lastInsertId();
 
-                // 插入銷售明細
+                // 2. 插入銷售明細 + 處理套票扣減
                 $item_stmt = $pdo->prepare("
-                    INSERT INTO sale_items (sale_id, item_type, ref_id, name, qty, unit_price, line_total)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO sale_items (sale_id, item_type, ref_id, name, qty, unit_price, line_total, staff_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
+
+                $package_usage_stmt = $pdo->prepare("
+                    INSERT INTO package_usages (customer_package_id, sale_id, sessions_used, staff_id)
+                    VALUES (?, ?, ?, ?)
+                ");
+
+                $update_package_stmt = $pdo->prepare("
+                    UPDATE customer_packages 
+                    SET remaining_sessions = remaining_sessions - ? 
+                    WHERE id = ? AND remaining_sessions >= ?
+                ");
+
+                $total_commission_service = 0;
+                $total_commission_retail = 0;
 
                 foreach ($items as $item) {
                     $line_total = (float)$item['unit_price'] * (int)$item['qty'];
+                    $ref_id = (int)$item['ref_id'];
+
+                    // 預設執行人員為開單人
+                    $item_staff_id = $_SESSION['staff_id'];
+
                     $item_stmt->execute([
                         $sale_id,
                         $item['type'],
-                        $item['ref_id'],
+                        $ref_id,
                         $item['name'],
                         (int)$item['qty'],
                         (float)$item['unit_price'],
-                        $line_total
+                        $line_total,
+                        $item_staff_id
+                    ]);
+
+                    // 處理套票扣減
+                    if ($item['type'] === 'package') {
+                        // 這裡 ref_id 應該是 customer_packages.id
+                        $sessions_used = (int)$item['qty'];
+
+                        // 扣減剩餘次數
+                        $update_package_stmt->execute([$sessions_used, $ref_id, $sessions_used]);
+
+                        if ($update_package_stmt->rowCount() === 0) {
+                            // 再查一次，看是次數不足還是已過期或不屬於該客戶
+                            $check = $pdo->prepare("
+                                SELECT cp.remaining_sessions, cp.expiry_date, cp.customer_id, p.name 
+                                FROM customer_packages cp 
+                                JOIN packages p ON cp.package_id = p.id 
+                                WHERE cp.id = ?
+                            ");
+                            $check->execute([$ref_id]);
+                            $pkgInfo = $check->fetch();
+
+                            if (!$pkgInfo) {
+                                throw new Exception("找不到該套票記錄");
+                            }
+
+                            if ($pkgInfo['customer_id'] != $customer_id) {
+                                throw new Exception("此套票不屬於目前選擇的客戶");
+                            }
+
+                            if ($pkgInfo['remaining_sessions'] < $sessions_used) {
+                                throw new Exception("套票「{$pkgInfo['name']}」剩餘次數不足（只剩 {$pkgInfo['remaining_sessions']} 次）");
+                            }
+
+                            if ($pkgInfo['expiry_date'] < date('Y-m-d')) {
+                                throw new Exception("套票「{$pkgInfo['name']}」已於 {$pkgInfo['expiry_date']} 過期");
+                            }
+
+                            throw new Exception("套票扣減失敗，請確認套票狀態");
+                        }
+
+                        // 寫入使用記錄
+                        $package_usage_stmt->execute([
+                            $ref_id,
+                            $sale_id,
+                            $sessions_used,
+                            $item_staff_id
+                        ]);
+                    }
+
+                    // 簡單佣金計算（之後可優化）
+                    // 這裡先用 sales staff 計算，之後可支援 item 層級 staff
+                    if ($item['type'] === 'service') {
+                        $total_commission_service += $line_total * 0.4; // 暫時用 40%
+                    } elseif ($item['type'] === 'product') {
+                        $total_commission_retail += $line_total * 0.15; // 暫時用 15%
+                    }
+                }
+
+                // 3. 更新客戶統計
+                if ($customer_id) {
+                    $update_customer = $pdo->prepare("
+                        UPDATE customers 
+                        SET 
+                            total_spent = total_spent + ?,
+                            visit_count = visit_count + 1,
+                            last_visit_at = NOW()
+                        WHERE id = ?
+                    ");
+                    $update_customer->execute([$total, $customer_id]);
+                }
+
+                // 4. 產生佣金（簡單版本）
+                $commission_stmt = $pdo->prepare("
+                    INSERT INTO commissions (sale_id, staff_id, amount, type, rate)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+
+                // 開單佣金（5%）
+                $open_commission = $total * 0.05;
+                if ($open_commission > 0) {
+                    $commission_stmt->execute([
+                        $sale_id,
+                        $_SESSION['staff_id'],
+                        $open_commission,
+                        'open',
+                        5.00
                     ]);
                 }
 
-                // TODO: 處理套票扣減、更新客戶消費統計、產生佣金等
-                // 這些會在後續逐步完善
+                // 服務佣金（暫時寫給開單人，之後可改）
+                if ($total_commission_service > 0) {
+                    $commission_stmt->execute([
+                        $sale_id,
+                        $_SESSION['staff_id'],
+                        $total_commission_service,
+                        'service',
+                        40.00
+                    ]);
+                }
 
-                return (int)$sale_id;
+                // 零售佣金
+                if ($total_commission_retail > 0) {
+                    $commission_stmt->execute([
+                        $sale_id,
+                        $_SESSION['staff_id'],
+                        $total_commission_retail,
+                        'retail',
+                        15.00
+                    ]);
+                }
+
+                return [
+                    'sale_id' => (int)$sale_id,
+                    'total' => $total
+                ];
             });
 
-            json_success(['id' => $sale_id], '結帳成功');
+            json_success(['id' => $result['sale_id']], '結帳成功');
+
+        } catch (Exception $e) {
+            json_error('結帳失敗：' . $e->getMessage());
+        }
+        break;
 
         } catch (Exception $e) {
             json_error('結帳失敗：' . $e->getMessage());

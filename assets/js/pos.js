@@ -539,7 +539,25 @@ async function checkout() {
         }, 800);
 
     } catch (err) {
-        SalonEase.toast(err.message, 'error');
+        let msg = err.message || '結帳失敗';
+
+        // A1-1i：改善套票扣減相關錯誤提示（更友善、具體）
+        if (msg.includes('剩餘次數不足')) {
+            msg = '套票剩餘次數不足，無法扣減。請檢查客戶套票餘額。';
+        } else if (msg.includes('已過期')) {
+            msg = '所選套票已過期，無法使用。請選擇其他套票或改為收費。';
+        } else if (msg.includes('不屬於目前選擇的客戶')) {
+            msg = '套票不屬於目前客戶。請重新選擇正確客戶或移除套票扣減。';
+        } else if (msg.includes('找不到該套票記錄')) {
+            msg = '找不到該套票記錄，可能已被刪除或失效。';
+        } else if (msg.includes('套票扣減失敗')) {
+            msg = '套票扣減失敗，請確認套票狀態後重試。';
+        } else if (msg.includes('套票')) {
+            // 捕捉其他套票相關通用錯誤
+            msg = '套票處理發生問題：' + msg;
+        }
+
+        SalonEase.toast(msg, 'error');
     }
 }
 
