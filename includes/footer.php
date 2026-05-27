@@ -4,7 +4,7 @@
  * 包含全域熱鍵提示列 + 版權
  */
 ?>
-    </div><!-- /.max-w-screen-2xl -->
+    </div><!-- /.container-fluid (主要內容結束) -->
 
     <!-- 全域熱鍵提示列（Bootstrap 版本） -->
     <div class="fixed-bottom bg-white border-top shadow-sm" style="z-index: 1040;">

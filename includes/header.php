@@ -171,14 +171,14 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
         </div>
     </div>
 
-    <!-- 主要內容區域（各頁面自己開 <main> 與關閉） -->
-    <div class="flex-1 max-w-screen-2xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
+    <!-- 主要內容區域 -->
+    <div class="flex-grow container-fluid" style="max-width: 1400px; margin: 0 auto; padding-top: 1.5rem; padding-bottom: 4rem; padding-left: 1rem; padding-right: 1rem;">
         <!-- 頁面標題（可被覆蓋） -->
         <?php if (isset($pageTitle) && $pageTitle): ?>
-            <div class="mb-6">
-                <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
+            <div class="mb-4">
+                <h1 class="h3 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
                 <?php if (isset($pageSubtitle)): ?>
-                    <p class="text-[#5A5A5C] text-sm mt-0.5"><?= e($pageSubtitle) ?></p>
+                    <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
