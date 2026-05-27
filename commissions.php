@@ -10,155 +10,175 @@ $pageSubtitle = '按員工查看累計佣金';
 include __DIR__ . '/includes/header.php';
 ?>
 <div class="max-w-6xl mx-auto" x-data="commissionsApp()">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
         <div>
-            <h2 class="text-2xl font-semibold">員工佣金查詢</h2>
-            <p class="text-sm text-[#5A5A5C]">查看服務、零售、開單佣金（依當時設定計算）</p>
+            <h2 class="h4 fw-semibold mb-1">員工佣金查詢</h2>
+            <p class="text-muted small mb-0">查看服務、零售、開單佣金（依當時設定計算）</p>
         </div>
 
         <!-- 日期 + 員工篩選 -->
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
             <button @click="setQuickRange('today')" 
-                    :class="activeRange === 'today' ? 'bg-[#2C2C2E] text-white' : 'border hover:bg-gray-50'"
-                    class="px-4 py-1.5 text-sm rounded-xl transition">今日</button>
+                    :class="activeRange === 'today' ? 'btn btn-dark' : 'btn btn-outline-secondary'"
+                    class="btn btn-sm">今日</button>
             <button @click="setQuickRange('week')" 
-                    :class="activeRange === 'week' ? 'bg-[#2C2C2E] text-white' : 'border hover:bg-gray-50'"
-                    class="px-4 py-1.5 text-sm rounded-xl transition">本週</button>
+                    :class="activeRange === 'week' ? 'btn btn-dark' : 'btn btn-outline-secondary'"
+                    class="btn btn-sm">本週</button>
             <button @click="setQuickRange('month')" 
-                    :class="activeRange === 'month' ? 'bg-[#2C2C2E] text-white' : 'border hover:bg-gray-50'"
-                    class="px-4 py-1.5 text-sm rounded-xl transition">本月</button>
+                    :class="activeRange === 'month' ? 'btn btn-dark' : 'btn btn-outline-secondary'"
+                    class="btn btn-sm">本月</button>
             
-            <div class="flex items-center gap-2 border rounded-xl px-3 py-1 text-sm">
-                <input type="date" x-model="from" @change="activeRange='custom'; loadAll()" class="border-0 text-sm focus:ring-0">
-                <span class="text-[#8A8A8C]">至</span>
-                <input type="date" x-model="to" @change="activeRange='custom'; loadAll()" class="border-0 text-sm focus:ring-0">
+            <div class="d-flex align-items-center border rounded px-2 py-1 small bg-white">
+                <input type="date" x-model="from" @change="activeRange='custom'; loadAll()" class="form-control form-control-sm border-0 p-0" style="width: 120px;">
+                <span class="text-muted mx-1">至</span>
+                <input type="date" x-model="to" @change="activeRange='custom'; loadAll()" class="form-control form-control-sm border-0 p-0" style="width: 120px;">
             </div>
 
-            <select x-model="selectedStaffId" @change="loadAll()" class="border rounded-xl px-3 py-1.5 text-sm bg-white">
+            <select x-model="selectedStaffId" @change="loadAll()" class="form-select form-select-sm" style="width: auto;">
                 <option value="">全部員工</option>
                 <template x-for="s in staffList" :key="s.id">
                     <option :value="s.id" x-text="s.name"></option>
                 </template>
             </select>
 
-            <button @click="exportCSV()" 
-                    class="px-3 py-1.5 text-sm border rounded-xl hover:bg-gray-50 flex items-center gap-1">
+            <button @click="exportCSV()" class="btn btn-sm btn-outline-secondary">
                 📄 匯出 CSV
             </button>
         </div>
     </div>
 
     <!-- 四大統計卡片 -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-2xl p-5 border border-gray-100">
-            <div class="text-xs uppercase tracking-wider text-[#8A8A8C] mb-1">總佣金</div>
-            <div class="text-3xl font-semibold text-[#2C2C2E]" x-text="formatMoney(summary.total_commission)">HK$ 0</div>
-            <div class="text-xs mt-2 text-[#8FA68F]" x-text="summary.sale_count + ' 單有佣金'"></div>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-uppercase text-muted small mb-1">總佣金</div>
+                    <div class="fs-4 fw-semibold" x-text="formatMoney(summary.total_commission)">HK$ 0</div>
+                    <div class="small text-success mt-2" x-text="summary.sale_count + ' 單有佣金'"></div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-2xl p-5 border border-gray-100">
-            <div class="text-xs uppercase tracking-wider text-[#8A8A8C] mb-1">服務佣金</div>
-            <div class="text-3xl font-semibold text-[#8FA68F]" x-text="formatMoney(summary.service_commission)">HK$ 0</div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-uppercase text-muted small mb-1">服務佣金</div>
+                    <div class="fs-4 fw-semibold text-success" x-text="formatMoney(summary.service_commission)">HK$ 0</div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-2xl p-5 border border-gray-100">
-            <div class="text-xs uppercase tracking-wider text-[#8A8A8C] mb-1">零售佣金</div>
-            <div class="text-3xl font-semibold" x-text="formatMoney(summary.retail_commission)">HK$ 0</div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-uppercase text-muted small mb-1">零售佣金</div>
+                    <div class="fs-4 fw-semibold" x-text="formatMoney(summary.retail_commission)">HK$ 0</div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-2xl p-5 border border-gray-100">
-            <div class="text-xs uppercase tracking-wider text-[#8A8A8C] mb-1">開單佣金</div>
-            <div class="text-3xl font-semibold" x-text="formatMoney(summary.open_commission)">HK$ 0</div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-uppercase text-muted small mb-1">開單佣金</div>
+                    <div class="fs-4 fw-semibold" x-text="formatMoney(summary.open_commission)">HK$ 0</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- 員工佣金明細 -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-6">
-        <div class="font-semibold mb-4">員工佣金明細</div>
+    <div class="card">
+        <div class="card-body">
+            <div class="fw-semibold mb-3">員工佣金明細</div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="text-[#8A8A8C]">
-                    <tr class="border-b">
-                        <th class="text-left py-2 pr-4">員工</th>
-                        <th class="text-right py-2 px-3">服務佣金</th>
-                        <th class="text-right py-2 px-3">零售佣金</th>
-                        <th class="text-right py-2 px-3">開單佣金</th>
-                        <th class="text-right py-2">總計</th>
-                        <th class="text-right py-2">相關單數</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <template x-for="row in staffCommissions" :key="row.staff_id">
-                        <tr class="border-b last:border-0">
-                            <td class="py-2 pr-4 font-medium text-[#2C2C2E] hover:text-[#8FA68F] cursor-pointer underline-offset-2 hover:underline" 
-                                @click="showStaffDetails(row)" x-text="row.staff_name"></td>
-                            <td class="text-right py-2 px-3 text-[#8FA68F]" x-text="formatMoney(row.service_commission)"></td>
-                            <td class="text-right py-2 px-3" x-text="formatMoney(row.retail_commission)"></td>
-                            <td class="text-right py-2 px-3" x-text="formatMoney(row.open_commission)"></td>
-                            <td class="text-right py-2 font-semibold" x-text="formatMoney(row.total_commission)"></td>
-                            <td class="text-right py-2 text-[#8A8A8C]" x-text="row.sale_count"></td>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light small text-muted">
+                        <tr>
+                            <th>員工</th>
+                            <th class="text-end">服務佣金</th>
+                            <th class="text-end">零售佣金</th>
+                            <th class="text-end">開單佣金</th>
+                            <th class="text-end">總計</th>
+                            <th class="text-end">相關單數</th>
                         </tr>
-                    </template>
-                    <tr x-show="staffCommissions.length === 0">
-                        <td colspan="6" class="py-8 text-center text-[#8A8A8C]">查詢期間暫無佣金記錄</td>
-                    </tr>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="small">
+                        <template x-for="row in staffCommissions" :key="row.staff_id">
+                            <tr>
+                                <td class="fw-medium">
+                                    <a href="#" @click.prevent="showStaffDetails(row)" class="text-decoration-none" x-text="row.staff_name"></a>
+                                </td>
+                                <td class="text-end text-success" x-text="formatMoney(row.service_commission)"></td>
+                                <td class="text-end" x-text="formatMoney(row.retail_commission)"></td>
+                                <td class="text-end" x-text="formatMoney(row.open_commission)"></td>
+                                <td class="text-end fw-semibold" x-text="formatMoney(row.total_commission)"></td>
+                                <td class="text-end text-muted" x-text="row.sale_count"></td>
+                            </tr>
+                        </template>
+                        <tr x-show="staffCommissions.length === 0">
+                            <td colspan="6" class="py-4 text-center text-muted">查詢期間暫無佣金記錄</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="mt-6 text-xs text-[#8A8A8C] text-center">
+    <div class="mt-3 small text-muted text-center">
         佣金以結帳當時的設定比率計算（已快照）· 按 F5 刷新
     </div>
 
-    <!-- 員工明細彈窗 -->
-    <div x-show="showDetailsModal" 
-         class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-         @click="closeDetailsModal()">
-        <div @click.stop class="bg-white rounded-2xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden shadow-xl">
-            <div class="flex items-center justify-between px-6 py-4 border-b">
-                <div>
-                    <div class="font-semibold text-lg" x-text="selectedStaffForDetails ? selectedStaffForDetails.staff_name + ' 的佣金明細' : ''"></div>
-                    <div class="text-xs text-[#8A8A8C]" x-text="from + ' ~ ' + to"></div>
+    <!-- 員工明細 Modal (Bootstrap) -->
+    <div class="modal fade" id="commissionDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" x-text="selectedStaffForDetails ? selectedStaffForDetails.staff_name + ' 的佣金明細' : ''"></h5>
+                        <div class="small text-muted" x-text="from + ' ~ ' + to"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <button @click="closeDetailsModal()" class="text-2xl leading-none text-[#8A8A8C] hover:text-black">&times;</button>
-            </div>
 
-            <div class="p-6 overflow-auto max-h-[60vh]">
-                <div x-show="loadingDetails" class="text-center py-8 text-[#8A8A8C]">載入中...</div>
+                <div class="modal-body">
+                    <div x-show="loadingDetails" class="text-center py-4 text-muted">載入中...</div>
 
-                <table x-show="!loadingDetails && staffDetails.length > 0" class="w-full text-sm">
-                    <thead class="text-[#8A8A8C]">
-                        <tr class="border-b">
-                            <th class="text-left py-2">日期</th>
-                            <th class="text-left py-2">客戶</th>
-                            <th class="text-left py-2">銷售單</th>
-                            <th class="text-right py-2">銷售額</th>
-                            <th class="text-left py-2">類型</th>
-                            <th class="text-right py-2">比率</th>
-                            <th class="text-right py-2">佣金</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="d in staffDetails" :key="d.id">
-                            <tr class="border-b">
-                                <td class="py-2" x-text="d.sale_date"></td>
-                                <td class="py-2" x-text="d.customer_name"></td>
-                                <td class="py-2 text-xs text-[#8A8A8C]">#<span x-text="d.sale_id"></span></td>
-                                <td class="py-2 text-right" x-text="formatMoney(d.sale_total)"></td>
-                                <td class="py-2"><span class="px-2 py-0.5 text-xs rounded bg-gray-100" x-text="formatType(d.type)"></span></td>
-                                <td class="py-2 text-right text-xs" x-text="d.rate + '%'"></td>
-                                <td class="py-2 text-right font-semibold text-[#8FA68F]" x-text="formatMoney(d.amount)"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+                    <div x-show="!loadingDetails && staffDetails.length > 0" class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light small text-muted">
+                                <tr>
+                                    <th>日期</th>
+                                    <th>客戶</th>
+                                    <th>銷售單</th>
+                                    <th class="text-end">銷售額</th>
+                                    <th>類型</th>
+                                    <th class="text-end">比率</th>
+                                    <th class="text-end">佣金</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                <template x-for="d in staffDetails" :key="d.id">
+                                    <tr>
+                                        <td x-text="d.sale_date"></td>
+                                        <td x-text="d.customer_name"></td>
+                                        <td class="text-muted small">#<span x-text="d.sale_id"></span></td>
+                                        <td class="text-end" x-text="formatMoney(d.sale_total)"></td>
+                                        <td><span class="badge bg-secondary-subtle text-dark small" x-text="formatType(d.type)"></span></td>
+                                        <td class="text-end small" x-text="d.rate + '%'"></td>
+                                        <td class="text-end fw-semibold text-success" x-text="formatMoney(d.amount)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
 
-                <div x-show="!loadingDetails && staffDetails.length === 0" class="text-center py-8 text-[#8A8A8C]">
-                    此期間沒有找到佣金明細
+                    <div x-show="!loadingDetails && staffDetails.length === 0" class="text-center py-4 text-muted">
+                        此期間沒有找到佣金明細
+                    </div>
                 </div>
-            </div>
 
-            <div class="px-6 py-3 border-t text-right">
-                <button @click="closeDetailsModal()" class="px-4 py-1.5 text-sm border rounded-xl hover:bg-gray-50">關閉</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">關閉</button>
+                </div>
             </div>
         </div>
     </div>
@@ -174,8 +194,7 @@ function commissionsApp() {
         staffList: [],
         staffCommissions: [],
 
-        // 明細彈窗
-        showDetailsModal: false,
+        // 明細彈窗（Bootstrap）
         selectedStaffForDetails: null,
         staffDetails: [],
         loadingDetails: false,
@@ -282,7 +301,10 @@ function commissionsApp() {
             this.selectedStaffForDetails = staff;
             this.staffDetails = [];
             this.loadingDetails = true;
-            this.showDetailsModal = true;
+
+            const modalEl = document.getElementById('commissionDetailsModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
 
             try {
                 const res = await SalonEase.fetch(
@@ -297,7 +319,10 @@ function commissionsApp() {
         },
 
         closeDetailsModal() {
-            this.showDetailsModal = false;
+            const modalEl = document.getElementById('commissionDetailsModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
             this.selectedStaffForDetails = null;
             this.staffDetails = [];
         },
