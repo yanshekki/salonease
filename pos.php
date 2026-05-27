@@ -69,7 +69,7 @@ $extraJs = 'pos.js';
                 <label class="block text-sm font-medium mb-1">客戶（可選）</label>
                 <div class="flex gap-2">
                     <input type="text" id="pos-customer-search" class="salon-input flex-1" placeholder="搜尋客戶姓名或電話">
-                    <button onclick="quickCreateCustomer()" class="salon-btn salon-btn-secondary text-sm">新客戶</button>
+                    <button onclick="quickCreateCustomer()" class="salon-btn salon-btn-secondary text-sm" title="快速建立新客戶（無需離開 POS）">新客戶</button>
                 </div>
                 <div id="pos-customer-info" class="mt-1 text-sm text-[#5A5A5C]"></div>
             </div>

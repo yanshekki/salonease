@@ -51,7 +51,7 @@ include __DIR__ . '/includes/header.php';
 
     <!-- 常用熱鍵一覽（A 收尾） -->
     <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
-        <div class="font-semibold text-lg mb-4">常用熱鍵一覽</div>
+        <div class="font-semibold text-lg mb-4" title="按 ? 鍵可隨時查看目前頁面的完整熱鍵清單">常用熱鍵一覽</div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div>
