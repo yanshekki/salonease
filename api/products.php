@@ -73,6 +73,7 @@ switch ($action) {
         $price = (float)post('price');
         $cost = (float)post('cost', 0);
         $stock = (int)post('stock_qty', 0);
+        $low_stock = post('low_stock_threshold') !== '' ? (int)post('low_stock_threshold') : null;
         $category = trim(post('category'));
 
         if (!$id || !$name) {
@@ -80,8 +81,8 @@ switch ($action) {
         }
 
         db_exec(
-            "UPDATE products SET name = ?, sku = ?, price = ?, cost = ?, stock_qty = ?, category = ? WHERE id = ?",
-            [$name, $sku, $price, $cost, $stock, $category, $id]
+            "UPDATE products SET name = ?, sku = ?, price = ?, cost = ?, stock_qty = ?, low_stock_threshold = ?, category = ? WHERE id = ?",
+            [$name, $sku, $price, $cost, $stock, $low_stock, $category, $id]
         );
 
         json_success(null, '產品資料已更新');

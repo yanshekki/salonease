@@ -116,6 +116,10 @@ $extraJs = 'hotkeys.js';
                 <label class="block text-sm font-medium mb-1">初始庫存數量</label>
                 <input type="number" id="product-stock" class="salon-input" value="0">
             </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">低庫存門檻（留空則用全域預設）</label>
+                <input type="number" id="product-low-stock" class="salon-input" value="" placeholder="例如 5">
+            </div>
         </div>
 
         <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
@@ -202,6 +206,7 @@ function showAddModal() {
     document.getElementById('product-price').value = '';
     document.getElementById('product-cost').value = '0';
     document.getElementById('product-stock').value = '0';
+    document.getElementById('product-low-stock').value = '';
     document.getElementById('product-category').value = '';
 
     document.getElementById('save-btn').textContent = '新增產品';
@@ -224,6 +229,7 @@ async function editProduct(id) {
         document.getElementById('product-price').value = p.price;
         document.getElementById('product-cost').value = p.cost || 0;
         document.getElementById('product-stock').value = p.stock_qty;
+        document.getElementById('product-low-stock').value = p.low_stock_threshold || '';
         document.getElementById('product-category').value = p.category || '';
 
         document.getElementById('save-btn').textContent = '儲存變更';
@@ -251,6 +257,7 @@ async function saveProduct() {
         price: document.getElementById('product-price').value,
         cost: document.getElementById('product-cost').value,
         stock_qty: document.getElementById('product-stock').value,
+        low_stock_threshold: document.getElementById('product-low-stock').value,
         category: document.getElementById('product-category').value
     };
 

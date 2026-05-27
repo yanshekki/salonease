@@ -29,7 +29,8 @@ switch ($action) {
                 'printer_width' => '58',
                 'default_commission_service' => 40.00,
                 'default_commission_retail' => 15.00,
-                'default_commission_open' => 5.00
+                'default_commission_open' => 5.00,
+                'default_low_stock_threshold' => 5
             ];
         }
         json_success($settings);
@@ -53,6 +54,7 @@ switch ($action) {
         $service_rate = max(0, min(100, (float)post('default_commission_service', 40)));
         $retail_rate  = max(0, min(100, (float)post('default_commission_retail', 15)));
         $open_rate    = max(0, min(100, (float)post('default_commission_open', 5)));
+        $low_stock_threshold = max(0, (int)post('default_low_stock_threshold', 5));
 
         if (!$salon_name) {
             json_error('店舖名稱不能為空');
@@ -69,12 +71,13 @@ switch ($action) {
                     default_commission_service = ?,
                     default_commission_retail = ?,
                     default_commission_open = ?,
+                    default_low_stock_threshold = ?,
                     updated_at = NOW()
                 WHERE id = 1
             ");
             $stmt->execute([
                 $salon_name, $address, $phone, $printer_width,
-                $service_rate, $retail_rate, $open_rate
+                $service_rate, $retail_rate, $open_rate, $low_stock_threshold
             ]);
 
             if ($stmt->rowCount() === 0) {
@@ -82,8 +85,8 @@ switch ($action) {
                 $stmt = db()->prepare("
                     INSERT INTO settings 
                     (id, salon_name, address, phone, printer_width, 
-                     default_commission_service, default_commission_retail, default_commission_open)
-                    VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+                     default_commission_service, default_commission_retail, default_commission_open, default_low_stock_threshold)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         salon_name = VALUES(salon_name),
                         address = VALUES(address),
@@ -91,11 +94,12 @@ switch ($action) {
                         printer_width = VALUES(printer_width),
                         default_commission_service = VALUES(default_commission_service),
                         default_commission_retail = VALUES(default_commission_retail),
-                        default_commission_open = VALUES(default_commission_open)
+                        default_commission_open = VALUES(default_commission_open),
+                        default_low_stock_threshold = VALUES(default_low_stock_threshold)
                 ");
                 $stmt->execute([
                     $salon_name, $address, $phone, $printer_width,
-                    $service_rate, $retail_rate, $open_rate
+                    $service_rate, $retail_rate, $open_rate, $low_stock_threshold
                 ]);
             }
 

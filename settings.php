@@ -154,6 +154,15 @@ include __DIR__ . '/includes/header.php';
                             <span class="ml-2 text-sm text-[#8A8A8C]">%</span>
                         </div>
                     </div>
+                    <div>
+                        <label class="block text-xs text-[#5A5A5C] mb-1">低庫存預設門檻</label>
+                        <div class="flex items-center">
+                            <input type="number" x-model.number="form.default_low_stock_threshold" 
+                                   step="1" min="0" 
+                                   class="salon-input w-full text-right">
+                            <span class="ml-2 text-sm text-[#8A8A8C]">件</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="text-xs text-[#8A8A8C] mt-1">此為全域預設，個別員工可另行覆蓋</div>
             </div>
@@ -218,7 +227,8 @@ function shopSettings() {
             printer_width: '58',
             default_commission_service: 40,
             default_commission_retail: 15,
-            default_commission_open: 5
+            default_commission_open: 5,
+            default_low_stock_threshold: 5
         },
         saving: false,
         saved: false,
@@ -239,6 +249,7 @@ function shopSettings() {
                     this.form.default_commission_service = parseFloat(d.default_commission_service) || 40;
                     this.form.default_commission_retail  = parseFloat(d.default_commission_retail) || 15;
                     this.form.default_commission_open    = parseFloat(d.default_commission_open) || 5;
+                    this.form.default_low_stock_threshold = parseInt(d.default_low_stock_threshold) || 5;
                 }
             } catch (e) {
                 console.warn('載入設定失敗', e);
@@ -259,7 +270,8 @@ function shopSettings() {
                         printer_width: this.form.printer_width,
                         default_commission_service: this.form.default_commission_service,
                         default_commission_retail: this.form.default_commission_retail,
-                        default_commission_open: this.form.default_commission_open
+                        default_commission_open: this.form.default_commission_open,
+                        default_low_stock_threshold: this.form.default_low_stock_threshold
                     }
                 });
 
