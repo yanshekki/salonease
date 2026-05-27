@@ -13,123 +13,129 @@ $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
-        <p class="text-[#5A5A5C] text-sm mt-1"><?= e($pageSubtitle) ?></p>
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+    <div class="mb-3 mb-md-0">
+        <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+        <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
     </div>
-    <button onclick="showAddModal()"
-            class="salon-btn salon-btn-primary flex items-center gap-x-2">
+    <button onclick="showAddModal()" class="btn btn-primary d-flex align-items-center gap-2">
         <span>+ 新增員工</span>
-        <span class="text-xs opacity-75">[N]</span>
+        <span class="small opacity-75">[N]</span>
     </button>
 </div>
 
 <!-- 搜尋與過濾 -->
-<div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4 flex flex-wrap gap-3 items-end">
-    <div class="flex-1 min-w-[240px]">
-        <label class="block text-xs text-[#5A5A5C] mb-1">搜尋</label>
-        <input type="text" id="search" placeholder="姓名 / 電郵 / 電話"
-               class="salon-input" oninput="debounceLoadStaff()">
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label small text-muted mb-1">搜尋</label>
+                <input type="text" id="search" placeholder="姓名 / 電郵 / 電話"
+                       class="form-control" oninput="debounceLoadStaff()">
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">角色</label>
+                <select id="role-filter" class="form-select" onchange="loadStaff()">
+                    <option value="">全部角色</option>
+                    <option value="admin">管理員</option>
+                    <option value="manager">經理</option>
+                    <option value="therapist">美容師</option>
+                    <option value="reception">前台</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">狀態</label>
+                <select id="status-filter" class="form-select" onchange="loadStaff()">
+                    <option value="">全部</option>
+                    <option value="1">已啟用</option>
+                    <option value="0">已停用</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-auto">
+                <button onclick="loadStaff()" class="btn btn-outline-secondary w-100">重新載入</button>
+            </div>
+        </div>
     </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">角色</label>
-        <select id="role-filter" class="salon-input" onchange="loadStaff()">
-            <option value="">全部角色</option>
-            <option value="admin">管理員</option>
-            <option value="manager">經理</option>
-            <option value="therapist">美容師</option>
-            <option value="reception">前台</option>
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">狀態</label>
-        <select id="status-filter" class="salon-input" onchange="loadStaff()">
-            <option value="">全部</option>
-            <option value="1">已啟用</option>
-            <option value="0">已停用</option>
-        </select>
-    </div>
-    <button onclick="loadStaff()" 
-            class="salon-btn salon-btn-secondary h-[42px]">重新載入</button>
 </div>
 
 <!-- 員工列表 -->
-<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+<div class="card">
     <div class="table-responsive">
-        <table class="salon-table w-full">
-            <thead>
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
                 <tr>
                     <th>姓名</th>
-                    <th class="hide-on-mobile">電郵</th>
+                    <th class="d-none d-md-table-cell">電郵</th>
                     <th>電話</th>
                     <th>角色</th>
                     <th>狀態</th>
-                    <th class="text-right action-col">操作</th>
+                    <th class="text-end" style="width: 90px;">操作</th>
                 </tr>
             </thead>
             <tbody id="staff-list">
-                <tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
+                <tr><td colspan="6" class="py-5 text-center text-muted">載入中...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- 新增 / 編輯 Modal -->
-<div id="staff-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideStaffModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg" id="modal-title">新增員工</div>
-            <button onclick="hideStaffModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
-
-        <div class="p-5 space-y-4">
-            <input type="hidden" id="staff-id">
-
-            <div>
-                <label class="block text-sm font-medium mb-1">姓名 <span class="text-red-500">*</span></label>
-                <input type="text" id="staff-name" class="salon-input" placeholder="陳美玲">
+<!-- 新增 / 編輯 Modal (Bootstrap) -->
+<div class="modal fade" id="staffModal" tabindex="-1" aria-labelledby="staffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">新增員工</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">電郵 <span class="text-red-500">*</span></label>
-                    <input type="email" id="staff-email" class="salon-input">
+            <div class="modal-body">
+                <input type="hidden" id="staff-id">
+
+                <div class="mb-3">
+                    <label class="form-label">姓名 <span class="text-danger">*</span></label>
+                    <input type="text" id="staff-name" class="form-control" placeholder="陳美玲">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">電話</label>
-                    <input type="text" id="staff-phone" class="salon-input">
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">電郵 <span class="text-danger">*</span></label>
+                        <input type="email" id="staff-email" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">電話</label>
+                        <input type="text" id="staff-phone" class="form-control">
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">角色</label>
+                    <select id="staff-role" class="form-select">
+                        <option value="therapist">美容師</option>
+                        <option value="manager">經理</option>
+                        <option value="reception">前台</option>
+                        <option value="admin">管理員</option>
+                    </select>
+                </div>
+
+                <div id="password-section" class="mt-3">
+                    <label class="form-label">初始密碼 <span class="text-danger">*</span></label>
+                    <input type="password" id="staff-password" class="form-control" placeholder="至少 6 個字元">
+                    <div class="form-text">新增時必須設定密碼，之後可由員工自行修改或管理員重設。</div>
+                </div>
+
+                <div id="reset-password-section" class="mt-3" style="display:none;">
+                    <label class="form-label">新密碼</label>
+                    <div class="d-flex gap-2">
+                        <input type="password" id="reset-password" class="form-control flex-fill" placeholder="輸入新密碼">
+                        <button onclick="resetPassword()" class="btn btn-outline-secondary">重設密碼</button>
+                    </div>
                 </div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium mb-1">角色</label>
-                <select id="staff-role" class="salon-input">
-                    <option value="therapist">美容師</option>
-                    <option value="manager">經理</option>
-                    <option value="reception">前台</option>
-                    <option value="admin">管理員</option>
-                </select>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="saveStaff()" class="btn btn-primary" id="save-btn">儲存</button>
             </div>
-
-            <div id="password-section">
-                <label class="block text-sm font-medium mb-1">初始密碼 <span class="text-red-500">*</span></label>
-                <input type="password" id="staff-password" class="salon-input" placeholder="至少 6 個字元">
-                <p class="text-xs text-[#8A8A8C] mt-1">新增時必須設定密碼，之後可由員工自行修改或管理員重設。</p>
-            </div>
-
-            <div id="reset-password-section" class="hidden">
-                <label class="block text-sm font-medium mb-1">新密碼</label>
-                <div class="flex gap-2">
-                    <input type="password" id="reset-password" class="salon-input flex-1" placeholder="輸入新密碼">
-                    <button onclick="resetPassword()" class="salon-btn salon-btn-secondary">重設密碼</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-            <button onclick="hideStaffModal()" class="salon-btn salon-btn-secondary">取消</button>
-            <button onclick="saveStaff()" class="salon-btn salon-btn-primary" id="save-btn">儲存</button>
         </div>
     </div>
 </div>
@@ -234,8 +240,9 @@ function showAddModal() {
     document.getElementById('reset-password-section').classList.add('hidden');
     document.getElementById('save-btn').textContent = '新增員工';
 
-    document.getElementById('staff-modal').classList.remove('hidden');
-    document.getElementById('staff-modal').classList.add('flex');
+    const modalEl = document.getElementById('staffModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
     setTimeout(() => document.getElementById('staff-name').focus(), 100);
 }
 
@@ -264,9 +271,9 @@ async function editStaff(id) {
 }
 
 function hideStaffModal() {
-    const modal = document.getElementById('staff-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalEl = document.getElementById('staffModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 // 儲存（新增或更新）
