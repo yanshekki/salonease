@@ -1250,12 +1250,18 @@ async function loadTodayScheduleForDate(targetDateStr) {
                 </div>
             `;
 
+            const durationMins = Math.round((aEnd - aStart) / 60000);
+            const durationText = `${durationMins}分`;
+
             html += `
                 <div onclick="showDetailModal(${a.id})" 
                      class="group absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
                      style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${staffColor}; z-index: ${10 + lane};">
                     <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
-                    <div class="text-[10px] text-[#555] truncate">${e(a.staff_name || '')}</div>
+                    <div class="flex justify-between text-[10px] text-[#555]">
+                        <span class="truncate">${e(a.staff_name || '')}</span>
+                        <span class="ml-1 flex-shrink-0">${durationText}</span>
+                    </div>
                     ${actionsHtml}
                 </div>
             `;
