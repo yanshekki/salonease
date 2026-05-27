@@ -149,7 +149,7 @@ $extraJs = 'hotkeys.js';
     </div>
 </div>
 
-<!-- 今日時程卡片式檢視 -->
+<!-- 今日時程卡片式檢視 (時間軸) -->
 <div id="calendar-view" class="hidden mt-2">
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
         <div class="flex items-center justify-between mb-4">
@@ -159,11 +159,13 @@ $extraJs = 'hotkeys.js';
             </div>
             <button onclick="loadTodaySchedule()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
         </div>
-        <div id="today-timeline" class="space-y-3 min-h-[280px]">
-            <!-- 由 JS 渲染時間軸卡片 -->
+
+        <!-- 時間軸容器 -->
+        <div id="today-timeline" class="border rounded-xl overflow-hidden bg-[#FAF7F2] min-h-[420px]">
+            <!-- JS 會渲染時間格 + 預約區塊 -->
         </div>
     </div>
-    <div class="text-xs text-[#8A8A8C] mt-3">點擊卡片可查看詳情及直接開單</div>
+    <div class="text-xs text-[#8A8A8C] mt-3">空白時段可點擊直接新增預約 • 點擊預約區塊查看詳情</div>
 </div>
 
 <!-- 預約詳情 Modal -->
@@ -379,19 +381,42 @@ function renderAppointments(list) {
 }
 
 function showCreateModal() {
+    showCreateModalWithTime('');
+}
+
+function showCreateModalWithTime(startTimeStr) {
     document.getElementById('modal-title').textContent = '新增預約';
     document.getElementById('appt-id').value = '';
     document.getElementById('customer-id').value = '';
     document.getElementById('customer-search').value = '';
     document.getElementById('staff-select').value = '';
     document.getElementById('room-select').value = '';
-    document.getElementById('start-time').value = '';
-    document.getElementById('end-time').value = '';
-    document.getElementById('end-time-display').value = '';
     document.getElementById('notes').value = '';
 
     // 清空已選服務
     document.querySelectorAll('#services-checkboxes input').forEach(cb => cb.checked = false);
+
+    // 預填開始時間
+    if (startTimeStr) {
+        // 轉成 datetime-local 格式
+        const dt = startTimeStr.replace(' ', 'T');
+        document.getElementById('start-time').value = dt;
+        // 自動預估結束時間（預設 60 分鐘）
+        setTimeout(() => {
+            const startInput = document.getElementById('start-time');
+            if (startInput.value) {
+                const d = new Date(startInput.value);
+                d.setMinutes(d.getMinutes() + 60);
+                const endVal = d.toISOString().slice(0,16);
+                document.getElementById('end-time').value = endVal.replace('T',' ') + ':00';
+                document.getElementById('end-time-display').value = endVal.replace('T',' ');
+            }
+        }, 50);
+    } else {
+        document.getElementById('start-time').value = '';
+        document.getElementById('end-time').value = '';
+        document.getElementById('end-time-display').value = '';
+    }
 
     document.getElementById('save-btn').textContent = '建立預約';
 
@@ -579,44 +604,69 @@ async function loadTodaySchedule() {
 
     try {
         const res = await SalonEase.fetch(`/api/appointments.php?action=list&date_from=${todayStr}&date_to=${todayStr}`);
-        const appts = res.data || [];
+        const appts = (res.data || []).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-        if (appts.length === 0) {
-            container.innerHTML = `<div class="py-10 text-center text-[#8A8A8C] border border-dashed rounded-2xl">今日暫無預約</div>`;
-            return;
+        // 建立時間格：09:00 ~ 21:00，每 30 分鐘
+        const slots = [];
+        for (let h = 9; h <= 21; h++) {
+            for (let m = 0; m < 60; m += 30) {
+                if (h === 21 && m > 0) break; // 21:00 結束
+                const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                slots.push(timeStr);
+            }
         }
 
-        // 簡單排序
-        appts.sort((a, b) => a.start_time.localeCompare(b.start_time));
+        let html = '<div class="divide-y divide-gray-200 text-sm">';
 
-        let html = '';
-        appts.forEach(a => {
-            const start = new Date(a.start_time);
-            const end = new Date(a.end_time);
-            const timeStr = start.toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'}) + ' - ' + 
-                           end.toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+        slots.forEach((slotTime, index) => {
+            const slotStart = new Date(`${todayStr}T${slotTime}:00`);
+            const slotEnd = new Date(slotStart.getTime() + 30 * 60000);
 
-            const statusColor = a.status === 'confirmed' ? 'bg-green-100 text-green-700' : 
-                               (a.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600');
+            // 找出這個時段重疊的預約
+            const overlapping = appts.filter(a => {
+                const aStart = new Date(a.start_time);
+                const aEnd = new Date(a.end_time);
+                return aStart < slotEnd && aEnd > slotStart;
+            });
 
-            html += `
-                <div onclick="showDetailModal(${a.id})" 
-                     class="flex items-center gap-4 p-3 rounded-2xl border hover:border-[#8FA68F] cursor-pointer transition">
-                    <div class="w-20 text-right font-mono text-sm text-[#5A5A5C]">${timeStr}</div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-medium truncate">${e(a.customer_name || '未知客戶')}</div>
-                        <div class="text-xs text-[#5A5A5C] truncate">${e(a.staff_name || '')} ${a.room_name ? '・' + e(a.room_name) : ''}</div>
+            if (overlapping.length > 0) {
+                // 顯示第一個重疊的預約（簡單處理）
+                const a = overlapping[0];
+                const start = new Date(a.start_time);
+                const isStart = slotTime === start.toTimeString().slice(0,5);
+
+                if (isStart) {
+                    const durationMins = Math.round((new Date(a.end_time) - start) / 60000);
+                    const rowSpan = Math.ceil(durationMins / 30);
+
+                    html += `
+                        <div onclick="showDetailModal(${a.id})" 
+                             class="flex items-center px-3 py-2 bg-[#E8F0E8] hover:bg-[#D4E6D4] cursor-pointer transition"
+                             style="min-height: ${rowSpan * 28}px">
+                            <div class="w-16 font-mono text-xs text-[#5A5A5C] flex-shrink-0">${slotTime}</div>
+                            <div class="flex-1 pl-2 border-l-2 border-[#8FA68F]">
+                                <div class="font-medium text-sm">${e(a.customer_name || '客戶')}</div>
+                                <div class="text-xs text-[#4A6A4A]">${e(a.staff_name || '')}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                // 空白時段，可點擊新增
+                const clickableStart = `${todayStr} ${slotTime}:00`;
+                html += `
+                    <div onclick="showCreateModalWithTime('${clickableStart}')"
+                         class="flex items-center px-3 py-[6px] text-[#8A8A8C] hover:bg-white hover:text-[#2C2C2E] cursor-pointer transition group">
+                        <div class="w-16 font-mono text-xs flex-shrink-0">${slotTime}</div>
+                        <div class="flex-1 pl-2 text-xs group-hover:text-[#8FA68F]">＋ 新增預約</div>
                     </div>
-                    <div class="text-right">
-                        <span class="inline-block px-2.5 py-0.5 text-xs rounded-full ${statusColor}">
-                            ${a.status === 'pending' ? '待確認' : (a.status === 'confirmed' ? '已確認' : '其他')}
-                        </span>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         });
 
+        html += '</div>';
         container.innerHTML = html;
+
     } catch (err) {
         container.innerHTML = `<div class="text-red-500 py-4">載入失敗：${err.message}</div>`;
     }
