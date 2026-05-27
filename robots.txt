@@ -1,0 +1,23 @@
+# ============================================
+# SalonEase - 香港小型美容院管理系統
+# robots.txt
+# ============================================
+
+User-agent: *
+Disallow: /
+
+# 以下為明確阻擋路徑（即使上面已經 Disallow /）
+Disallow: /api/
+Disallow: /includes/
+Disallow: /sql/
+Disallow: /uploads/
+Disallow: /config.php
+Disallow: /login.php
+Disallow: /*.sql$
+Disallow: /*.bak$
+Disallow: /*.log$
+
+# 允許 Google 等爬蟲知道呢個係內部管理系統
+# 如日後有公開宣傳頁，可考慮開放特定路徑
+
+Sitemap: https://salonease.ysk.hk/sitemap.xml
