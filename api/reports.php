@@ -6,6 +6,7 @@
  * GET /api/reports.php?action=top_services&from=...&to=...&limit=5
  * GET /api/reports.php?action=top_products&from=...&to=...&limit=5
  * GET /api/reports.php?action=package_redemptions&from=...&to=...
+ * GET /api/reports.php?action=staff_sales_ranking&from=...&to=&staff_id= (optional)
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -132,6 +133,63 @@ switch ($action) {
         ", [$from, $to]);
 
         json_success($rows);
+        break;
+
+    case 'staff_sales_ranking':
+        $staffId = (int)($_GET['staff_id'] ?? 0);
+
+        $where = "s.sale_date BETWEEN ? AND ?";
+        $params = [$from, $to];
+
+        if ($staffId > 0) {
+            $where .= " AND s.staff_id = ?";
+            $params[] = $staffId;
+        }
+
+        $rows = db_query("
+            SELECT 
+                st.id as staff_id,
+                st.name as staff_name,
+                COUNT(s.id) as transaction_count,
+                COALESCE(SUM(s.total), 0) as total_sales,
+                COALESCE(AVG(s.total), 0) as avg_ticket
+            FROM sales s
+            JOIN staff st ON s.staff_id = st.id
+            WHERE $where
+            GROUP BY st.id, st.name
+            ORDER BY total_sales DESC
+        ", $params);
+
+        // 額外計算每位員工的套票扣減次數
+        $packageStats = db_query("
+            SELECT 
+                s.staff_id,
+                COALESCE(SUM(pu.sessions_used), 0) as package_sessions
+            FROM package_usages pu
+            JOIN sales s ON pu.sale_id = s.id
+            WHERE s.sale_date BETWEEN ? AND ?
+            " . ($staffId > 0 ? "AND s.staff_id = ?" : "") . "
+            GROUP BY s.staff_id
+        ", $staffId > 0 ? [$from, $to, $staffId] : [$from, $to]);
+
+        $pkgMap = [];
+        foreach ($packageStats as $p) {
+            $pkgMap[$p['staff_id']] = (int)$p['package_sessions'];
+        }
+
+        $result = [];
+        foreach ($rows as $r) {
+            $result[] = [
+                'staff_id' => (int)$r['staff_id'],
+                'staff_name' => $r['staff_name'],
+                'transaction_count' => (int)$r['transaction_count'],
+                'total_sales' => (float)$r['total_sales'],
+                'avg_ticket' => (float)$r['avg_ticket'],
+                'package_sessions' => $pkgMap[$r['staff_id']] ?? 0
+            ];
+        }
+
+        json_success($result);
         break;
 
     default:

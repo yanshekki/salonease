@@ -10,14 +10,15 @@ $pageSubtitle = '營業數據與分析';
 include __DIR__ . '/includes/header.php';
 ?>
 <div class="max-w-6xl mx-auto" x-data="reportsApp()">
+    <div x-show="loading" class="text-center text-sm text-[#8A8A8C] mb-4">載入中...</div>
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
             <h2 class="text-2xl font-semibold">營業報表</h2>
             <p class="text-sm text-[#5A5A5C]">查看銷售、付款及套票使用情況</p>
         </div>
 
-        <!-- 快速日期選擇 -->
-        <div class="flex flex-wrap gap-2">
+        <!-- 快速日期選擇 + 員工篩選 -->
+        <div class="flex flex-wrap items-center gap-2">
             <button @click="setQuickRange('today')" 
                     :class="activeRange === 'today' ? 'bg-[#2C2C2E] text-white' : 'border hover:bg-gray-50'"
                     class="px-4 py-1.5 text-sm rounded-xl transition">今日</button>
@@ -33,6 +34,15 @@ include __DIR__ . '/includes/header.php';
                 <span class="text-[#8A8A8C]">至</span>
                 <input type="date" x-model="to" @change="activeRange='custom'; loadAll()" class="border-0 text-sm focus:ring-0">
             </div>
+
+            <!-- 員工篩選 -->
+            <select x-model="selectedStaffId" @change="loadAll()" 
+                    class="border rounded-xl px-3 py-1.5 text-sm bg-white">
+                <option value="">全部員工</option>
+                <template x-for="s in staffList" :key="s.id">
+                    <option :value="s.id" x-text="s.name"></option>
+                </template>
+            </select>
         </div>
     </div>
 
@@ -56,6 +66,45 @@ include __DIR__ . '/includes/header.php';
         <div class="bg-white rounded-2xl p-5 border border-gray-100">
             <div class="text-xs uppercase tracking-wider text-[#8A8A8C] mb-1">查詢期間</div>
             <div class="text-xl font-medium text-[#2C2C2E]" x-text="from + ' ~ ' + to"></div>
+        </div>
+    </div>
+
+    <!-- 員工銷售排行（A 選擇重點） -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="font-semibold">員工銷售排行</div>
+            <button @click="exportStaffRankingCSV()" 
+                    class="text-xs px-3 py-1 border rounded-xl hover:bg-gray-50 flex items-center gap-1">
+                📄 匯出 CSV
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-[#8A8A8C]">
+                    <tr class="border-b">
+                        <th class="text-left py-2 pr-4">員工</th>
+                        <th class="text-right py-2 px-3">單數</th>
+                        <th class="text-right py-2 px-3">營業額</th>
+                        <th class="text-right py-2 px-3">平均每單</th>
+                        <th class="text-right py-2">套票扣減</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="s in staffRanking" :key="s.staff_id">
+                        <tr class="border-b last:border-0">
+                            <td class="py-2 pr-4 font-medium" x-text="s.staff_name"></td>
+                            <td class="text-right py-2 px-3" x-text="s.transaction_count"></td>
+                            <td class="text-right py-2 px-3 font-semibold" x-text="formatMoney(s.total_sales)"></td>
+                            <td class="text-right py-2 px-3" x-text="formatMoney(s.avg_ticket)"></td>
+                            <td class="text-right py-2 text-purple-600 font-medium" x-text="s.package_sessions + ' 次'"></td>
+                        </tr>
+                    </template>
+                    <tr x-show="staffRanking.length === 0">
+                        <td colspan="5" class="py-8 text-center text-[#8A8A8C]">查詢期間暫無銷售記錄</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -166,7 +215,11 @@ function reportsApp() {
         from: '<?= date('Y-m-d') ?>',
         to: '<?= date('Y-m-d') ?>',
         activeRange: 'today',
-        
+        selectedStaffId: '',          // 新增：員工篩選
+        staffList: [],                // 員工下拉清單
+        staffRanking: [],             // 員工銷售排行數據
+        loading: false,
+
         summary: {
             total_sales: 0,
             total_transactions: 0,
@@ -180,15 +233,24 @@ function reportsApp() {
         packageRedemptions: [],
 
         init() {
+            this.loadStaffList();
             this.setQuickRange('today');
         },
 
         async loadAll() {
-            this.loadSummary();
-            this.loadPaymentBreakdown();
-            this.loadTopServices();
-            this.loadTopProducts();
-            this.loadPackageRedemptions();
+            this.loading = true;
+            try {
+                await Promise.all([
+                    this.loadSummary(),
+                    this.loadPaymentBreakdown(),
+                    this.loadTopServices(),
+                    this.loadTopProducts(),
+                    this.loadPackageRedemptions(),
+                    this.loadStaffRanking()
+                ]);
+            } finally {
+                this.loading = false;
+            }
         },
 
         async loadSummary() {
@@ -268,6 +330,51 @@ function reportsApp() {
                 'other': '其他'
             };
             return map[method] || method;
+        },
+
+        // 載入員工清單（供篩選使用）
+        async loadStaffList() {
+            try {
+                const res = await SalonEase.fetch('/api/staff.php?action=list&is_active=1');
+                this.staffList = res.data || [];
+            } catch (e) {
+                console.warn('載入員工清單失敗', e);
+            }
+        },
+
+        // 載入員工銷售排行
+        async loadStaffRanking() {
+            try {
+                let url = `/api/reports.php?action=staff_sales_ranking&from=${this.from}&to=${this.to}`;
+                if (this.selectedStaffId) {
+                    url += `&staff_id=${this.selectedStaffId}`;
+                }
+                const res = await SalonEase.fetch(url);
+                this.staffRanking = res.data || [];
+            } catch (e) {
+                this.staffRanking = [];
+            }
+        },
+
+        // 匯出員工排行 CSV
+        exportStaffRankingCSV() {
+            if (!this.staffRanking.length) {
+                alert('目前沒有可匯出的排行資料');
+                return;
+            }
+
+            let csv = '\uFEFF員工,單數,營業額,平均每單,套票扣減次數\n';
+            this.staffRanking.forEach(r => {
+                csv += `${r.staff_name},${r.transaction_count},${r.total_sales},${r.avg_ticket},${r.package_sessions}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = `員工銷售排行_${this.from}_${this.to}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
         }
     }
 }
