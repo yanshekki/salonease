@@ -96,16 +96,10 @@ window.hideHotkeyHelp = function() {
 
 // 全域鍵盤監聽（基本 Esc 與 ?）
 document.addEventListener('keydown', function(e) {
-    // Esc 關閉 Modal
+    // Esc 關閉自訂 Modal（Bootstrap Modal 會自動處理 Esc）
     if (e.key === 'Escape') {
-        const openModal = document.querySelector('#hotkey-modal:not(.hidden)');
-        if (openModal) {
-            openModal.classList.add('hidden');
-            openModal.classList.remove('flex');
-        } else {
-            // 讓各頁面自己的 modal 處理
-            document.dispatchEvent(new CustomEvent('salonease:esc-pressed'));
-        }
+        // 讓各頁面自己的 modal 處理（例如 POS 內的 modal）
+        document.dispatchEvent(new CustomEvent('salonease:esc-pressed'));
     }
 
     // ? 顯示幫助（避免輸入框時觸發）
