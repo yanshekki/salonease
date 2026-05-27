@@ -213,6 +213,10 @@ $extraJs = 'hotkeys.js';
                         class="salon-btn salon-btn-secondary text-sm">
                     ✏️ 編輯
                 </button>
+                <button onclick="duplicateCurrentAppointment()" 
+                        class="salon-btn salon-btn-secondary text-sm">
+                    📋 複製
+                </button>
                 <button onclick="openPosFromAppointment()" 
                         class="salon-btn salon-btn-primary text-sm flex items-center gap-1">
                     🛒 從此預約開單
@@ -452,6 +456,48 @@ function showCreateModalWithTime(startTimeStr) {
 function showCreateForDate(dateStr) {
     const defaultTime = `${dateStr} 10:00:00`;
     showCreateModalWithTime(defaultTime);
+}
+
+// 複製預約（常用於定期客戶）
+function duplicateCurrentAppointment() {
+    if (!currentAppointmentData) return;
+
+    hideDetailModal();
+
+    const a = currentAppointmentData;
+
+    document.getElementById('modal-title').textContent = '複製預約';
+    document.getElementById('appt-id').value = '';
+    document.getElementById('customer-id').value = a.customer_id;
+    document.getElementById('customer-search').value = `${a.customer_name} (${a.customer_phone || ''})`;
+    document.getElementById('staff-select').value = a.staff_id || '';
+    document.getElementById('room-select').value = a.room_id || '';
+    document.getElementById('notes').value = a.notes || '';
+
+    // 預設 +7 天同一時間
+    const originalStart = new Date(a.start_time);
+    originalStart.setDate(originalStart.getDate() + 7);
+    const newStart = originalStart.toISOString().slice(0, 16);
+    document.getElementById('start-time').value = newStart;
+
+    const duration = new Date(a.end_time) - new Date(a.start_time);
+    const newEnd = new Date(originalStart.getTime() + duration);
+    const newEndStr = newEnd.toISOString().slice(0, 16);
+    document.getElementById('end-time').value = newEndStr.replace('T', ' ') + ':00';
+    document.getElementById('end-time-display').value = newEndStr.replace('T', ' ');
+
+    document.querySelectorAll('#services-checkboxes input').forEach(cb => cb.checked = false);
+    if (a.items && a.items.length > 0) {
+        a.items.forEach(item => {
+            const cb = document.querySelector(`#services-checkboxes input[value="${item.service_id}"]`);
+            if (cb) cb.checked = true;
+        });
+    }
+
+    document.getElementById('save-btn').textContent = '建立複製預約';
+
+    document.getElementById('appt-modal').classList.remove('hidden');
+    document.getElementById('appt-modal').classList.add('flex');
 }
 
 function hideApptModal() {
