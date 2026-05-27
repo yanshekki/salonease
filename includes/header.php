@@ -172,11 +172,11 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
     </div>
 
     <!-- 主要內容區域 -->
-    <div class="flex-grow container-fluid" style="max-width: 1400px; margin: 0 auto; padding-top: 1.5rem; padding-bottom: 4rem; padding-left: 1rem; padding-right: 1rem;">
+    <main class="flex-grow container-fluid" style="max-width: 1400px; margin: 0 auto; padding: 1.5rem 1rem 4rem;">
         <!-- 頁面標題（可被覆蓋） -->
         <?php if (isset($pageTitle) && $pageTitle): ?>
             <div class="mb-4">
-                <h1 class="h3 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+                <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
                 <?php if (isset($pageSubtitle)): ?>
                     <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
                 <?php endif; ?>
