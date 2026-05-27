@@ -211,24 +211,27 @@ switch ($action) {
         }
         break;
 
-        } catch (Exception $e) {
-            json_error('結帳失敗：' . $e->getMessage());
-        }
-        break;
-
     case 'print_receipt':
         $id = (int)get('id');
         if (!$id) {
             die('缺少銷售單 ID');
         }
 
-        // 簡單打印頁面（之後可改為更專業的模板）
         $sale = db_query_one("SELECT * FROM sales WHERE id = ?", [$id]);
         if (!$sale) {
             die('找不到該銷售單');
         }
 
         $items = db_query("SELECT * FROM sale_items WHERE sale_id = ?", [$id]);
+
+        // 查詢這次銷售中所有的套票扣減記錄
+        $package_usages = db_query("
+            SELECT pu.sessions_used, p.name as package_name
+            FROM package_usages pu
+            JOIN customer_packages cp ON pu.customer_package_id = cp.id
+            JOIN packages p ON cp.package_id = p.id
+            WHERE pu.sale_id = ?
+        ", [$id]);
 
         header('Content-Type: text/html; charset=utf-8');
         ?>
@@ -238,29 +241,43 @@ switch ($action) {
             <meta charset="UTF-8">
             <title>收據 #<?= $id ?></title>
             <style>
-                body { font-family: "Courier New", monospace; font-size: 14px; width: 280px; margin: 0 auto; }
+                body { font-family: "Courier New", monospace; font-size: 13px; width: 280px; margin: 0 auto; line-height: 1.35; }
                 .center { text-align: center; }
                 .right { text-align: right; }
-                .line { border-top: 1px dashed #000; margin: 8px 0; }
+                .line { border-top: 1px dashed #000; margin: 6px 0; }
                 table { width: 100%; border-collapse: collapse; }
-                td { padding: 2px 0; }
+                td { padding: 1px 0; vertical-align: top; }
+                .package-line {
+                    background-color: #f5f5f5;
+                    font-weight: bold;
+                }
+                .small { font-size: 11px; color: #555; }
             </style>
         </head>
         <body>
             <div class="center">
-                <h2>SalonEase 美容中心</h2>
-                <p>收據 #<?= $id ?></p>
-                <p><?= $sale['sale_date'] ?></p>
+                <h2 style="margin: 4px 0;">SalonEase 美容中心</h2>
+                <p style="margin: 2px 0;">收據 #<?= $id ?></p>
+                <p style="margin: 2px 0;"><?= $sale['sale_date'] ?></p>
             </div>
             <div class="line"></div>
 
             <table>
                 <?php foreach ($items as $item): ?>
-                <tr>
-                    <td><?= e($item['name']) ?></td>
-                    <td class="right"><?= $item['qty'] ?> × <?= number_format($item['unit_price'], 0) ?></td>
-                    <td class="right"><?= number_format($item['line_total'], 0) ?></td>
-                </tr>
+                    <?php if ($item['item_type'] === 'package'): ?>
+                        <tr class="package-line">
+                            <td colspan="3">
+                                【套票扣減】<?= e($item['name']) ?><br>
+                                <span class="small">扣 <?= $item['qty'] ?> 次</span>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <tr>
+                            <td><?= e($item['name']) ?></td>
+                            <td class="right"><?= $item['qty'] ?> × <?= number_format($item['unit_price'], 0) ?></td>
+                            <td class="right"><?= number_format($item['line_total'], 0) ?></td>
+                        </tr>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </table>
 
@@ -277,7 +294,6 @@ switch ($action) {
 
             <script>
                 window.onload = () => {
-                    // 自動打印（可選）
                     // window.print();
                 };
             </script>
