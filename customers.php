@@ -36,22 +36,24 @@ $extraJs = 'hotkeys.js';
 </div>
 
 <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <table class="salon-table w-full">
-        <thead>
-            <tr>
-                <th>姓名</th>
-                <th>電話</th>
-                <th>電郵</th>
-                <th>最近到訪</th>
-                <th class="text-right">累計消費</th>
-                <th class="text-center">到訪次數</th>
-                <th class="text-right">操作</th>
-            </tr>
-        </thead>
-        <tbody id="customers-list">
-            <tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="salon-table w-full">
+            <thead>
+                <tr>
+                    <th>姓名</th>
+                    <th>電話</th>
+                    <th class="hide-on-mobile">電郵</th>
+                    <th class="hide-on-mobile">最近到訪</th>
+                    <th class="text-right">累計消費</th>
+                    <th class="text-center">到訪次數</th>
+                    <th class="text-right action-col">操作</th>
+                </tr>
+            </thead>
+            <tbody id="customers-list">
+                <tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- 新增 / 編輯 Modal -->
