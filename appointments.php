@@ -163,62 +163,67 @@ $extraJs = 'hotkeys.js';
 
 <!-- 今日時程卡片式檢視 (時間軸) -->
 <div id="calendar-view" class="hidden mt-2">
-    <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1">
-                    <button onclick="navigateTodayDay(-1)" class="px-2 py-0.5 text-sm rounded hover:bg-gray-100">←</button>
-                    <span class="font-semibold">時程</span>
-                    <span id="today-date" class="text-sm text-[#5A5A5C] ml-1"></span>
-                    <button onclick="navigateTodayDay(1)" class="px-2 py-0.5 text-sm rounded hover:bg-gray-100">→</button>
-                    <button id="back-to-today-btn" onclick="loadTodaySchedule()" class="hidden ml-2 px-2 py-0.5 text-xs rounded bg-[#8FA68F] text-white hover:bg-[#7A947A]">返回今日</button>
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="d-flex align-items-center gap-1">
+                        <button onclick="navigateTodayDay(-1)" class="btn btn-sm btn-outline-secondary px-2 py-1">←</button>
+                        <span class="fw-semibold">時程</span>
+                        <span id="today-date" class="text-muted small ms-1"></span>
+                        <button onclick="navigateTodayDay(1)" class="btn btn-sm btn-outline-secondary px-2 py-1">→</button>
+                        <button id="back-to-today-btn" onclick="loadTodaySchedule()" class="btn btn-sm btn-success d-none hidden ms-2">返回今日</button>
+                    </div>
+                    <select id="today-staff-filter" class="form-select form-select-sm" style="width: auto;" onchange="loadTodaySchedule()">
+                        <option value="">全部美容師</option>
+                    </select>
+                    <select id="today-status-filter" class="form-select form-select-sm" style="width: auto;" onchange="loadTodaySchedule()">
+                        <option value="">全部狀態</option>
+                        <option value="pending">待確認</option>
+                        <option value="confirmed">已確認</option>
+                        <option value="completed">已完成</option>
+                        <option value="cancelled">已取消</option>
+                        <option value="no_show">未到</option>
+                    </select>
                 </div>
-                <select id="today-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadTodaySchedule()">
-                    <option value="">全部美容師</option>
-                </select>
-                <select id="today-status-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadTodaySchedule()">
-                    <option value="">全部狀態</option>
-                    <option value="pending">待確認</option>
-                    <option value="confirmed">已確認</option>
-                    <option value="completed">已完成</option>
-                    <option value="cancelled">已取消</option>
-                    <option value="no_show">未到</option>
-                </select>
+                <button onclick="loadTodaySchedule()" class="btn btn-sm btn-outline-secondary">重新整理</button>
             </div>
-            <button onclick="loadTodaySchedule()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
-        </div>
 
-        <!-- 美容師顏色圖例 -->
-        <div id="today-staff-legend" class="flex flex-wrap gap-2 mb-3 text-xs"></div>
+            <!-- 美容師顏色圖例 -->
+            <div id="today-staff-legend" class="d-flex flex-wrap gap-2 mb-3 small"></div>
 
-        <!-- 今日時程 Tooltip -->
-        <div id="timeline-tooltip" class="hidden fixed z-[80] bg-white border border-gray-300 shadow-lg rounded-xl p-3 text-sm max-w-xs pointer-events-none">
-            <!-- 由 JS 動態填入 -->
-        </div>
+            <!-- 今日時程 Tooltip -->
+            <div id="timeline-tooltip" class="d-none position-fixed shadow-sm border bg-white p-2 small" style="z-index: 1080; max-width: 240px; pointer-events: none;">
+                <!-- 由 JS 動態填入 -->
+            </div>
 
-        <!-- 時間軸容器 -->
-        <div id="today-timeline" class="border rounded-xl bg-white min-h-[420px]">
-            <!-- JS 會渲染專業時間軸 -->
+            <!-- 時間軸容器 -->
+            <div id="today-timeline" class="border rounded bg-white" style="min-height: 420px;">
+                <!-- JS 會渲染專業時間軸 -->
+            </div>
         </div>
     </div>
-    <div class="text-xs text-[#8A8A8C] mt-3">空白時段可點擊直接新增預約 • 點擊預約區塊查看詳情</div>
+    <div class="text-muted small mt-2">空白時段可點擊直接新增預約 • 點擊預約區塊查看詳情</div>
 </div>
 
 <!-- 週檢視 -->
 <div id="week-view" class="hidden">
-    <div class="bg-white rounded-2xl border border-gray-100 p-4">
-        <div class="flex items-center justify-between mb-3 px-1">
-            <div class="flex items-center gap-3">
-                <div class="font-semibold">未來七天預約概覽</div>
-                <select id="week-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadWeekView()">
-                    <option value="">全部美容師</option>
-                </select>
-                <button onclick="switchView('calendar')" class="text-xs px-2 py-0.5 rounded bg-[#8FA68F] text-white hover:bg-[#7A947A]">今日</button>
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-semibold">未來七天預約概覽</span>
+                    <select id="week-staff-filter" class="form-select form-select-sm" style="width: auto;" onchange="loadWeekView()">
+                        <option value="">全部美容師</option>
+                    </select>
+                    <button onclick="switchView('calendar')" class="btn btn-sm btn-success">今日</button>
+                </div>
+                <button onclick="loadWeekView()" class="btn btn-sm btn-outline-secondary">重新整理</button>
             </div>
-            <button onclick="loadWeekView()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
-        </div>
-        <div id="week-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
-            <!-- JS 動態渲染 7 天卡片 -->
+
+            <div id="week-grid" class="row g-3">
+                <!-- JS 動態渲染 7 天卡片 (col-12 col-sm-6 col-md-4 col-lg-3 col-xl-12/7) -->
+            </div>
         </div>
     </div>
 </div>
@@ -926,7 +931,7 @@ async function loadTodaySchedule() {
     const statusFilter = document.getElementById('today-status-filter');
     const selectedStatus = statusFilter ? statusFilter.value : '';
 
-    container.innerHTML = `<div class="py-8 text-center text-[#8A8A8C]">載入今日時程中...</div>`;
+    container.innerHTML = `<div class="py-5 text-center text-muted">載入今日時程中...</div>`;
 
     try {
         let url = `/api/appointments.php?action=list&date_from=${todayStr}&date_to=${todayStr}`;
@@ -949,8 +954,7 @@ async function loadTodaySchedule() {
             let legendHtml = '';
             Object.keys(uniqueStaff).forEach(name => {
                 legendHtml += `
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px]" style="background-color: ${uniqueStaff[name]}">
-                        <span class="w-2 h-2 rounded-full bg-current opacity-70"></span>
+                    <span class="badge text-dark border" style="background-color: ${uniqueStaff[name]}; font-size: 11px;">
                         ${e(name)}
                     </span>
                 `;
@@ -1053,7 +1057,7 @@ async function loadTodaySchedule() {
         container.innerHTML = html;
 
     } catch (err) {
-        container.innerHTML = `<div class="text-red-500 py-4">載入失敗：${err.message}</div>`;
+        container.innerHTML = `<div class="text-danger py-4">載入失敗：${err.message}</div>`;
     }
 }
 
@@ -1061,7 +1065,7 @@ async function loadWeekView() {
     const container = document.getElementById('week-grid');
     const staffFilter = document.getElementById('week-staff-filter');
 
-    container.innerHTML = `<div class="col-span-full py-8 text-center text-[#8A8A8C]">載入中...</div>`;
+    container.innerHTML = `<div class="col-12 py-4 text-center text-muted">載入中...</div>`;
 
     // 確保美容師選單已載入
     if (staffFilter.options.length <= 1) {
@@ -1110,7 +1114,7 @@ async function loadWeekView() {
 
             let apptHtml = '';
             if (count === 0) {
-                apptHtml = `<div class="text-xs text-[#8A8A8C] mt-1">無預約</div>`;
+                apptHtml = `<div class="text-muted small mt-1">無預約</div>`;
             } else {
                 dayAppts.slice(0, 4).forEach(a => {
                     const start = new Date(a.start_time).toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
@@ -1125,23 +1129,25 @@ async function loadWeekView() {
                     `;
                 });
                 if (count > 4) {
-                    apptHtml += `<div class="text-xs text-[#8A8A8C] mt-1">+${count-4} 更多</div>`;
+                    apptHtml += `<div class="text-muted small mt-1">+${count-4} 更多</div>`;
                 }
             }
 
-            const todayClass = day.isToday ? 'ring-2 ring-[#8FA68F]' : '';
+            const todayClass = day.isToday ? 'border-success border-2' : '';
 
             html += `
-                <div class="border rounded-2xl p-3 hover:border-[#8FA68F] transition ${todayClass}">
-                    <div class="font-semibold text-sm flex justify-between items-center">
-                        <span onclick="switchToDayTimeline('${day.date}')" class="cursor-pointer hover:underline">${day.label}</span>
-                        <button onclick="showCreateForDate('${day.date}'); event.stopImmediatePropagation();" 
-                                class="text-xs px-2 py-0.5 rounded-lg bg-[#8FA68F] text-white hover:bg-[#7A947A] flex items-center gap-1">
-                            <span>+</span>
-                        </button>
-                    </div>
-                    <div onclick="switchToDayTimeline('${day.date}')" class="mt-2 min-h-[60px] cursor-pointer">
-                        ${apptHtml}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2">
+                    <div class="border rounded p-2 h-100 ${todayClass}" style="transition: border-color .1s;">
+                        <div class="d-flex justify-content-between align-items-center small fw-medium">
+                            <span onclick="switchToDayTimeline('${day.date}')" class="cursor-pointer text-decoration-underline-hover">${day.label}</span>
+                            <button onclick="showCreateForDate('${day.date}'); event.stopImmediatePropagation();" 
+                                    class="btn btn-sm btn-success py-0 px-2" style="font-size: 11px; line-height: 1.4;">
+                                +
+                            </button>
+                        </div>
+                        <div onclick="switchToDayTimeline('${day.date}')" class="mt-1 small cursor-pointer" style="min-height: 52px;">
+                            ${apptHtml}
+                        </div>
                     </div>
                 </div>
             `;
@@ -1209,7 +1215,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
 
     const selectedStaff = staffFilter.value;
 
-    container.innerHTML = `<div class="py-8 text-center text-[#8A8A8C]">載入時程中...</div>`;
+    container.innerHTML = `<div class="py-5 text-center text-muted">載入時程中...</div>`;
 
     try {
         let url = `/api/appointments.php?action=list&date_from=${targetDateStr}&date_to=${targetDateStr}`;
@@ -1326,7 +1332,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
         container.innerHTML = html;
 
     } catch (err) {
-        container.innerHTML = `<div class="text-red-500 py-4">載入失敗：${err.message}</div>`;
+        container.innerHTML = `<div class="text-danger py-4">載入失敗：${err.message}</div>`;
     }
 }
 
@@ -1365,7 +1371,7 @@ function getStaffColor(name) {
     timelineContainer.addEventListener('mouseover', async function(e) {
         const block = e.target.closest('[onclick*="showDetailModal"]');
         if (!block) {
-            tooltip.classList.add('hidden');
+            tooltip.classList.add('d-none');
             return;
         }
 
@@ -1374,22 +1380,22 @@ function getStaffColor(name) {
 
         const apptId = match[1];
         if (currentFetchId === apptId) {
-            tooltip.classList.remove('hidden');
+            tooltip.classList.remove('d-none');
             return;
         }
 
         currentFetchId = apptId;
 
-        tooltip.innerHTML = `<div class="text-[#8A8A8C]">載入服務項目中...</div>`;
+        tooltip.innerHTML = `<div class="text-muted">載入服務項目中...</div>`;
         tooltip.style.left = (e.pageX + 15) + 'px';
         tooltip.style.top = (e.pageY + 10) + 'px';
-        tooltip.classList.remove('hidden');
+        tooltip.classList.remove('d-none');
 
         try {
             const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${apptId}`);
             const a = res.data;
 
-            let servicesHtml = '<div class="text-[#8A8A8C]">無服務項目</div>';
+            let servicesHtml = '<div class="text-muted">無服務項目</div>';
             if (a.items && a.items.length > 0) {
                 servicesHtml = '<div class="font-medium mb-1">服務項目：</div><ul class="list-disc list-inside text-xs">';
                 a.items.forEach(item => {
@@ -1404,19 +1410,19 @@ function getStaffColor(name) {
                 ${servicesHtml}
             `;
         } catch (err) {
-            tooltip.innerHTML = `<div class="text-red-500">載入失敗</div>`;
+            tooltip.innerHTML = `<div class="text-danger">載入失敗</div>`;
         }
     });
 
     timelineContainer.addEventListener('mousemove', function(e) {
-        if (!tooltip.classList.contains('hidden')) {
+        if (!tooltip.classList.contains('d-none')) {
             tooltip.style.left = (e.pageX + 15) + 'px';
             tooltip.style.top = (e.pageY + 10) + 'px';
         }
     });
 
     timelineContainer.addEventListener('mouseleave', function() {
-        tooltip.classList.add('hidden');
+        tooltip.classList.add('d-none');
         currentFetchId = null;
     });
 })();
