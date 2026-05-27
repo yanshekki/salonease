@@ -8,7 +8,7 @@ require_login();
 require_once __DIR__ . '/includes/functions.php';
 
 $pageTitle = 'POS 銷售';
-$pageSubtitle = '快速開單、結帳、打印收據';
+$pageSubtitle = '快速開單、結帳、熱感紙 / A4 收據打印';
 $extraJs = 'pos.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
@@ -126,7 +126,11 @@ $extraJs = 'pos.js';
 
                 <button onclick="printLastReceipt()" 
                         class="w-full py-2 border text-sm rounded-xl hover:bg-gray-50">
-                    打印上一張收據
+                    打印上一張收據（58mm）
+                </button>
+                <button onclick="showPrintFormatChoice()" 
+                        class="w-full py-1.5 mt-1 text-xs text-[#5A5A5C] hover:text-[#2C2C2E] underline">
+                    選擇其他格式打印（80mm / A4 合約）
                 </button>
             </div>
         </div>

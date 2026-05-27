@@ -598,12 +598,19 @@ async function checkout() {
             }
         }
 
-        // 自動跳出打印選擇
+        // A 改進：結帳後提供清晰打印選擇（預設熱感紙 58mm，最常用）
         setTimeout(() => {
-            if (confirm('是否立即打印收據？')) {
-                printReceipt(res.data.id);
+            if (confirm('結帳完成！是否立即打印熱感紙收據（58mm）？\n\n按「取消」可稍後選擇其他格式。')) {
+                printReceipt(res.data.id, '58');   // 最常用熱感紙
+            } else {
+                // 給用戶提示可手動選擇其他格式
+                setTimeout(() => {
+                    if (confirm('要打印其他格式嗎？\n是 = 選擇 58mm / 80mm / A4')) {
+                        showPrintFormatChoice(res.data.id);
+                    }
+                }, 300);
             }
-        }, 800);
+        }, 650);
 
     } catch (err) {
         let msg = err.message || '結帳失敗';
@@ -628,8 +635,8 @@ async function checkout() {
     }
 }
 
-// 打印收據
-function printReceipt(saleId) {
+// 打印收據（支援格式：58 / 80 / a4）
+function printReceipt(saleId, format = '58') {
     if (!saleId && window.lastSaleId) {
         saleId = window.lastSaleId;
     }
@@ -638,17 +645,44 @@ function printReceipt(saleId) {
         return;
     }
 
-    // 開新視窗打印（之後可改為更完整的打印模板）
-    const url = `/api/sales.php?action=print_receipt&id=${saleId}`;
-    window.open(url, '_blank');
+    const url = `/api/sales.php?action=print_receipt&id=${saleId}&format=${format}`;
+    const win = window.open(url, '_blank');
+
+    // 熱感紙默認會自動打印，A4 版由用戶手動觸發
+    if (format === 'a4' && win) {
+        SalonEase.toast('A4 收據已開啟，請按 Ctrl+P 打印', 'info');
+    }
 }
 
-function printLastReceipt() {
+function printLastReceipt(format = '58') {
     if (window.lastSaleId) {
-        printReceipt(window.lastSaleId);
+        printReceipt(window.lastSaleId, format);
     } else {
         alert('目前沒有上一張收據');
     }
+}
+
+// 快速選擇打印格式（結帳後或手動使用）
+function showPrintFormatChoice(saleId) {
+    if (!saleId && window.lastSaleId) saleId = window.lastSaleId;
+    if (!saleId) {
+        alert('沒有可打印的收據');
+        return;
+    }
+
+    const choice = prompt(
+        '請選擇打印格式：\n' +
+        '1 = 熱感紙 58mm（最常用）\n' +
+        '2 = 熱感紙 80mm\n' +
+        '3 = A4 正式收據 / 合約（含簽名欄）\n\n' +
+        '直接輸入 1 / 2 / 3'
+    );
+
+    let format = '58';
+    if (choice === '2') format = '80';
+    if (choice === '3') format = 'a4';
+
+    printReceipt(saleId, format);
 }
 
 // 工具函數
@@ -665,3 +699,4 @@ window.updateCartTotals = updateCartTotals;
 window.calculateChange = calculateChange;
 window.checkout = checkout;
 window.printLastReceipt = printLastReceipt;
+window.showPrintFormatChoice = showPrintFormatChoice;
