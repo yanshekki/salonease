@@ -543,37 +543,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'insta
 
         log_line('安裝流程全部完成！', 'success');
 
-        // 成功畫面
+        // 成功畫面 - 加強引導
         echo '</div>';
         echo '<div class="mt-8 bg-white border border-[#8FA68F]/40 rounded-3xl p-8 shadow-sm">';
-        echo '<div class="text-[#2e7d32] text-2xl font-semibold flex items-center gap-2 mb-4">✓ 安裝成功</div>';
-        echo '<div class="text-lg mb-4">SalonEase 已準備就緒' . ($mode === 'demo' ? '（含十年完整模擬數據）' : '（乾淨版）') . '</div>';
-        
+
+        echo '<div class="text-[#2e7d32] text-2xl font-semibold flex items-center gap-2 mb-2">✓ 安裝成功</div>';
+        echo '<div class="text-lg mb-6">SalonEase 已準備就緒' . ($mode === 'demo' ? '（含十年完整模擬數據）' : '（乾淨版）') . '</div>';
+
+        // 登入資訊
         echo '<div class="bg-[#F8F5F0] rounded-2xl p-5 mb-6 text-sm">';
         echo '<div class="font-medium mb-2">管理員登入資訊</div>';
         echo '<div class="font-mono bg-white px-4 py-2 rounded-xl border">電郵：<span class="font-semibold">' . h($adminEmail) . '</span></div>';
         echo '<div class="font-mono bg-white px-4 py-2 rounded-xl border mt-1">密碼：<span class="font-semibold">' . h($adminPass) . '</span> <span class="text-[#c62828] text-xs">（請立即修改）</span></div>';
         echo '</div>';
 
-        echo '<div class="flex flex-col md:flex-row gap-3">';
+        // 立即登入按鈕
+        echo '<div class="flex flex-col md:flex-row gap-3 mb-8">';
         echo '<a href="/login.php" class="flex-1 text-center bg-[#2C2C2E] hover:bg-black text-white px-8 py-4 rounded-2xl font-medium text-lg transition">立即登入系統</a>';
         echo '<a href="/dashboard.php" class="flex-1 text-center border border-[#2C2C2E] px-8 py-4 rounded-2xl font-medium text-lg hover:bg-[#F8F5F0]">前往控制台</a>';
         echo '</div>';
 
-        echo '<div class="mt-8 text-xs text-[#c62828] bg-red-50 border border-red-200 rounded-2xl p-4">';
-        echo '<strong>重要安全提醒：</strong><br>';
-        echo '1. 請立即透過 FTP / 控制台 / 檔案管理員 <strong>刪除 install.php</strong><br>';
-        echo '2. 生產環境請修改預設密碼<br>';
-        echo '3. 日後升級請使用 <a href="/upgrade.php" class="underline">upgrade.php</a>（一鍵安全升級）';
+        // 下一步建議（區分模式）
+        echo '<div class="mb-6">';
+        echo '<div class="font-semibold text-lg mb-3">安裝後建議下一步</div>';
+
+        if ($mode === 'demo') {
+            echo '<div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">探索報表與十年模擬數據，了解系統功能</div>';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">測試 POS 結帳流程，體驗套票扣減與佣金計算</div>';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">前往「系統設定」調整店舖資訊與佣金比率</div>';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">新增實際員工帳號，替換示範數據</div>';
+            echo '</div>';
+        } else {
+            echo '<div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">前往「系統設定」完善店舖名稱、地址、打印設定</div>';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">新增員工帳號與角色權限</div>';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">設定服務項目、零售產品與套票</div>';
+            echo '<div class="p-4 bg-[#F8F5F0] rounded-2xl border">調整佣金比率與低庫存門檻</div>';
+            echo '</div>';
+        }
         echo '</div>';
+
+        // 重要安全提醒（加強版）
+        echo '<div class="text-sm bg-red-50 border border-red-200 rounded-2xl p-5">';
+        echo '<div class="font-semibold text-red-700 mb-2 flex items-center gap-2">⚠️ 重要安全提醒（安裝後必須完成）</div>';
+        echo '<ol class="list-decimal ml-5 space-y-1 text-red-600">';
+        echo '<li><strong>立即刪除 <code class="bg-red-100 px-1 rounded">install.php</code></strong>（防止他人重新安裝）</li>';
+        echo '<li>登入後立刻修改管理員密碼</li>';
+        echo '<li>建議為不同員工設定不同權限角色</li>';
+        echo '<li>日後有結構更新請使用 <a href="/upgrade.php" class="underline font-medium">upgrade.php</a> 一鍵升級</li>';
+        echo '</ol>';
+        echo '</div>';
+
         echo '</div></div></body></html>';
         exit;
 
     } catch (Throwable $e) {
-        echo '</div><div class="mt-6 p-6 bg-red-50 border border-red-200 rounded-3xl text-red-700">';
-        echo '<div class="font-semibold text-lg mb-2">安裝失敗</div>';
-        echo '<div class="text-sm">' . h($e->getMessage()) . '</div>';
-        echo '<div class="text-xs mt-4 text-red-500">請檢查 config.php 資料庫權限，或聯絡技術支援。</div>';
+        echo '</div>';
+        echo '<div class="mt-8 bg-white border border-red-200 rounded-3xl p-8 shadow-sm">';
+        echo '<div class="text-red-600 text-2xl font-semibold mb-4">✗ 安裝失敗</div>';
+        echo '<div class="text-sm mb-4 text-red-700">' . h($e->getMessage()) . '</div>';
+
+        echo '<div class="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-600 mb-6">';
+        echo '<strong>常見解決方法：</strong><br>';
+        echo '1. 檢查 <code class="bg-red-100 px-1">config.php</code> 的資料庫連線設定是否正確<br>';
+        echo '2. 確認 MySQL 使用者有足夠權限建立表格<br>';
+        echo '3. 嘗試重新整理頁面或清除瀏覽器快取後再試<br>';
+        echo '4. 如持續出現問題，請檢查伺服器 PHP 錯誤日誌';
+        echo '</div>';
+
+        echo '<div class="flex gap-3">';
+        echo '<a href="/install.php" class="flex-1 text-center border border-[#2C2C2E] px-6 py-3 rounded-2xl font-medium hover:bg-[#F8F5F0]">返回安裝頁面</a>';
+        echo '</div>';
         echo '</div></div></body></html>';
         exit;
     }
