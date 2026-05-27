@@ -65,7 +65,7 @@ $extraJs = 'hotkeys.js';
                 <th>美容師</th>
                 <th>房間</th>
                 <th>狀態</th>
-                <th class="text-right">操作</th>
+                <th class="text-right">操作 <span class="font-normal text-[10px]">(點擊列查看詳情)</span></th>
             </tr>
         </thead>
         <tbody id="appointments-list">
@@ -133,6 +133,34 @@ $extraJs = 'hotkeys.js';
         <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
             <button onclick="hideApptModal()" class="salon-btn salon-btn-secondary">取消</button>
             <button onclick="saveAppointment()" class="salon-btn salon-btn-primary" id="save-btn">建立預約</button>
+        </div>
+    </div>
+</div>
+
+<!-- 預約詳情 Modal -->
+<div id="detail-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideDetailModal()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl mx-4" onclick="event.stopImmediatePropagation()">
+        <div class="px-5 py-4 border-b flex items-center justify-between">
+            <div class="font-semibold text-lg">預約詳情</div>
+            <button onclick="hideDetailModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
+        </div>
+
+        <div class="p-5 space-y-4" id="detail-content">
+            <!-- JS 動態填入 -->
+        </div>
+
+        <div class="px-5 py-4 bg-gray-50 flex flex-wrap gap-2 justify-between rounded-b-2xl">
+            <div class="flex gap-2">
+                <button onclick="quickChangeStatus('confirmed')" class="salon-btn salon-btn-secondary text-sm">標記已確認</button>
+                <button onclick="quickChangeStatus('completed')" class="salon-btn salon-btn-secondary text-sm">標記已完成</button>
+                <button onclick="quickChangeStatus('no_show')" class="salon-btn salon-btn-secondary text-sm">標記未到</button>
+            </div>
+            <div>
+                <button onclick="openPosFromAppointment()" 
+                        class="salon-btn salon-btn-primary text-sm flex items-center gap-1">
+                    🛒 從此預約開單
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -296,16 +324,18 @@ function renderAppointments(list) {
     list.forEach(a => {
         const time = new Date(a.start_time).toLocaleString('zh-HK', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
         html += `
-            <tr>
+            <tr class="hover:bg-[#F8F5F0] cursor-pointer" onclick="showDetailModal(${a.id})">
                 <td>${time}</td>
                 <td>${e(a.customer_name || '-')} <span class="text-xs text-[#8A8A8C]">(${e(a.customer_phone || '')})</span></td>
                 <td>${e(a.staff_name || '-')}</td>
                 <td>${e(a.room_name || '不指定')}</td>
                 <td><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">${statusMap[a.status] || a.status}</span></td>
-                <td class="text-right">
-                    <button onclick="changeStatus(${a.id}, 'confirmed')" class="text-[#8FA68F] hover:underline text-xs mr-1">確認</button>
-                    <button onclick="changeStatus(${a.id}, 'completed')" class="text-[#8FA68F] hover:underline text-xs mr-1">完成</button>
-                    <button onclick="changeStatus(${a.id}, 'cancelled')" class="text-red-500 hover:underline text-xs">取消</button>
+                <td class="text-right" onclick="event.stopImmediatePropagation()">
+                    <button onclick="showDetailModal(${a.id}); event.stopImmediatePropagation();" 
+                            class="text-[#8FA68F] hover:underline text-xs mr-2">詳情</button>
+                    <button onclick="changeStatus(${a.id}, 'confirmed'); event.stopImmediatePropagation();" class="text-[#8FA68F] hover:underline text-xs mr-1">確認</button>
+                    <button onclick="changeStatus(${a.id}, 'completed'); event.stopImmediatePropagation();" class="text-[#8FA68F] hover:underline text-xs mr-1">完成</button>
+                    <button onclick="changeStatus(${a.id}, 'cancelled'); event.stopImmediatePropagation();" class="text-red-500 hover:underline text-xs">取消</button>
                 </td>
             </tr>
         `;
@@ -396,6 +426,79 @@ async function changeStatus(id, status) {
     } catch (err) {
         SalonEase.toast(err.message, 'error');
     }
+}
+
+// 顯示詳情 Modal
+let currentDetailId = null;
+
+async function showDetailModal(id) {
+    currentDetailId = id;
+    const container = document.getElementById('detail-content');
+    container.innerHTML = `<div class="py-6 text-center text-[#8A8A8C]">載入中...</div>`;
+
+    document.getElementById('detail-modal').classList.remove('hidden');
+    document.getElementById('detail-modal').classList.add('flex');
+
+    try {
+        const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${id}`);
+        const a = res.data;
+
+        const statusMap = {
+            'pending': '待確認',
+            'confirmed': '已確認',
+            'completed': '已完成',
+            'cancelled': '已取消',
+            'no_show': '未到'
+        };
+
+        let servicesHtml = '<div class="text-sm text-[#8A8A8C]">無服務項目</div>';
+        if (a.items && a.items.length > 0) {
+            servicesHtml = '<ul class="text-sm space-y-1">';
+            a.items.forEach(item => {
+                servicesHtml += `<li>• ${e(item.service_name)} — $${parseFloat(item.price_at_time).toFixed(0)}</li>`;
+            });
+            servicesHtml += '</ul>';
+        }
+
+        const start = new Date(a.start_time);
+        const end = new Date(a.end_time);
+
+        container.innerHTML = `
+            <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div><span class="text-[#5A5A5C]">客戶：</span><span class="font-medium">${e(a.customer_name || '-')}</span></div>
+                <div><span class="text-[#5A5A5C]">美容師：</span>${e(a.staff_name || '-')}</div>
+                <div><span class="text-[#5A5A5C]">時間：</span>${start.toLocaleString('zh-HK', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})} ~ ${end.toLocaleTimeString('zh-HK', {hour:'2-digit',minute:'2-digit'})}</div>
+                <div><span class="text-[#5A5A5C]">房間：</span>${e(a.room_name || '不指定')}</div>
+                <div class="col-span-2"><span class="text-[#5A5A5C]">狀態：</span> <span class="font-medium">${statusMap[a.status] || a.status}</span></div>
+            </div>
+
+            <div class="pt-3 border-t">
+                <div class="text-[#5A5A5C] text-xs mb-1">服務項目</div>
+                ${servicesHtml}
+            </div>
+
+            ${a.notes ? `<div class="pt-2"><div class="text-[#5A5A5C] text-xs mb-1">備註</div><div class="text-sm bg-gray-50 p-2 rounded">${e(a.notes)}</div></div>` : ''}
+        `;
+    } catch (err) {
+        container.innerHTML = `<div class="text-red-500">${err.message}</div>`;
+    }
+}
+
+function hideDetailModal() {
+    document.getElementById('detail-modal').classList.add('hidden');
+    document.getElementById('detail-modal').classList.remove('flex');
+}
+
+function quickChangeStatus(newStatus) {
+    if (!currentDetailId) return;
+    hideDetailModal();
+    changeStatus(currentDetailId, newStatus);
+}
+
+function openPosFromAppointment() {
+    if (!currentDetailId) return;
+    // 跳轉到 POS 並帶上預約 ID（Phase 3 會處理自動帶入客戶與服務）
+    window.location.href = `/pos.php?appointment_id=${currentDetailId}`;
 }
 
 // 熱鍵
