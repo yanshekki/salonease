@@ -176,14 +176,19 @@ function renderProductsTable(list) {
             ? `<span class="px-2.5 py-0.5 text-xs rounded-full bg-green-100 text-green-700">已啟用</span>`
             : `<span class="px-2.5 py-0.5 text-xs rounded-full bg-gray-200 text-gray-600">已停用</span>`;
 
-        const stockColor = p.stock_qty <= 5 ? 'text-red-600 font-medium' : '';
+        const threshold = p.effective_low_stock_threshold || 5;
+        const isLowStock = p.stock_qty <= threshold;
+        const stockColor = isLowStock ? 'text-red-600 font-medium' : '';
+        const stockBadge = isLowStock 
+            ? `<span class="ml-1 text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded">低庫存</span>` 
+            : '';
 
         html += `
             <tr>
                 <td class="font-medium">${e(p.name)}</td>
                 <td class="text-sm text-[#5A5A5C]">${e(p.sku || '-')}</td>
                 <td class="font-medium">${parseFloat(p.price).toFixed(2)}</td>
-                <td class="${stockColor}">${p.stock_qty}</td>
+                <td class="${stockColor}">${p.stock_qty}${stockBadge}</td>
                 <td><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">${e(p.category || '-')}</span></td>
                 <td>${statusBadge}</td>
                 <td class="text-right">

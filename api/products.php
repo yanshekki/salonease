@@ -18,7 +18,11 @@ switch ($action) {
         $category = get('category', '');
         $status = get('status', '');
 
-        $sql = "SELECT id, name, sku, price, cost, stock_qty, category, is_active FROM products WHERE 1=1";
+        // 取得全域低庫存預設門檻
+        $globalThreshold = db_query_one("SELECT default_low_stock_threshold FROM settings WHERE id = 1");
+        $globalLowStock = (int)($globalThreshold['default_low_stock_threshold'] ?? 5);
+
+        $sql = "SELECT id, name, sku, price, cost, stock_qty, low_stock_threshold, category, is_active FROM products WHERE 1=1";
         $params = [];
 
         if ($search !== '') {
@@ -39,6 +43,14 @@ switch ($action) {
         $sql .= " ORDER BY is_active DESC, name ASC";
 
         $products = db_query($sql, $params);
+
+        // 計算有效門檻（per-product 優先，否則用全域）
+        foreach ($products as &$p) {
+            $p['effective_low_stock_threshold'] = $p['low_stock_threshold'] !== null 
+                ? (int)$p['low_stock_threshold'] 
+                : $globalLowStock;
+        }
+
         json_success($products);
         break;
 

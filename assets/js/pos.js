@@ -250,6 +250,17 @@ function addToCart(type, id, name, price) {
         assigned_staff_id: defaultStaff
     });
 
+    // 低庫存警示（僅產品）
+    if (type === 'product') {
+        const product = itemsCache.find(p => p.id == id && p.type === 'product');
+        if (product) {
+            const threshold = product.effective_low_stock_threshold || 5;
+            if (product.stock_qty <= threshold) {
+                SalonEase.toast(`⚠ ${name} 目前庫存偏低（剩 ${product.stock_qty} 件）`, 'info');
+            }
+        }
+    }
+
     renderCart();
     updateCartTotals();
 }
@@ -627,6 +638,22 @@ async function checkout() {
     if (received < total) {
         SalonEase.toast('實收金額不足', 'error');
         return;
+    }
+
+    // 結帳前低庫存檢查
+    const lowStockItems = cart.filter(item => {
+        if (item.type !== 'product') return false;
+        const product = itemsCache.find(p => p.id == item.ref_id && p.type === 'product');
+        if (!product) return false;
+        const threshold = product.effective_low_stock_threshold || 5;
+        return product.stock_qty <= threshold;
+    });
+
+    if (lowStockItems.length > 0) {
+        const names = lowStockItems.map(i => i.name).join('、');
+        if (!confirm(`以下產品庫存偏低：${names}\n\n確定要繼續結帳嗎？`)) {
+            return;
+        }
     }
 
     const payload = {
