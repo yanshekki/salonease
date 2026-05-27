@@ -681,6 +681,51 @@ async function quickStatusChange(id, status, viewType = 'list') {
     }
 }
 
+// 快速調整預約時間（± 分鐘）
+async function quickTimeShift(id, minutes, viewType = 'list') {
+    try {
+        // 先取得目前預約資料
+        const res = await SalonEase.fetch(`/api/appointments.php?action=get&id=${id}`);
+        const a = res.data;
+
+        const start = new Date(a.start_time);
+        const end = new Date(a.end_time);
+
+        start.setMinutes(start.getMinutes() + minutes);
+        end.setMinutes(end.getMinutes() + minutes);
+
+        const newStart = start.toISOString().slice(0, 19).replace('T', ' ');
+        const newEnd = end.toISOString().slice(0, 19).replace('T', ' ');
+
+        // 呼叫 update API
+        await SalonEase.fetch('/api/appointments.php?action=update', {
+            method: 'POST',
+            body: {
+                id: a.id,
+                customer_id: a.customer_id,
+                staff_id: a.staff_id,
+                room_id: a.room_id || '',
+                start_time: newStart,
+                end_time: newEnd,
+                notes: a.notes || '',
+                services: a.items ? a.items.map(i => i.service_id) : []
+            }
+        });
+
+        SalonEase.toast(`已${minutes > 0 ? '延後' : '提前'} ${Math.abs(minutes)} 分鐘`);
+
+        if (viewType === 'calendar') {
+            loadTodaySchedule();
+        } else if (viewType === 'week') {
+            loadWeekView();
+        } else {
+            loadAppointments();
+        }
+    } catch (err) {
+        SalonEase.toast(err.message, 'error');
+    }
+}
+
 function openPosFromAppointment() {
     if (!currentDetailId) return;
     // 跳轉到 POS 並帶上預約 ID（Phase 3 會處理自動帶入客戶與服務）
@@ -1146,7 +1191,18 @@ async function loadTodayScheduleForDate(targetDateStr) {
             if (a.status === 'pending' || a.status === 'confirmed') quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'completed', 'calendar')" class="px-1 py-0 text-[9px] bg-blue-200 hover:bg-blue-300 rounded">完成</span>`);
             if (a.status !== 'cancelled' && a.status !== 'no_show') quickActions.push(`<span onclick="event.stopImmediatePropagation(); quickStatusChange(${a.id}, 'cancelled', 'calendar')" class="px-1 py-0 text-[9px] bg-red-200 hover:bg-red-300 rounded">取消</span>`);
 
-            const actionsHtml = quickActions.length > 0 ? `<div class="absolute top-0.5 right-0.5 hidden group-hover:flex gap-1 text-[9px]">${quickActions.join('')}</div>` : '';
+            // 快速調整時間（±30 分鐘）
+            const timeShiftActions = `
+                <span onclick="event.stopImmediatePropagation(); quickTimeShift(${a.id}, -30, 'calendar')" class="px-1 py-0 text-[9px] bg-gray-200 hover:bg-gray-300 rounded">−30</span>
+                <span onclick="event.stopImmediatePropagation(); quickTimeShift(${a.id}, 30, 'calendar')" class="px-1 py-0 text-[9px] bg-gray-200 hover:bg-gray-300 rounded">+30</span>
+            `;
+
+            const actionsHtml = `
+                <div class="absolute top-0.5 right-0.5 hidden group-hover:flex gap-1 text-[9px]">
+                    ${quickActions.join('')}
+                    ${timeShiftActions}
+                </div>
+            `;
 
             html += `
                 <div onclick="showDetailModal(${a.id})" 
