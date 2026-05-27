@@ -114,19 +114,33 @@ function renderCustomerPackages() {
 
     let html = '';
     customerPackages.forEach(cp => {
-        html += `
-            <div onclick="addPackageRedemption(${cp.id}, '${cp.name.replace(/'/g, "\\'")}', ${cp.remaining_sessions})" 
-                 class="flex justify-between items-center p-3 border-b hover:bg-[#F8F5F0] cursor-pointer">
-                <div>
-                    <div class="font-medium">${e(cp.name)}</div>
-                    <div class="text-xs text-[#8A8A8C]">剩餘 ${cp.remaining_sessions} 次 ｜ 到期 ${cp.expiry_date}</div>
+        const alreadyAdded = cart.some(item => item.type === 'package' && item.ref_id === cp.id);
+
+        if (alreadyAdded) {
+            html += `
+                <div class="flex justify-between items-center p-3 border-b bg-gray-100 opacity-60">
+                    <div>
+                        <div class="font-medium">${e(cp.name)}</div>
+                        <div class="text-xs text-[#8A8A8C]">剩餘 ${cp.remaining_sessions} 次 ｜ 已加入購物車</div>
+                    </div>
+                    <div class="text-right text-xs text-[#8A8A8C]">已加入</div>
                 </div>
-                <div class="text-right">
-                    <div class="font-semibold text-[#8FA68F]">使用套票</div>
-                    <div class="text-[10px] text-[#8FA68F]">扣 1 次</div>
+            `;
+        } else {
+            html += `
+                <div onclick="addPackageRedemption(${cp.id}, '${cp.name.replace(/'/g, "\\'")}', ${cp.remaining_sessions})" 
+                     class="flex justify-between items-center p-3 border-b hover:bg-[#F8F5F0] cursor-pointer">
+                    <div>
+                        <div class="font-medium">${e(cp.name)}</div>
+                        <div class="text-xs text-[#8A8A8C]">剩餘 ${cp.remaining_sessions} 次 ｜ 到期 ${cp.expiry_date}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold text-[#8FA68F]">使用套票</div>
+                        <div class="text-[10px] text-[#8FA68F]">扣 1 次</div>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     });
 
     container.innerHTML = html;
@@ -137,7 +151,7 @@ function addPackageRedemption(customerPackageId, packageName, remaining) {
     // 檢查是否已經加入同一張套票
     const alreadyAdded = cart.some(item => item.type === 'package' && item.ref_id === customerPackageId);
     if (alreadyAdded) {
-        alert('此套票已經在購物車中');
+        SalonEase.toast('此套票已經在購物車中', 'error');
         return;
     }
 
@@ -145,7 +159,8 @@ function addPackageRedemption(customerPackageId, packageName, remaining) {
         id: Date.now(),
         ref_id: customerPackageId,
         type: 'package',
-        name: `使用套票：${packageName}（剩 ${remaining} 次）`,
+        name: `使用套票：${packageName}`,
+        subtitle: `扣減 1 次（剩 ${remaining} 次）`,
         unit_price: 0,
         qty: 1
     });
@@ -181,17 +196,33 @@ function renderCart() {
     let html = '';
     cart.forEach((item, index) => {
         const lineTotal = item.unit_price * item.qty;
+        const isPackage = item.type === 'package';
+
+        let nameHtml = `<div class="font-medium text-sm">${e(item.name)}</div>`;
+        let subtitleHtml = '';
+
+        if (isPackage) {
+            subtitleHtml = `<div class="text-xs text-purple-600">${e(item.subtitle || '套票扣減')}</div>`;
+            nameHtml = `<div class="font-medium text-sm text-purple-700">${e(item.name)}</div>`;
+        } else {
+            subtitleHtml = `<div class="text-xs text-[#8A8A8C]">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>`;
+        }
+
         html += `
-            <div class="flex justify-between items-center p-2 border-b">
+            <div class="flex justify-between items-center p-2 border-b ${isPackage ? 'bg-purple-50' : ''}">
                 <div class="flex-1">
-                    <div class="font-medium text-sm">${e(item.name)}</div>
-                    <div class="text-xs text-[#8A8A8C]">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>
+                    ${nameHtml}
+                    ${subtitleHtml}
                 </div>
                 <div class="text-right">
-                    <div class="font-semibold">HK$ ${lineTotal.toFixed(0)}</div>
+                    <div class="font-semibold ${isPackage ? 'text-purple-700' : ''}">
+                        ${isPackage ? '扣減' : 'HK$ ' + lineTotal.toFixed(0)}
+                    </div>
                     <div class="flex gap-1 mt-1 justify-end">
-                        <button onclick="changeQty(${index}, -1)" class="w-5 h-5 text-xs border rounded">-</button>
-                        <button onclick="changeQty(${index}, 1)" class="w-5 h-5 text-xs border rounded">+</button>
+                        ${!isPackage ? `
+                            <button onclick="changeQty(${index}, -1)" class="w-5 h-5 text-xs border rounded">-</button>
+                            <button onclick="changeQty(${index}, 1)" class="w-5 h-5 text-xs border rounded">+</button>
+                        ` : ''}
                         <button onclick="removeFromCart(${index})" class="w-5 h-5 text-xs text-red-500">×</button>
                     </div>
                 </div>
@@ -211,19 +242,35 @@ function changeQty(index, delta) {
 
 // 移除項目
 function removeFromCart(index) {
+    const removedItem = cart[index];
     cart.splice(index, 1);
     renderCart();
     updateCartTotals();
+
+    // 如果目前正在顯示客戶套票列表，且移除的是套票，刷新列表
+    const packageBtn = document.getElementById('filter-package');
+    if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]') && removedItem.type === 'package') {
+        renderCustomerPackages();
+    }
 }
 
 // 清空購物車
 function clearCart() {
     if (!confirm('確定要清空購物車嗎？')) return;
+
+    const hadPackages = cart.some(item => item.type === 'package');
+
     cart = [];
     currentCustomer = null;
     renderCart();
     updateCartTotals();
     document.getElementById('pos-customer-info').innerHTML = '';
+
+    // 如果正在看套票列表且之前有套票，刷新列表
+    const packageBtn = document.getElementById('filter-package');
+    if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]') && hadPackages) {
+        renderCustomerPackages();
+    }
 }
 
 // 更新總計
