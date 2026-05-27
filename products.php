@@ -123,8 +123,8 @@ $extraJs = 'hotkeys.js';
                 <input type="number" id="product-stock" class="salon-input" value="0">
             </div>
             <div>
-                <label class="block text-sm font-medium mb-1">低庫存門檻（留空則用全域預設）</label>
-                <input type="number" id="product-low-stock" class="salon-input" value="" placeholder="例如 5">
+                <label class="block text-sm font-medium mb-1" title="留空則使用設定頁的全域預設門檻">低庫存門檻（留空則用全域預設）</label>
+                <input type="number" id="product-low-stock" class="salon-input" value="" placeholder="例如 5" title="留空則使用設定頁的全域預設門檻">
             </div>
         </div>
 
@@ -193,7 +193,7 @@ function renderProductsTable(list) {
         const isLowStock = p.stock_qty <= threshold;
         const stockColor = isLowStock ? 'text-red-600 font-medium' : '';
         const stockBadge = isLowStock 
-            ? `<span class="ml-1 text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded">低庫存</span>` 
+            ? `<span onclick="event.stopImmediatePropagation(); editProduct(${p.id});" class="ml-1 text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded cursor-pointer hover:bg-red-200" title="點擊快速編輯低庫存門檻">低庫存</span>` 
             : '';
 
         html += `

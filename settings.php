@@ -155,11 +155,11 @@ include __DIR__ . '/includes/header.php';
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs text-[#5A5A5C] mb-1">低庫存預設門檻</label>
+                        <label class="block text-xs text-[#5A5A5C] mb-1" title="產品庫存低於此數量時會顯示警示（可被個別產品覆蓋）">低庫存預設門檻</label>
                         <div class="flex items-center">
                             <input type="number" x-model.number="form.default_low_stock_threshold" 
                                    step="1" min="0" 
-                                   class="salon-input w-full text-right">
+                                   class="salon-input w-full text-right" title="產品庫存低於此數量時會顯示警示">
                             <span class="ml-2 text-sm text-[#8A8A8C]">件</span>
                         </div>
                     </div>
