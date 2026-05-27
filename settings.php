@@ -8,8 +8,14 @@ include __DIR__ . '/includes/header.php';
     <h2 class="text-xl font-semibold mb-6">系統設定</h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <a href="/staff.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
+        <a href="/customers.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
             <div class="text-2xl mb-2">👥</div>
+            <div class="font-semibold group-hover:text-[#8FA68F]">客戶管理</div>
+            <div class="text-sm text-[#5A5A5C] mt-1">客戶資料、新增與編輯</div>
+        </a>
+
+        <a href="/staff.php" class="block p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#8FA68F] transition group">
+            <div class="text-2xl mb-2">🧑‍💼</div>
             <div class="font-semibold group-hover:text-[#8FA68F]">員工管理</div>
             <div class="text-sm text-[#5A5A5C] mt-1">新增、編輯、啟用/停用員工帳號及角色</div>
         </a>
