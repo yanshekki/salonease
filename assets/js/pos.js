@@ -595,7 +595,7 @@ function setupCustomerSearch() {
                     if (customerPackages.length > 0) {
                         // 只有在目前不是套票分類時才自動切換，避免干擾用戶
                         const packageBtn = document.getElementById('filter-package');
-                        if (!packageBtn || !packageBtn.classList.contains('bg-[#2C2C2E]')) {
+                        if (!packageBtn || !packageBtn.classList.contains('btn-dark')) {
                             filterItems('package');
                         } else {
                             // 如果已經在套票分類，直接刷新顯示客戶的套票
@@ -604,7 +604,7 @@ function setupCustomerSearch() {
                     } else {
                         // 如果客戶沒有套票，但目前在套票分類，切回「全部」
                         const packageBtn = document.getElementById('filter-package');
-                        if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]')) {
+                        if (packageBtn && packageBtn.classList.contains('btn-dark')) {
                             filterItems('all');
                         }
                     }
@@ -641,30 +641,87 @@ async function loadCustomerPackages(customerId) {
 
 // 快速建立新客戶
 async function quickCreateCustomer() {
-    const name = prompt('請輸入客戶姓名：');
-    if (!name) return;
-
-    const phone = prompt('請輸入客戶電話：');
-    if (!phone) return;
-
-    try {
-        const res = await SalonEase.fetch('/api/customers.php?action=create', {
-            method: 'POST',
-            body: {
-                name: name,
-                phone: phone
-            }
-        });
-
-        currentCustomer = { id: res.data.id, name: name, phone: phone };
-        document.getElementById('pos-customer-search').value = name;
-        document.getElementById('pos-customer-info').innerHTML = 
-            `<span class="text-[#8FA68F]">✓ ${e(name)} (${e(phone)})</span>`;
-
-        SalonEase.toast('客戶已建立');
-    } catch (err) {
-        SalonEase.toast(err.message, 'error');
+    // 建立 Bootstrap Modal（如果不存在）
+    let modalEl = document.getElementById('quickCustomerModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'quickCustomerModal';
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">快速新增客戶</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">客戶姓名 <span class="text-danger">*</span></label>
+                            <input type="text" id="quick-customer-name" class="form-control" placeholder="例如：陳小美">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">電話 <span class="text-danger">*</span></label>
+                            <input type="tel" id="quick-customer-phone" class="form-control" placeholder="例如：91234567">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" id="quick-customer-save-btn" class="btn btn-primary">建立客戶</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
     }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    // 清除舊值
+    setTimeout(() => {
+        document.getElementById('quick-customer-name').value = '';
+        document.getElementById('quick-customer-phone').value = '';
+        document.getElementById('quick-customer-name').focus();
+    }, 300);
+
+    // 綁定儲存按鈕（避免重複綁定）
+    const saveBtn = document.getElementById('quick-customer-save-btn');
+    saveBtn.onclick = async () => {
+        const name = document.getElementById('quick-customer-name').value.trim();
+        const phone = document.getElementById('quick-customer-phone').value.trim();
+
+        if (!name || !phone) {
+            SalonEase.toast('請填寫姓名與電話', 'error');
+            return;
+        }
+
+        try {
+            const res = await SalonEase.fetch('/api/customers.php?action=create', {
+                method: 'POST',
+                body: { name, phone }
+            });
+
+            currentCustomer = { id: res.data.id, name, phone };
+            document.getElementById('pos-customer-search').value = name;
+            document.getElementById('pos-customer-info').innerHTML = 
+                `<span class="text-success">✓ ${e(name)} (${e(phone)})</span>`;
+
+            modal.hide();
+            SalonEase.toast('客戶已建立');
+
+            // 自動處理套票切換（與原本邏輯一致）
+            if (customerPackages.length > 0) {
+                const packageBtn = document.getElementById('filter-package');
+                if (!packageBtn || !packageBtn.classList.contains('btn-dark')) {
+                    filterItems('package');
+                } else {
+                    renderCustomerPackages();
+                }
+            }
+        } catch (err) {
+            SalonEase.toast(err.message, 'error');
+        }
+    };
 }
 
 // 結帳
@@ -764,19 +821,12 @@ async function checkout() {
             }
         } catch (e) {}
 
-        // A 改進：結帳後提供清晰打印選擇（預設使用設定頁的打印機寬度）
-        const defaultLabel = defaultWidth === '80' ? '80mm' : '58mm';
+        // 使用漂亮的 Bootstrap Modal 提供打印選擇
         setTimeout(() => {
-            if (confirm(`結帳完成！是否立即打印熱感紙收據（${defaultLabel}）？\n\n按「取消」可稍後選擇其他格式。`)) {
-                printReceipt(res.data.id, defaultWidth);
-            } else {
-                setTimeout(() => {
-                    if (confirm('要打印其他格式嗎？\n是 = 選擇 58mm / 80mm / A4')) {
-                        showPrintFormatChoice(res.data.id);
-                    }
-                }, 300);
-            }
-        }, 650);
+            SalonEase.toast(`結帳成功！可按 F9 快速打印，或選擇其他格式`, 'info');
+            // 直接開啟格式選擇 Modal，讓用戶輕鬆決定
+            showPrintFormatChoice(res.data.id);
+        }, 800);
 
     } catch (err) {
         let msg = err.message || '結帳失敗';
@@ -836,19 +886,58 @@ function showPrintFormatChoice(saleId) {
         return;
     }
 
-    const choice = prompt(
-        '請選擇打印格式：\n' +
-        '1 = 熱感紙 58mm（最常用）\n' +
-        '2 = 熱感紙 80mm\n' +
-        '3 = A4 正式收據 / 合約（含簽名欄）\n\n' +
-        '直接輸入 1 / 2 / 3'
-    );
+    // 建立或重用打印格式選擇 Modal
+    let modalEl = document.getElementById('printFormatModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'printFormatModal';
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">選擇打印格式</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary py-3 text-start" data-format="58">
+                                <div class="fw-semibold">熱感紙 58mm</div>
+                                <div class="small text-muted">最常用 · 快速收據</div>
+                            </button>
+                            <button class="btn btn-outline-primary py-3 text-start" data-format="80">
+                                <div class="fw-semibold">熱感紙 80mm</div>
+                                <div class="small text-muted">較寬 · 適合較多項目</div>
+                            </button>
+                            <button class="btn btn-outline-primary py-3 text-start" data-format="a4">
+                                <div class="fw-semibold">A4 正式收據 / 合約</div>
+                                <div class="small text-muted">含簽名欄 · 專業合約用途</div>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
 
-    let format = '58';
-    if (choice === '2') format = '80';
-    if (choice === '3') format = 'a4';
+        // 事件委派：點擊任一格式按鈕
+        modalEl.addEventListener('click', function(e) {
+            const btn = e.target.closest('button[data-format]');
+            if (!btn) return;
 
-    printReceipt(saleId, format);
+            const format = btn.getAttribute('data-format');
+            const currentSaleId = modalEl.dataset.saleId;
+            bootstrap.Modal.getInstance(modalEl).hide();
+            printReceipt(currentSaleId, format);
+        });
+    }
+
+    modalEl.dataset.saleId = saleId;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
 }
 
 // 工具函數
