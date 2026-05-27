@@ -68,107 +68,108 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 </head>
 <body class="bg-body min-vh-100 d-flex flex-column">
     
-    <!-- 頂部導覽列 -->
-    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div class="max-w-screen-2xl mx-auto">
-            <div class="px-6 h-16 flex items-center justify-between">
-                <!-- Logo + 店名 -->
-                <div class="flex items-center gap-x-3">
-                    <a href="/dashboard.php" class="flex items-center gap-x-2.5 group">
-                        <div class="w-9 h-9 bg-[#2C2C2E] text-white rounded-xl flex items-center justify-center font-bold text-xl tracking-[-1px] group-active:scale-95 transition">SE</div>
-                        <div>
-                            <div class="font-semibold text-lg leading-none"><?= e(APP_NAME ?? 'SalonEase') ?></div>
-                            <div class="text-[10px] text-[#8A8A8C] -mt-0.5">香港美容院管理</div>
-                        </div>
-                    </a>
+    <!-- 頂部導覽列 (Bootstrap Navbar) -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container-fluid" style="max-width: 1400px;">
+            <!-- Logo -->
+            <a class="navbar-brand d-flex align-items-center" href="/dashboard.php">
+                <div class="d-flex align-items-center justify-content-center bg-dark text-white rounded-2 me-2" style="width:36px; height:36px; font-weight:700; font-size:1.25rem;">
+                    SE
                 </div>
+                <div>
+                    <div class="fw-semibold fs-5 text-dark"><?= e(APP_NAME ?? 'SalonEase') ?></div>
+                    <div class="text-muted" style="font-size: 10px; line-height: 1;">香港美容院管理</div>
+                </div>
+            </a>
 
-                <!-- 主要導覽 (Desktop) -->
-                <div class="hidden md:flex items-center gap-x-1 text-sm">
-                    <a href="/dashboard.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'dashboard' ? 'nav-active' : '' ?>">
-                        概覽
-                    </a>
-                    <a href="/pos.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'pos' ? 'nav-active' : '' ?>">
-                        POS 銷售
-                    </a>
-                    <a href="/appointments.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'appointments' ? 'nav-active' : '' ?>">
-                        預約管理
-                    </a>
-                    <a href="/customers.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'customers' ? 'nav-active' : '' ?>">
-                        客戶
-                    </a>
-                    <a href="/reports.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'reports' ? 'nav-active' : '' ?>">
-                        報表
-                    </a>
-                    <a href="/commissions.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'commissions' ? 'nav-active' : '' ?>">
-                        佣金
-                    </a>
-                    <a href="/staff.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'staff' ? 'nav-active' : '' ?>">
-                        員工
-                    </a>
-                </div>
+            <!-- 手機版漢堡按鈕 -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-controls="mobileMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                <!-- 手機版選單按鈕 -->
-                <div class="md:hidden flex items-center">
-                    <button onclick="toggleMobileNav()" 
-                            class="w-10 h-10 flex items-center justify-center text-2xl text-[#2C2C2E] hover:bg-gray-100 active:bg-gray-200 rounded-xl transition active:scale-95"
-                            aria-label="選單">
-                        ☰
-                    </button>
-                </div>
-
-                <!-- 使用者區塊 -->
-                <div class="flex items-center gap-x-3">
-                    <?php if ($currentUser): ?>
-                        <div class="text-right hidden sm:block">
-                            <div class="text-sm font-medium"><?= e($currentUser['name']) ?></div>
-                            <div class="text-[10px] text-[#8A8A8C]"><?= e(ucfirst($currentUser['role'])) ?></div>
-                        </div>
-                        <a href="/settings.php" class="w-9 h-9 bg-[#F3EDE6] hover:bg-[#EDE5DC] rounded-2xl flex items-center justify-center text-lg transition" title="設定">
-                            ⚙️
-                        </a>
-                        <a href="/logout.php" 
-                           class="text-sm px-4 py-2 rounded-xl border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition flex items-center gap-x-1.5"
-                           onclick="return confirm('確定要登出嗎？')">
-                            <span>登出</span>
-                        </a>
-                    <?php endif; ?>
-                </div>
+            <!-- 桌面版導航 -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'dashboard' ? 'active fw-medium' : '' ?>" href="/dashboard.php">概覽</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'pos' ? 'active fw-medium' : '' ?>" href="/pos.php">POS 銷售</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'appointments' ? 'active fw-medium' : '' ?>" href="/appointments.php">預約管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'customers' ? 'active fw-medium' : '' ?>" href="/customers.php">客戶</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'reports' ? 'active fw-medium' : '' ?>" href="/reports.php">報表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'commissions' ? 'active fw-medium' : '' ?>" href="/commissions.php">佣金</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'staff' ? 'active fw-medium' : '' ?>" href="/staff.php">員工</a>
+                    </li>
+                </ul>
             </div>
 
-            <!-- 手機版下拉選單 -->
-            <div id="mobile-nav" class="hidden md:hidden border-t bg-white">
-                <div class="px-2 py-1 flex flex-col text-sm">
-                    <a href="/dashboard.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'dashboard' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">概覽</a>
-                    <a href="/pos.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'pos' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">POS 銷售</a>
-                    <a href="/appointments.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'appointments' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">預約管理</a>
-                    <a href="/customers.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'customers' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">客戶</a>
-                    <a href="/reports.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'reports' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">報表</a>
-                    <a href="/commissions.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'commissions' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">佣金</a>
-                    <a href="/staff.php" class="py-3 px-4 rounded-xl active:bg-gray-100 <?= $currentPage === 'staff' ? 'font-medium text-[#2C2C2E] bg-[#F8F5F0]' : '' ?>">員工</a>
-                    <div class="border-t my-1 mx-2"></div>
-                    <a href="/settings.php" class="py-3 px-4 rounded-xl active:bg-gray-100">系統設定</a>
-                    <a href="/logout.php" class="py-3 px-4 rounded-xl text-red-600 active:bg-red-50" onclick="return confirm('確定要登出嗎？')">登出</a>
-                </div>
+            <!-- 使用者區塊 -->
+            <div class="d-flex align-items-center gap-2">
+                <?php if ($currentUser): ?>
+                    <div class="d-none d-sm-block text-end me-2" style="line-height:1.1;">
+                        <div class="small fw-medium"><?= e($currentUser['name']) ?></div>
+                        <div class="text-muted" style="font-size:10px;"><?= e(ucfirst($currentUser['role'])) ?></div>
+                    </div>
+                    <a href="/settings.php" class="btn btn-light rounded-circle p-0 d-flex align-items-center justify-content-center" style="width:36px; height:36px;" title="設定">
+                        ⚙️
+                    </a>
+                    <a href="/logout.php" class="btn btn-outline-danger btn-sm" onclick="return confirm('確定要登出嗎？')">
+                        登出
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </nav>
 
-    <script>
-        function toggleMobileNav() {
-            const nav = document.getElementById('mobile-nav');
-            if (nav) {
-                nav.classList.toggle('hidden');
-            }
-        }
-    </script>
+    <!-- 手機版 Offcanvas 選單 -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="mobileMenuLabel">SalonEase</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'dashboard' ? 'active fw-semibold' : '' ?>" href="/dashboard.php">概覽</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'pos' ? 'active fw-semibold' : '' ?>" href="/pos.php">POS 銷售</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'appointments' ? 'active fw-semibold' : '' ?>" href="/appointments.php">預約管理</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'customers' ? 'active fw-semibold' : '' ?>" href="/customers.php">客戶</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'reports' ? 'active fw-semibold' : '' ?>" href="/reports.php">報表</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'commissions' ? 'active fw-semibold' : '' ?>" href="/commissions.php">佣金</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'staff' ? 'active fw-semibold' : '' ?>" href="/staff.php">員工</a>
+                </li>
+                <li class="nav-item mt-3 pt-3 border-top">
+                    <a class="nav-link py-2" href="/settings.php">系統設定</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 text-danger" href="/logout.php" onclick="return confirm('確定要登出嗎？')">登出</a>
+                </li>
+            </ul>
+        </div>
+    </div>
 
     <!-- 主要內容區域（各頁面自己開 <main> 與關閉） -->
     <div class="flex-1 max-w-screen-2xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
