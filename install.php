@@ -498,7 +498,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'insta
                         // 偶爾同步產生預約記錄（已完成）
                         if (mt_rand(0, 100) < 38) {
                             $startHour = mt_rand(10, 19);
-                            $start = $saleDate . ' ' . str_pad($startHour, 2, '0', STR_PAD_LEFT) . ':' . str_pad(mt_rand(0, 45) - (mt_rand(0, 45) % 15), 2, '0', STR_PAD_LEFT) . ':00';
+                            // 安全產生 15 分鐘間隔時間，避免負數導致 datetime 格式錯誤
+                            $possibleMinutes = [0, 15, 30, 45];
+                            $startMinute = $possibleMinutes[array_rand($possibleMinutes)];
+                            $start = $saleDate . ' ' . sprintf('%02d:%02d:00', $startHour, $startMinute);
                             $duration = mt_rand(30, 90);
                             $end = date('Y-m-d H:i:s', strtotime($start) + $duration * 60);
                             
