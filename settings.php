@@ -95,68 +95,63 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
     </div>
-                <div class="font-medium mt-4 mb-2 text-[#2C2C2E]">POS 頁</div>
-                <div class="space-y-1 text-[#5A5A5C]">
-                    <div><span class="font-mono text-[#8FA68F]">S</span>　批量指派員工</div>
-                    <div><span class="font-mono text-[#8FA68F]">F9</span>　打印上一張收據</div>
+
+    <!-- 打印與佣金預設 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">打印與佣金預設</div>
+                    <div class="small text-muted">這些數值會作為新單據的預設值</div>
                 </div>
             </div>
-        </div>
-        
-        <div class="mt-4 text-xs text-[#8A8A8C]">
-            提示：按 <span class="font-mono">?</span> 鍵可隨時查看目前頁面的完整熱鍵說明。
+
+            <div class="mb-4">
+                <label class="form-label small">熱感紙打印機預設寬度</label>
+                <div class="d-flex gap-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" x-model="form.printer_width" value="58" id="print58">
+                        <label class="form-check-label small" for="print58">58mm（最常用）</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" x-model="form.printer_width" value="80" id="print80">
+                        <label class="form-check-label small" for="print80">80mm</label>
+                    </div>
+                </div>
+                <div class="small text-muted mt-1">結帳後預設打印格式會參考此設定</div>
+            </div>
+
+            <div>
+                <div class="fw-medium small mb-2">佣金預設比率（%）</div>
+                <div class="row g-3">
+                    <div class="col-sm-4">
+                        <label class="form-label small">服務項目</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" x-model.number="form.default_commission_service" 
+                                   step="0.5" min="0" max="100" class="form-control">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label small">零售產品</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" x-model.number="form.default_commission_retail" 
+                                   step="0.5" min="0" max="100" class="form-control">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label small">開單</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" x-model.number="form.default_commission_open" 
+                                   step="0.5" min="0" max="100" class="form-control">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <!-- 打印與佣金預設（本輪 A 選擇） -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <div class="font-semibold text-lg">打印與佣金預設</div>
-                <div class="text-sm text-[#5A5A5C]">這些數值會作為新單據的預設值</div>
-            </div>
-        </div>
-
-        <div class="space-y-5">
-            <!-- 打印機寬度 -->
-            <div>
-                <label class="block text-sm font-medium mb-2">熱感紙打印機預設寬度</label>
-                <div class="flex gap-4">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" x-model="form.printer_width" value="58" class="accent-[#2C2C2E]">
-                        <span>58mm（最常用）</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" x-model="form.printer_width" value="80" class="accent-[#2C2C2E]">
-                        <span>80mm</span>
-                    </label>
-                </div>
-                <div class="text-xs text-[#8A8A8C] mt-1">結帳後預設打印格式會參考此設定</div>
-            </div>
-
-            <!-- 佣金預設比率 -->
-            <div>
-                <div class="text-sm font-medium mb-2">佣金預設比率（%）</div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs text-[#5A5A5C] mb-1">服務項目</label>
-                        <div class="flex items-center">
-                            <input type="number" x-model.number="form.default_commission_service" 
-                                   step="0.5" min="0" max="100"
-                                   class="salon-input w-full text-right">
-                            <span class="ml-2 text-sm text-[#8A8A8C]">%</span>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-[#5A5A5C] mb-1">零售產品</label>
-                        <div class="flex items-center">
-                            <input type="number" x-model.number="form.default_commission_retail" 
-                                   step="0.5" min="0" max="100"
-                                   class="salon-input w-full text-right">
-                            <span class="ml-2 text-sm text-[#8A8A8C]">%</span>
-                        </div>
-                    </div>
-                    <div>
                         <label class="block text-xs text-[#5A5A5C] mb-1">開單佣金</label>
                         <div class="flex items-center">
                             <input type="number" x-model.number="form.default_commission_open" 
