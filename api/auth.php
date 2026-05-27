@@ -41,7 +41,7 @@ switch ($action) {
 
     case 'me':
         require_login();
-        $user = get_current_user();
+        $user = get_logged_in_user();
         json_success($user);
         break;
 

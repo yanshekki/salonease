@@ -120,7 +120,7 @@ switch ($action) {
         if (!$current) json_error('找不到該員工');
 
         // 只有 admin 可以改其他 admin 的角色
-        $currentUser = get_current_user();
+        $currentUser = get_logged_in_user();
         if (!$currentUser) {
             json_error('請先登入', 401);
         }
@@ -143,7 +143,7 @@ switch ($action) {
         $id = (int)post('id');
         $newStatus = (int)post('status'); // 1 = 啟用, 0 = 停用
 
-        $currentUser = get_current_user();
+        $currentUser = get_logged_in_user();
         if (!$currentUser) {
             json_error('請先登入', 401);
         }

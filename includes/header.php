@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/functions.php';
 
-$currentUser = get_current_user();
+$currentUser = get_logged_in_user();
 $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 ?>
 <!DOCTYPE html>

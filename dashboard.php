@@ -11,7 +11,7 @@ require_once __DIR__ . '/db.php';
 $pageTitle = '今日概覽';
 $pageSubtitle = 'SalonEase 香港小型美容院管理系統';
 
-$user = get_current_user();
+$user = get_logged_in_user();
 
 // 簡單統計（Phase 0 最小實作）
 $today = date('Y-m-d');
