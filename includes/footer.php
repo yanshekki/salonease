@@ -6,26 +6,27 @@
 ?>
     </div><!-- /.max-w-screen-2xl -->
 
-    <!-- 全域熱鍵提示列（強制顯示） -->
+    <!-- 全域熱鍵提示列（手機版自動精簡） -->
     <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[60] shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.03)]">
-        <div class="max-w-screen-2xl mx-auto px-6 h-10 flex items-center justify-between text-xs text-[#5A5A5C]">
-            <div class="flex items-center gap-x-4">
-                <div class="flex items-center gap-x-1.5">
-                    <span class="font-medium text-[#2C2C2E]">⌨️ 快捷鍵</span>
-                    <button onclick="showHotkeyHelp()" 
-                            class="px-2.5 py-0.5 rounded-lg bg-gray-100 hover:bg-gray-200 font-medium text-[#2C2C2E] transition">
-                        按 <span class="font-mono">?</span> 顯示說明
-                    </button>
-                </div>
-                <div class="hidden md:block text-gray-300">|</div>
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 h-10 flex items-center justify-between text-xs text-[#5A5A5C]">
+            <!-- 手機版：只顯示幫助按鈕 -->
+            <div class="flex items-center gap-x-3 sm:gap-x-4">
+                <button onclick="showHotkeyHelp()" 
+                        class="flex items-center gap-x-1.5 px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 font-medium text-[#2C2C2E] active:scale-[0.985] transition text-xs sm:text-sm">
+                    <span class="hidden sm:inline">⌨️ 快捷鍵</span>
+                    <span class="sm:hidden">?</span>
+                    <span class="hidden sm:inline">說明</span>
+                </button>
+
+                <!-- 平板以上才顯示詳細熱鍵 -->
                 <div class="hidden md:flex items-center gap-x-3 text-[10px]">
                     <span><span class="font-semibold">Ctrl+K</span> 命令面板</span>
-                    <span><span class="font-semibold">Esc</span> 關閉彈窗</span>
-                    <span><span class="font-semibold">Alt+P</span> POS</span>
+                    <span class="text-gray-300">|</span>
+                    <span><span class="font-semibold">Esc</span> 關閉</span>
                 </div>
             </div>
             
-            <div class="text-right">
+            <div class="text-right text-[10px] sm:text-xs">
                 <span class="hidden sm:inline">SalonEase v<?= e(APP_VERSION ?? '0.1') ?> · </span>
                 <span class="text-[#8A8A8C]">專業 · 簡單 · 高效</span>
             </div>

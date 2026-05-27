@@ -71,7 +71,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                     </a>
                 </div>
 
-                <!-- 主要導覽 -->
+                <!-- 主要導覽 (Desktop) -->
                 <div class="hidden md:flex items-center gap-x-1 text-sm">
                     <a href="/dashboard.php" 
                        class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'dashboard' ? 'nav-active' : '' ?>">
@@ -103,6 +103,15 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                     </a>
                 </div>
 
+                <!-- 手機版選單按鈕 -->
+                <div class="md:hidden flex items-center">
+                    <button onclick="toggleMobileNav()" 
+                            class="w-10 h-10 flex items-center justify-center text-2xl text-[#2C2C2E] hover:bg-gray-100 rounded-xl transition"
+                            aria-label="選單">
+                        ☰
+                    </button>
+                </div>
+
                 <!-- 使用者區塊 -->
                 <div class="flex items-center gap-x-3">
                     <?php if ($currentUser): ?>
@@ -121,11 +130,36 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                     <?php endif; ?>
                 </div>
             </div>
+
+            <!-- 手機版下拉選單 -->
+            <div id="mobile-nav" class="hidden md:hidden border-t bg-white">
+                <div class="px-4 py-2 flex flex-col text-sm">
+                    <a href="/dashboard.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'dashboard' ? 'font-medium text-[#2C2C2E]' : '' ?>">概覽</a>
+                    <a href="/pos.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'pos' ? 'font-medium text-[#2C2C2E]' : '' ?>">POS 銷售</a>
+                    <a href="/appointments.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'appointments' ? 'font-medium text-[#2C2C2E]' : '' ?>">預約管理</a>
+                    <a href="/customers.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'customers' ? 'font-medium text-[#2C2C2E]' : '' ?>">客戶</a>
+                    <a href="/reports.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'reports' ? 'font-medium text-[#2C2C2E]' : '' ?>">報表</a>
+                    <a href="/commissions.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'commissions' ? 'font-medium text-[#2C2C2E]' : '' ?>">佣金</a>
+                    <a href="/staff.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100 <?= $currentPage === 'staff' ? 'font-medium text-[#2C2C2E]' : '' ?>">員工</a>
+                    <div class="border-t my-1"></div>
+                    <a href="/settings.php" class="py-2.5 px-3 rounded-lg hover:bg-gray-100">系統設定</a>
+                    <a href="/logout.php" class="py-2.5 px-3 rounded-lg text-red-600 hover:bg-red-50" onclick="return confirm('確定要登出嗎？')">登出</a>
+                </div>
+            </div>
         </div>
     </nav>
 
+    <script>
+        function toggleMobileNav() {
+            const nav = document.getElementById('mobile-nav');
+            if (nav) {
+                nav.classList.toggle('hidden');
+            }
+        }
+    </script>
+
     <!-- 主要內容區域（各頁面自己開 <main> 與關閉） -->
-    <div class="flex-1 max-w-screen-2xl mx-auto w-full px-6 pt-6 pb-20">
+    <div class="flex-1 max-w-screen-2xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
         <!-- 頁面標題（可被覆蓋） -->
         <?php if (isset($pageTitle) && $pageTitle): ?>
             <div class="mb-6">

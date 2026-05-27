@@ -24,18 +24,24 @@
     @apply w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#8FA68F] focus:border-transparent outline-none;
 }
 
-/* 表格 */
+/* 表格 - 加強手機響應式 */
 .salon-table {
-    @apply w-full text-sm;
+    @apply w-full text-sm min-w-[600px]; /* 手機上會有橫向捲動 */
 }
 .salon-table thead th {
-    @apply bg-gray-50 text-[#5A5A5C] font-medium text-xs uppercase tracking-wider py-3 px-4 text-left border-b;
+    @apply bg-gray-50 text-[#5A5A5C] font-medium text-xs uppercase tracking-wider py-3 px-3 sm:px-4 text-left border-b;
 }
 .salon-table tbody td {
-    @apply py-3 px-4 border-b border-gray-100;
+    @apply py-3 px-3 sm:px-4 border-b border-gray-100;
 }
 .salon-table tbody tr:hover {
     @apply bg-[#F8F5F0];
+}
+
+/* 表格容器 - 手機自動橫向捲動 */
+.table-responsive {
+    @apply overflow-x-auto -mx-1 px-1;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Modal 基本樣式 */
@@ -44,6 +50,42 @@
 }
 
 /* Toast 已由 JS 動態產生 */
+
+/* ===== 手機 / 平板響應式優化 ===== */
+@media (max-width: 768px) {
+    /* 按鈕在手機加大觸控區域 */
+    .salon-btn {
+        padding-top: 0.625rem;
+        padding-bottom: 0.625rem;
+        font-size: 0.9375rem;
+    }
+
+    /* Modal 在手機更滿版 */
+    .salon-modal {
+        margin: 0.5rem;
+        border-radius: 1rem;
+    }
+
+    /* 減小標題在手機的空間 */
+    h1 {
+        font-size: 1.35rem !important;
+        line-height: 1.3;
+    }
+
+    /* 表單元素加大 */
+    .salon-input {
+        padding-top: 0.625rem;
+        padding-bottom: 0.625rem;
+        font-size: 1rem;
+    }
+}
+
+/* 確保所有頁面內容在極小螢幕有足夠底部空間 */
+@media (max-width: 640px) {
+    .flex-1.max-w-screen-2xl {
+        padding-bottom: 4.5rem !important;
+    }
+}
 
 /* 打印時隱藏 */
 @media print {
