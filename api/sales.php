@@ -85,8 +85,8 @@ switch ($action) {
                     $line_total = (float)$item['unit_price'] * (int)$item['qty'];
                     $ref_id = (int)$item['ref_id'];
 
-                    // 預設執行人員為開單人
-                    $item_staff_id = $_SESSION['staff_id'];
+                    // 使用前端傳來的指派員工，否則預設為開單人
+                    $item_staff_id = !empty($item['staff_id']) ? (int)$item['staff_id'] : $_SESSION['staff_id'];
 
                     $item_stmt->execute([
                         $sale_id,

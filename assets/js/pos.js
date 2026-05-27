@@ -6,6 +6,8 @@ let cart = [];
 let currentCustomer = null;
 let itemsCache = [];
 let customerPackages = [];   // 客戶持有的有效套票
+let staffList = [];          // 員工清單（供指派使用）
+let currentStaffId = null;   // 目前登入員工 ID
 
 // 載入所有可銷售項目
 async function loadItems() {
@@ -240,7 +242,8 @@ function addToCart(type, id, name, price) {
         type: type,
         name: name,
         unit_price: parseFloat(price),
-        qty: 1
+        qty: 1,
+        assigned_staff_id: currentStaffId || null   // 預設指派目前員工
     });
 
     renderCart();
@@ -290,12 +293,23 @@ function renderCart() {
                 </div>
             `;
         } else {
-            // 一般收費項目
+            // 一般收費項目 + 指派員工功能
+            const assignedName = getStaffName(item.assigned_staff_id) || '未指派';
             html += `
                 <div class="flex justify-between items-center p-2 border-b">
                     <div class="flex-1">
                         <div class="font-medium text-sm">${e(item.name)}</div>
                         <div class="text-xs text-[#8A8A8C]">HK$ ${item.unit_price.toFixed(0)} × ${item.qty}</div>
+                        <div class="text-[10px] mt-0.5">
+                            <span class="text-[#8A8A8C]">指派：</span>
+                            <select onchange="changeAssignedStaff(${index}, this.value)" 
+                                    class="text-xs border rounded px-1 py-0 bg-white">
+                                <option value="">開單人</option>
+                                ${staffList.map(s => 
+                                    `<option value="${s.id}" ${item.assigned_staff_id == s.id ? 'selected' : ''}>${e(s.name)}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
                     </div>
                     <div class="text-right">
                         <div class="font-semibold">HK$ ${lineTotal.toFixed(0)}</div>
@@ -324,6 +338,19 @@ function changeQty(index, delta) {
     }
     renderCart();
     updateCartTotals();
+}
+
+// 取得員工名稱
+function getStaffName(staffId) {
+    if (!staffId) return null;
+    const s = staffList.find(x => x.id == staffId);
+    return s ? s.name : null;
+}
+
+// 改變項目指派的員工
+function changeAssignedStaff(index, staffId) {
+    cart[index].assigned_staff_id = staffId ? parseInt(staffId) : null;
+    // 不需要重繪整個 cart，因為 select 已經變了
 }
 
 // 移除項目
@@ -558,7 +585,8 @@ async function checkout() {
             ref_id: item.ref_id,
             name: item.name,
             qty: item.qty,
-            unit_price: item.unit_price
+            unit_price: item.unit_price,
+            staff_id: item.assigned_staff_id || null   // 指派員工
         })),
         discount: parseFloat(document.getElementById('cart-discount').value) || 0,
         payment_method: method,
@@ -650,7 +678,7 @@ function printReceipt(saleId, format = '58') {
         saleId = window.lastSaleId;
     }
     if (!saleId) {
-        alert('沒有可打印的收據');
+        SalonEase.toast('沒有可打印的收據', 'error');
         return;
     }
 
@@ -667,7 +695,7 @@ function printLastReceipt(format = '58') {
     if (window.lastSaleId) {
         printReceipt(window.lastSaleId, format);
     } else {
-        alert('目前沒有上一張收據');
+        SalonEase.toast('目前沒有上一張收據', 'error');
     }
 }
 
@@ -675,7 +703,7 @@ function printLastReceipt(format = '58') {
 function showPrintFormatChoice(saleId) {
     if (!saleId && window.lastSaleId) saleId = window.lastSaleId;
     if (!saleId) {
-        alert('沒有可打印的收據');
+        SalonEase.toast('沒有可打印的收據', 'error');
         return;
     }
 
@@ -697,6 +725,22 @@ function showPrintFormatChoice(saleId) {
 // 工具函數
 function e(str) {
     return str ? str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
+}
+
+// 載入員工清單（供 POS 指派員工使用）
+async function loadStaffForAssignment() {
+    try {
+        const res = await SalonEase.fetch('/api/staff.php?action=list&is_active=1');
+        staffList = res.data || [];
+
+        // 同時取得目前登入員工
+        try {
+            const me = await SalonEase.fetch('/api/auth.php?action=me');
+            currentStaffId = me.data?.id || null;
+        } catch (e) {}
+    } catch (e) {
+        console.warn('載入員工清單失敗', e);
+    }
 }
 
 // 暴露給全域（給 pos.php 內聯 script 呼叫）

@@ -143,6 +143,7 @@ $extraJs = 'pos.js';
 document.addEventListener('DOMContentLoaded', () => {
     loadItems();
     setupCustomerSearch();
+    loadStaffForAssignment();   // 載入員工清單供指派使用
 
     // 註冊 POS 頁專屬熱鍵（F9 已全域，但這裡再強調）
     if (window.SalonEase && window.SalonEase.Hotkeys && window.SalonEase.Hotkeys.registerPage) {
