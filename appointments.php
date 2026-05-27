@@ -161,6 +161,7 @@ $extraJs = 'hotkeys.js';
                     <span class="font-semibold">時程</span>
                     <span id="today-date" class="text-sm text-[#5A5A5C] ml-1"></span>
                     <button onclick="navigateTodayDay(1)" class="px-2 py-0.5 text-sm rounded hover:bg-gray-100">→</button>
+                    <button id="back-to-today-btn" onclick="loadTodaySchedule()" class="hidden ml-2 px-2 py-0.5 text-xs rounded bg-[#8FA68F] text-white hover:bg-[#7A947A]">返回今日</button>
                 </div>
                 <select id="today-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadTodaySchedule()">
                     <option value="">全部美容師</option>
@@ -194,6 +195,7 @@ $extraJs = 'hotkeys.js';
                 <select id="week-staff-filter" class="text-sm border rounded-lg px-2 py-1" onchange="loadWeekView()">
                     <option value="">全部美容師</option>
                 </select>
+                <button onclick="switchView('calendar')" class="text-xs px-2 py-0.5 rounded bg-[#8FA68F] text-white hover:bg-[#7A947A]">今日</button>
             </div>
             <button onclick="loadWeekView()" class="text-sm px-3 py-1 rounded-lg hover:bg-gray-100">重新整理</button>
         </div>
