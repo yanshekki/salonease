@@ -334,6 +334,12 @@ function setupCustomerSearch() {
             currentCustomer = null;
             customerPackages = [];
             document.getElementById('pos-customer-info').innerHTML = '';
+
+            // 清除客戶時，如果目前在「套票」分類，切回「全部」
+            const packageBtn = document.getElementById('filter-package');
+            if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]')) {
+                filterItems('all');
+            }
             return;
         }
 
@@ -354,10 +360,22 @@ function setupCustomerSearch() {
 
                     document.getElementById('pos-customer-info').innerHTML = infoHtml;
 
-                    // 如果目前正在看「套票」分類，自動刷新顯示客戶套票
-                    const packageBtn = document.getElementById('filter-package');
-                    if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]')) {
-                        renderCustomerPackages();
+                    // === A1-1f 改進：如果客戶有可用套票，自動切換到「套票」分類 ===
+                    if (customerPackages.length > 0) {
+                        // 只有在目前不是套票分類時才自動切換，避免干擾用戶
+                        const packageBtn = document.getElementById('filter-package');
+                        if (!packageBtn || !packageBtn.classList.contains('bg-[#2C2C2E]')) {
+                            filterItems('package');
+                        } else {
+                            // 如果已經在套票分類，直接刷新顯示客戶的套票
+                            renderCustomerPackages();
+                        }
+                    } else {
+                        // 如果客戶沒有套票，但目前在套票分類，切回「全部」
+                        const packageBtn = document.getElementById('filter-package');
+                        if (packageBtn && packageBtn.classList.contains('bg-[#2C2C2E]')) {
+                            filterItems('all');
+                        }
                     }
                 } else {
                     currentCustomer = null;
