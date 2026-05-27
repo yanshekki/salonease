@@ -23,42 +23,41 @@ include __DIR__ . '/includes/header.php';
 
     <!-- 店舖基本資訊 -->
     <div class="card mb-4">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <div class="font-semibold text-lg">店舖基本資訊</div>
-                <div class="text-sm text-[#5A5A5C]">收據、打印會自動使用以下資料</div>
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">店舖基本資訊</div>
+                    <div class="small text-muted">收據、打印會自動使用以下資料</div>
+                </div>
+                <div class="badge bg-light text-dark small">即時生效</div>
             </div>
-            <div class="text-xs px-3 py-1 bg-[#F8F5F0] rounded-xl text-[#8A8A8C]">即時生效</div>
-        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium mb-1">店舖名稱</label>
-                <input type="text" x-model="form.salon_name" 
-                       class="salon-input w-full" placeholder="SalonEase 美容中心">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label small">店舖名稱</label>
+                    <input type="text" x-model="form.salon_name" class="form-control" placeholder="SalonEase 美容中心">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">地址</label>
+                    <input type="text" x-model="form.address" class="form-control" placeholder="香港九龍尖沙咀彌敦道 100 號 8 樓">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">電話</label>
+                    <input type="text" x-model="form.phone" class="form-control" placeholder="2123 4567">
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button @click="saveShop()" 
+                            :disabled="saving"
+                            class="btn btn-dark w-100">
+                        <span x-text="saving ? '儲存中...' : '儲存店舖資訊'"></span>
+                    </button>
+                    <span x-show="saved" x-cloak class="ms-3 small text-success fw-medium">✓ 已儲存</span>
+                </div>
             </div>
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium mb-1">地址</label>
-                <input type="text" x-model="form.address" 
-                       class="salon-input w-full" placeholder="香港九龍尖沙咀彌敦道 100 號 8 樓">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">電話</label>
-                <input type="text" x-model="form.phone" 
-                       class="salon-input w-full" placeholder="2123 4567">
-            </div>
-            <div class="flex items-end">
-                <button @click="saveShop()" 
-                        :disabled="saving"
-                        class="salon-btn w-full md:w-auto px-8 disabled:opacity-60">
-                    <span x-text="saving ? '儲存中...' : '儲存店舖資訊'"></span>
-                </button>
-                <span x-show="saved" x-cloak class="ml-3 text-sm text-[#8FA68F]">✓ 已儲存</span>
-            </div>
-        </div>
 
-        <div class="mt-4 text-xs text-[#8A8A8C]">
-            修改後，所有新打印的收據（熱感紙及 A4）都會即時顯示最新資料。
+            <div class="mt-3 small text-muted">
+                修改後，所有新打印的收據（熱感紙及 A4）都會即時顯示最新資料。
+            </div>
         </div>
     </div>
 
