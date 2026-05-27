@@ -6,7 +6,12 @@ $extraJs = 'settings.js';   // 稍後可獨立抽離，目前先用內聯 Alpine
 include __DIR__ . '/includes/header.php'; 
 ?>
 <div class="max-w-3xl mx-auto" x-data="shopSettings()">
-    <h2 class="text-xl font-semibold mb-6">系統設定</h2>
+    <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xl font-semibold">系統設定</h2>
+        <div class="text-xs text-[#8A8A8C]">
+            版本：<span class="font-mono">v1.0.0</span>　最後更新：2025 年 5 月
+        </div>
+    </div>
 
     <!-- 店舖基本資訊（A 選擇重點） -->
     <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
