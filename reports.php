@@ -69,6 +69,18 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- 簡單視覺圖表 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white rounded-2xl border border-gray-100 p-6">
+            <div class="font-semibold mb-4">付款方式分佈</div>
+            <canvas id="paymentChart" height="140"></canvas>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6">
+            <div class="font-semibold mb-4">熱門服務收入</div>
+            <canvas id="servicesChart" height="140"></canvas>
+        </div>
+    </div>
+
     <!-- 員工銷售排行（A 選擇重點） -->
     <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
@@ -209,6 +221,9 @@ include __DIR__ . '/includes/header.php';
     </div>
 </div>
 
+<!-- Chart.js CDN（極輕量，僅本頁使用） -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <script>
 function reportsApp() {
     return {
@@ -219,6 +234,10 @@ function reportsApp() {
         staffList: [],                // 員工下拉清單
         staffRanking: [],             // 員工銷售排行數據
         loading: false,
+
+        // 圖表實例
+        paymentChart: null,
+        servicesChart: null,
 
         summary: {
             total_sales: 0,
@@ -250,6 +269,8 @@ function reportsApp() {
                 ]);
             } finally {
                 this.loading = false;
+                // 數據載入後更新圖表
+                this.$nextTick(() => this.updateCharts());
             }
         },
 
@@ -375,6 +396,51 @@ function reportsApp() {
             link.download = `員工銷售排行_${this.from}_${this.to}.csv`;
             link.click();
             URL.revokeObjectURL(url);
+        },
+
+        // 初始化 / 更新圖表
+        updateCharts() {
+            // 付款方式圓餅圖
+            const paymentCtx = document.getElementById('paymentChart');
+            if (paymentCtx) {
+                if (this.paymentChart) this.paymentChart.destroy();
+                const labels = this.paymentBreakdown.map(p => this.getPaymentLabel(p.method));
+                const data = this.paymentBreakdown.map(p => p.amount);
+                this.paymentChart = new Chart(paymentCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: ['#2C2C2E', '#8FA68F', '#C97C7C', '#F3EDE6', '#A8A29E']
+                        }]
+                    },
+                    options: { plugins: { legend: { position: 'bottom' } } }
+                });
+            }
+
+            // 熱門服務長條圖
+            const serviceCtx = document.getElementById('servicesChart');
+            if (serviceCtx) {
+                if (this.servicesChart) this.servicesChart.destroy();
+                const labels = this.topServices.map(s => s.name.length > 12 ? s.name.substring(0,12)+'...' : s.name);
+                const data = this.topServices.map(s => s.revenue);
+                this.servicesChart = new Chart(serviceCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '收入',
+                            data: data,
+                            backgroundColor: '#8FA68F'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
         }
     }
 }

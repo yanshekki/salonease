@@ -3,6 +3,7 @@
  * SalonEase - 佣金報表 API
  * GET /api/commissions.php?action=summary&from=YYYY-MM-DD&to=YYYY-MM-DD&staff_id=optional
  * GET /api/commissions.php?action=by_staff&from=...&to=...&staff_id=optional
+ * GET /api/commissions.php?action=staff_details&from=...&to=...&staff_id=required
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -79,6 +80,49 @@ switch ($action) {
                 'open_commission' => (float)$r['open_commission'],
                 'total_commission' => (float)$r['total_commission'],
                 'sale_count' => (int)$r['sale_count']
+            ];
+        }
+        json_success($result);
+        break;
+
+    case 'staff_details':
+        // 取得某員工在期間內的佣金明細（每筆銷售的佣金記錄）
+        $rows = db_query("
+            SELECT 
+                c.id,
+                c.sale_id,
+                c.amount,
+                c.type,
+                c.rate,
+                s.sale_date,
+                s.total as sale_total,
+                s.payment_method,
+                COALESCE(cu.name, '非會員') as customer_name
+            FROM commissions c
+            JOIN sales s ON c.sale_id = s.id
+            LEFT JOIN customers cu ON s.customer_id = cu.id
+            WHERE c.staff_id = ? 
+              AND s.sale_date BETWEEN ? AND ?
+            ORDER BY s.sale_date DESC, c.id DESC
+        ", [$staffId ?: 0, $from, $to]);   // 如果沒傳 staff_id 就給 0（不會有結果）
+
+        if ($staffId <= 0) {
+            json_success([]);
+            break;
+        }
+
+        $result = [];
+        foreach ($rows as $r) {
+            $result[] = [
+                'id' => (int)$r['id'],
+                'sale_id' => (int)$r['sale_id'],
+                'amount' => (float)$r['amount'],
+                'type' => $r['type'],
+                'rate' => (float)$r['rate'],
+                'sale_date' => $r['sale_date'],
+                'sale_total' => (float)$r['sale_total'],
+                'payment_method' => $r['payment_method'],
+                'customer_name' => $r['customer_name']
             ];
         }
         json_success($result);

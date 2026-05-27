@@ -88,7 +88,8 @@ include __DIR__ . '/includes/header.php';
                 <tbody>
                     <template x-for="row in staffCommissions" :key="row.staff_id">
                         <tr class="border-b last:border-0">
-                            <td class="py-2 pr-4 font-medium" x-text="row.staff_name"></td>
+                            <td class="py-2 pr-4 font-medium text-[#2C2C2E] hover:text-[#8FA68F] cursor-pointer underline-offset-2 hover:underline" 
+                                @click="showStaffDetails(row)" x-text="row.staff_name"></td>
                             <td class="text-right py-2 px-3 text-[#8FA68F]" x-text="formatMoney(row.service_commission)"></td>
                             <td class="text-right py-2 px-3" x-text="formatMoney(row.retail_commission)"></td>
                             <td class="text-right py-2 px-3" x-text="formatMoney(row.open_commission)"></td>
@@ -107,6 +108,60 @@ include __DIR__ . '/includes/header.php';
     <div class="mt-6 text-xs text-[#8A8A8C] text-center">
         佣金以結帳當時的設定比率計算（已快照）· 按 F5 刷新
     </div>
+
+    <!-- 員工明細彈窗 -->
+    <div x-show="showDetailsModal" 
+         class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+         @click="closeDetailsModal()">
+        <div @click.stop class="bg-white rounded-2xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden shadow-xl">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <div>
+                    <div class="font-semibold text-lg" x-text="selectedStaffForDetails ? selectedStaffForDetails.staff_name + ' 的佣金明細' : ''"></div>
+                    <div class="text-xs text-[#8A8A8C]" x-text="from + ' ~ ' + to"></div>
+                </div>
+                <button @click="closeDetailsModal()" class="text-2xl leading-none text-[#8A8A8C] hover:text-black">&times;</button>
+            </div>
+
+            <div class="p-6 overflow-auto max-h-[60vh]">
+                <div x-show="loadingDetails" class="text-center py-8 text-[#8A8A8C]">載入中...</div>
+
+                <table x-show="!loadingDetails && staffDetails.length > 0" class="w-full text-sm">
+                    <thead class="text-[#8A8A8C]">
+                        <tr class="border-b">
+                            <th class="text-left py-2">日期</th>
+                            <th class="text-left py-2">客戶</th>
+                            <th class="text-left py-2">銷售單</th>
+                            <th class="text-right py-2">銷售額</th>
+                            <th class="text-left py-2">類型</th>
+                            <th class="text-right py-2">比率</th>
+                            <th class="text-right py-2">佣金</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="d in staffDetails" :key="d.id">
+                            <tr class="border-b">
+                                <td class="py-2" x-text="d.sale_date"></td>
+                                <td class="py-2" x-text="d.customer_name"></td>
+                                <td class="py-2 text-xs text-[#8A8A8C]">#<span x-text="d.sale_id"></span></td>
+                                <td class="py-2 text-right" x-text="formatMoney(d.sale_total)"></td>
+                                <td class="py-2"><span class="px-2 py-0.5 text-xs rounded bg-gray-100" x-text="formatType(d.type)"></span></td>
+                                <td class="py-2 text-right text-xs" x-text="d.rate + '%'"></td>
+                                <td class="py-2 text-right font-semibold text-[#8FA68F]" x-text="formatMoney(d.amount)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+
+                <div x-show="!loadingDetails && staffDetails.length === 0" class="text-center py-8 text-[#8A8A8C]">
+                    此期間沒有找到佣金明細
+                </div>
+            </div>
+
+            <div class="px-6 py-3 border-t text-right">
+                <button @click="closeDetailsModal()" class="px-4 py-1.5 text-sm border rounded-xl hover:bg-gray-50">關閉</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -118,6 +173,12 @@ function commissionsApp() {
         selectedStaffId: '',
         staffList: [],
         staffCommissions: [],
+
+        // 明細彈窗
+        showDetailsModal: false,
+        selectedStaffForDetails: null,
+        staffDetails: [],
+        loadingDetails: false,
 
         summary: {
             total_commission: 0,
@@ -214,6 +275,36 @@ function commissionsApp() {
             link.download = `佣金明細_${this.from}_${this.to}.csv`;
             link.click();
             URL.revokeObjectURL(url);
+        },
+
+        // 顯示員工明細
+        async showStaffDetails(staff) {
+            this.selectedStaffForDetails = staff;
+            this.staffDetails = [];
+            this.loadingDetails = true;
+            this.showDetailsModal = true;
+
+            try {
+                const res = await SalonEase.fetch(
+                    `/api/commissions.php?action=staff_details&from=${this.from}&to=${this.to}&staff_id=${staff.staff_id}`
+                );
+                this.staffDetails = res.data || [];
+            } catch (e) {
+                this.staffDetails = [];
+            } finally {
+                this.loadingDetails = false;
+            }
+        },
+
+        closeDetailsModal() {
+            this.showDetailsModal = false;
+            this.selectedStaffForDetails = null;
+            this.staffDetails = [];
+        },
+
+        formatType(type) {
+            const map = { 'service': '服務', 'retail': '零售', 'open': '開單' };
+            return map[type] || type;
         }
     }
 }
