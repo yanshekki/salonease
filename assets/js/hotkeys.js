@@ -101,6 +101,10 @@
             { id: 'new-appointment', label: '新增預約', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/appointments.php?new=1', 180); } },
             { id: 'print-receipt', label: '打印上一張收據 (58mm)', type: 'action', action: () => { modal.hide(); setTimeout(() => window.printLastReceipt?.('58'), 120); } },
             { id: 'report-today', label: '切換到今日報表', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
+            { id: 'report-week',  label: '切換到本週報表', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
+            { id: 'report-month', label: '切換到本月報表', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
+            { id: 'go-services',  label: '服務項目管理', type: 'page', url: '/services.php' },
+            { id: 'go-products',  label: '產品管理', type: 'page', url: '/products.php' },
         ];
 
         async function searchCustomers(keyword) {
@@ -109,24 +113,26 @@
                 return;
             }
 
+            // Show loading state
+            resultsContainer.innerHTML = `<div class="px-3 py-3 text-muted small">搜尋客戶中...</div>`;
+
             try {
-                const res = await window.SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(keyword)}&limit=6`);
+                const res = await window.SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(keyword)}&limit=5`);
                 customerResults = (res.data || []).map(c => ({
                     id: `customer-${c.id}`,
-                    label: `查看客戶：${c.name}`,
+                    label: `${c.name} ${c.phone ? `(${c.phone})` : ''}`,
                     type: 'customer',
                     action: () => {
                         modal.hide();
-                        setTimeout(() => location.href = `/customers.php?id=${c.id}`, 150);
+                        setTimeout(() => location.href = `/customers.php?id=${c.id}`, 120);
                     },
-                    secondaryAction: {
-                        label: `為 ${c.name} 新增預約`,
+                    secondary: {
+                        label: '新增預約',
                         action: () => {
                             modal.hide();
-                            setTimeout(() => location.href = `/appointments.php?new=1&customer_id=${c.id}`, 150);
+                            setTimeout(() => location.href = `/appointments.php?new=1&customer_id=${c.id}`, 120);
                         }
-                    },
-                    phone: c.phone
+                    }
                 }));
             } catch (e) {
                 customerResults = [];
