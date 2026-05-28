@@ -23,6 +23,7 @@
   // POS 專屬靜態快速動作
   const POS_QUICK_ACTIONS = [
     { id: 'pos-quick-create-customer', label: '快速新增客戶', action: 'quick-create-customer', icon: '➕', keywords: '新增 建立 客戶 新客戶', contexts: ['pos'] },
+    { id: 'pos-quick-checkout', label: '快速結帳', action: 'quick-checkout', icon: '💳', keywords: '結帳 付款 收銀 完成交易', contexts: ['pos'] },
   ];
 
   // 動態 POS 項目快取（避免重複 fetch）
@@ -461,6 +462,11 @@
       return;
     }
 
+    if (item.action === 'quick-checkout') {
+      enterQuickCheckoutMode();
+      return;
+    }
+
     if (item.url) location.href = item.url;
     else if (typeof item.fn === 'function') item.fn();
   }
@@ -642,6 +648,157 @@
         }
       });
     });
+  }
+
+  // 進入快速結帳模式（在命令面板內完成）
+  function enterQuickCheckoutMode() {
+    if (!resultsEl) return;
+
+    const totalEl = document.getElementById('cart-total');
+    const discountEl = document.getElementById('cart-discount');
+    const currentTotal = totalEl ? parseFloat(totalEl.textContent.replace('HK$', '').trim()) || 0 : 0;
+    const currentDiscount = discountEl ? parseFloat(discountEl.value) || 0 : 0;
+
+    if (currentTotal <= 0) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('購物車是空的，無法結帳', 'error');
+      }
+      hide();
+      return;
+    }
+
+    resultsEl.innerHTML = `
+      <div class="px-3 py-3">
+        <div class="small fw-medium mb-2 text-primary">快速結帳</div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted">小計</span>
+          <span id="qc-subtotal">HK$ ${(currentTotal + currentDiscount).toFixed(2)}</span>
+        </div>
+        ${currentDiscount > 0 ? `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted">折扣</span>
+          <span class="text-danger">- HK$ ${currentDiscount.toFixed(2)}</span>
+        </div>` : ''}
+        <div class="d-flex justify-content-between align-items-center mb-3 border-top pt-2">
+          <span class="fw-semibold">總計</span>
+          <span id="qc-total" class="fw-semibold fs-5 text-success">HK$ ${currentTotal.toFixed(2)}</span>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small mb-1">付款方式</label>
+          <div class="d-flex flex-wrap gap-1" id="qc-payment-buttons">
+            <button type="button" class="btn btn-sm btn-outline-secondary qc-pay-btn active" data-method="cash">現金</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary qc-pay-btn" data-method="fps">轉數快</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary qc-pay-btn" data-method="card">信用卡</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary qc-pay-btn" data-method="wechat">WeChat</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary qc-pay-btn" data-method="alipay">Alipay</button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small mb-1">實收金額</label>
+          <input type="number" id="qc-received" class="form-control form-control-sm" value="${currentTotal.toFixed(2)}" step="0.01">
+          <div id="qc-change" class="small mt-1 text-success"></div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button id="qc-checkout-btn" class="btn btn-primary btn-sm flex-fill">立即結帳</button>
+          <button id="qc-checkout-cancel" class="btn btn-outline-secondary btn-sm">取消</button>
+        </div>
+      </div>
+    `;
+
+    const receivedInput = resultsEl.querySelector('#qc-received');
+    const changeDiv = resultsEl.querySelector('#qc-change');
+    const checkoutBtn = resultsEl.querySelector('#qc-checkout-btn');
+    const cancelBtn = resultsEl.querySelector('#qc-checkout-cancel');
+    const payButtons = resultsEl.querySelectorAll('.qc-pay-btn');
+
+    let selectedMethod = 'cash';
+
+    // 付款方式切換
+    payButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        payButtons.forEach(b => b.classList.remove('active', 'btn-secondary'));
+        btn.classList.add('active', 'btn-secondary');
+        selectedMethod = btn.dataset.method;
+      });
+    });
+
+    // 找零即時計算
+    const updateChange = () => {
+      const received = parseFloat(receivedInput.value) || 0;
+      const change = received - currentTotal;
+      if (received > 0) {
+        if (change >= 0) {
+          changeDiv.innerHTML = `<span class="text-success">應找：HK$ ${change.toFixed(2)}</span>`;
+        } else {
+          changeDiv.innerHTML = `<span class="text-danger">尚差：HK$ ${Math.abs(change).toFixed(2)}</span>`;
+        }
+      } else {
+        changeDiv.innerHTML = '';
+      }
+    };
+
+    receivedInput.addEventListener('input', updateChange);
+    updateChange();
+
+    // 立即結帳
+    checkoutBtn.onclick = async () => {
+      const received = parseFloat(receivedInput.value) || 0;
+
+      if (received < currentTotal) {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('實收金額不足', 'error');
+        }
+        return;
+      }
+
+      // 把值寫回原本的 DOM，讓原本的 checkout() 函式可以直接使用
+      const paymentSelect = document.getElementById('payment-method');
+      const receivedInputMain = document.getElementById('amount-received');
+
+      if (paymentSelect) paymentSelect.value = selectedMethod;
+      if (receivedInputMain) receivedInputMain.value = received.toFixed(2);
+
+      checkoutBtn.disabled = true;
+      checkoutBtn.innerHTML = '結帳中...';
+
+      try {
+        // 直接呼叫原本的結帳流程（會處理所有驗證、API、低庫存、打印等）
+        if (typeof window.checkout === 'function') {
+          await window.checkout();
+          // checkout 成功後會自己清畫面 + 開打印選擇
+          hide();
+        } else {
+          throw new Error('找不到結帳函式');
+        }
+      } catch (err) {
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = '立即結帳';
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(err.message || '結帳失敗', 'error');
+        }
+      }
+    };
+
+    cancelBtn.onclick = () => {
+      updateResults(''); // 回到正常模式
+    };
+
+    // Enter 鍵快速結帳
+    receivedInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        checkoutBtn.click();
+      }
+      if (e.key === 'Escape') {
+        cancelBtn.click();
+      }
+    });
+
+    // 預設 focus 在金額欄
+    setTimeout(() => receivedInput.focus(), 50);
   }
 
   function show() {
