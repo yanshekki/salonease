@@ -139,6 +139,14 @@ $extraJs = 'hotkeys.js';
                         <input type="number" id="product-low-stock" class="form-control" value="" placeholder="例如 5">
                     </div>
                 </div>
+
+                <!-- A21：最近庫存異動（僅編輯時顯示） -->
+                <div id="stock-history-section" class="mt-4 d-none">
+                    <div class="fw-semibold small mb-2 text-muted">最近庫存異動（最多 8 筆）</div>
+                    <div id="stock-history-list" class="small border rounded p-2 bg-light" style="max-height: 140px; overflow-y: auto; font-size: 0.8rem;">
+                        <!-- 由 JS 動態填入 -->
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -288,6 +296,10 @@ function showAddModal() {
 
     document.getElementById('save-btn').textContent = '新增產品';
 
+    // A21：新增模式隱藏異動歷史
+    document.getElementById('stock-history-section').classList.add('d-none');
+    document.getElementById('stock-history-list').innerHTML = '';
+
     const modalEl = document.getElementById('productModal');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
@@ -312,6 +324,10 @@ async function editProduct(id) {
         document.getElementById('product-category').value = p.category || '';
 
         document.getElementById('save-btn').textContent = '儲存變更';
+
+        // A21：載入最近庫存異動
+        document.getElementById('stock-history-section').classList.remove('d-none');
+        loadStockHistory(id);
 
         const modalEl = document.getElementById('productModal');
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -439,6 +455,40 @@ async function submitStockAdjustment() {
         loadProducts();
     } catch (err) {
         SalonEase.toast(err.message || '調整失敗', 'error');
+    }
+}
+
+/* A21：載入產品最近庫存異動 */
+async function loadStockHistory(productId) {
+    const container = document.getElementById('stock-history-list');
+    container.innerHTML = '<div class="text-muted">載入中...</div>';
+
+    try {
+        const res = await SalonEase.fetch(`/api/products.php?action=stock_history&id=${productId}`);
+        const list = res.data || [];
+
+        if (list.length === 0) {
+            container.innerHTML = '<div class="text-muted">尚無庫存異動記錄</div>';
+            return;
+        }
+
+        let html = '<table class="table table-sm mb-0" style="font-size:0.75rem;"><tbody>';
+        list.forEach(item => {
+            const adj = item.adjustment != null ? (item.adjustment > 0 ? '+' + item.adjustment : item.adjustment) : '';
+            const change = (item.old != null && item.new != null) ? `${item.old} → ${item.new}` : (adj || '');
+            html += `
+                <tr>
+                    <td class="text-nowrap">${item.time.substring(0,16).replace('T',' ')}</td>
+                    <td>${item.staff}</td>
+                    <td><span class="badge bg-secondary-subtle text-dark">${item.type}</span></td>
+                    <td>${change}</td>
+                    <td class="text-muted">${item.reason || ''}</td>
+                </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<div class="text-danger small">無法載入異動記錄</div>';
     }
 }
 
