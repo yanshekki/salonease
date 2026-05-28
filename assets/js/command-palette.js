@@ -309,6 +309,21 @@
     };
   }
 
+  // 計算符合某個價位過濾嘅項目數量（用於一鍵加入按鈕）
+  function getFilteredCount(items, band, filter) {
+    if (!band || !items || !filter) return 0;
+
+    let count = 0;
+    items.forEach(item => {
+      if (!item.price || item.type === 'package_redemption') return;
+      const p = parseFloat(item.price);
+      if (filter === 'below' && p < band.min) count++;
+      else if (filter === 'within' && p >= band.min && p <= band.max) count++;
+      else if (filter === 'above' && p > band.max) count++;
+    });
+    return count;
+  }
+
   // 取得本次 POS 開單期間最近加入的項目（快速重複銷售）
   function getPosRecentSessionItems() {
     const POS = window.SalonEase && window.SalonEase.POS;
@@ -1060,6 +1075,14 @@
               </div>
               <div class="text-muted ms-1" style="font-size:9px; white-space:nowrap;">${dist.counts.within}/${dist.counts.total}</div>
             </div>
+
+            ${activeFilter ? `
+              <div class="d-flex justify-content-end mt-1">
+                <button type="button" class="btn btn-sm btn-success py-0 px-2" id="btn-bulk-add-filter" style="font-size:10px;">
+                  ✅ 一鍵加入全部 ${getFilteredCount(currentResults, band, activeFilter)} 項
+                </button>
+              </div>
+            ` : ''}
           </div>`;
       }
     }
@@ -1132,6 +1155,47 @@
           renderResults(q);
         };
       });
+    }
+
+    // 一鍵加入所有符合價位過濾嘅項目
+    const bulkBtn = resultsEl.querySelector('#btn-bulk-add-filter');
+    if (bulkBtn) {
+      bulkBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+
+        const filter = (window.SalonEase && window.SalonEase._cmdPriceFilter) || null;
+        const band = getEffectivePriceBand();
+        if (!filter || !band) return;
+
+        let added = 0;
+        currentResults.forEach(item => {
+          if (!item.price || item.type === 'package_redemption') return;
+
+          const p = parseFloat(item.price);
+          let match = false;
+          if (filter === 'below' && p < band.min) match = true;
+          else if (filter === 'within' && p >= band.min && p <= band.max) match = true;
+          else if (filter === 'above' && p > band.max) match = true;
+
+          if (match && window.addToCart) {
+            window.addToCart(item.type, item.ref_id, item.label || item.name, item.price);
+            added++;
+          }
+        });
+
+        if (added > 0) {
+          // 清除過濾
+          if (window.SalonEase) delete window.SalonEase._cmdPriceFilter;
+
+          if (window.SalonEase && window.SalonEase.toast) {
+            window.SalonEase.toast(`✅ 已加入 ${added} 項（符合價位過濾）`, 'success', 1800);
+          }
+
+          // 重新渲染（清除過濾後顯示全部）
+          const q = inputEl ? inputEl.value : '';
+          renderResults(q);
+        }
+      };
     }
 
     resultsEl.querySelectorAll('.cmd-row').forEach(row => {
