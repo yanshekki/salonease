@@ -222,6 +222,7 @@
 - A109 已完成：reports.php 移除另一個重複的圖表提示文字（繼續清理 A99-A107 重複 notes）
 - A110 已完成：reports.php 將 loadSummary 方法移入 reportsApp() 內部（報表頁 JS 結構清理第一步）
 - A111 已完成：reports.php 將 loadPaymentBreakdown 方法移入 reportsApp() 內部（JS 結構清理第二步）
+- A112 已完成：reports.php 將 loadTopProducts 方法移入 reportsApp() 內部（JS 結構清理第三步）
 
 ---
 
@@ -238,7 +239,7 @@
    - 現有報表頁（reports.php）增加圖表（銷售趨勢、服務/產品佔比、員工表現）
    - 加強日期範圍 + 多維度篩選體驗
    - 新增「庫存周轉率」與「缺貨趨勢」報表
-   - **報表頁 JS 結構清理**（自 A108 開始）：修復 reportsApp() Alpine component 內 orphaned methods 問題，提升報表頁穩定性（A110 移動 loadSummary，A111 移動 loadPaymentBreakdown）
+   - **報表頁 JS 結構清理**（自 A108 開始）：修復 reportsApp() Alpine component 內 orphaned methods 問題，提升報表頁穩定性（A110 移動 loadSummary，A111 移動 loadPaymentBreakdown，A112 移動 loadTopProducts）
 
 2. **數據洞察與 Dashboard 強化**
    - Dashboard 增加更多管理層關心的指標卡片（本月 vs 上月比較、熱門服務、忠誠度趨勢）
