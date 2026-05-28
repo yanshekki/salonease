@@ -1476,6 +1476,44 @@
                   suggestDiv.appendChild(altBtn);
                 });
 
+                // === 新增：一鍵加入呢 2-3 個替代項目按鈕 ===
+                const bulkAltBtn = document.createElement('button');
+                bulkAltBtn.type = 'button';
+                bulkAltBtn.className = 'btn btn-sm btn-warning py-0 px-1 ms-2';
+                bulkAltBtn.style.fontSize = '8px';
+                bulkAltBtn.innerHTML = '一鍵加入呢批替代';
+                bulkAltBtn.title = '一鍵將以上 2-3 個最接近替代項目全部加入購物車';
+
+                bulkAltBtn.onclick = (ev3) => {
+                  ev3.stopImmediatePropagation();
+
+                  let added = 0;
+                  alternatives.forEach(alt => {
+                    if (window.addToCart) {
+                      window.addToCart(alt.type, alt.ref_id, alt.label || alt.name, alt.price);
+                      added++;
+                    }
+                  });
+
+                  if (added > 0) {
+                    // 自動記錄銷售話術（價位智能缺口提示）
+                    const notesEl = document.getElementById('sale-notes');
+                    if (notesEl) {
+                      const note = `[價位智能缺口提示] 高貼合項目選擇較少，自動建議加入 ${added} 個最接近替代項目。`;
+                      notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+                    }
+
+                    if (window.SalonEase && window.SalonEase.toast) {
+                      window.SalonEase.toast(`✅ 已一鍵加入 ${added} 個替代項目（缺口智能建議）`, 'success', 1800);
+                    }
+                  }
+
+                  // 清除整個 detail wrapper
+                  const w = bulkAltBtn.parentElement;
+                  if (w && w.parentElement) w.parentElement.removeChild(w);
+                };
+
+                suggestDiv.appendChild(bulkAltBtn);
                 wrapper.appendChild(suggestDiv);
               }
             }
