@@ -129,6 +129,13 @@ $topStaff = db_query("
     ORDER BY revenue DESC
     LIMIT 3
 ", [$thisMonthStartForSales]);
+
+// A58：Phase 3 - 本月新客戶數（數據洞察）
+$newCustomersThisMonth = db_query_one("
+    SELECT COUNT(*) as cnt 
+    FROM customers 
+    WHERE created_at >= ?
+", [$thisMonthStartForSales]);
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -301,6 +308,18 @@ $topStaff = db_query("
         <?php else: ?>
             <div class="small text-muted">本月暫無銷售記錄</div>
         <?php endif; ?>
+    </div>
+</div>
+
+<!-- A58：Phase 3 - 本月新客戶數（數據洞察） -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="fw-semibold small">本月新客戶數</div>
+            <a href="/customers.php" class="small text-muted text-decoration-none">查看客戶 →</a>
+        </div>
+        <div class="fs-5 fw-semibold"><?= (int)($newCustomersThisMonth['cnt'] ?? 0) ?> 位</div>
+        <div class="small text-muted">本月新增</div>
     </div>
 </div>
 
