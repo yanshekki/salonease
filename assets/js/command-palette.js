@@ -1740,7 +1740,7 @@
     });
   }
 
-  function doExecute(item) {
+  async function doExecute(item) {
     if (!item) return;
     recordUsage(item.id);
     hide();

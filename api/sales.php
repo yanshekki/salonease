@@ -26,6 +26,10 @@ switch ($action) {
         $amount_received = (float)post('amount_received', 0);
         $notes = sanitize_string(post('notes', ''));
 
+        // Phase 2: 多筆付款支援
+        $payment_mode = post('payment_mode', 'full'); // full | partial | unpaid
+        $payment_method_id = (int)post('payment_method_id', 0);
+
         // Phase 1 驗證強化
         if ($err = validate_money($discount, '折扣')) json_error($err);
         if ($err = validate_length($notes, '備註', 500)) json_error($err);
@@ -33,9 +37,24 @@ switch ($action) {
             json_error('使用積分不可為負數');
         }
 
-        $allowedPayments = ['cash', 'card', 'fps', 'other'];
-        if (!in_array($payment_method, $allowedPayments, true)) {
-            json_error('付款方式無效');
+        // Phase 2 驗證
+        $allowedModes = ['full', 'partial', 'unpaid'];
+        if (!in_array($payment_mode, $allowedModes, true)) {
+            json_error('payment_mode 無效');
+        }
+
+        if ($payment_mode !== 'unpaid' && $payment_method_id <= 0) {
+            // 向後相容：如果沒有傳 payment_method_id，嘗試從舊的 payment_method 字串對應
+            if ($payment_method) {
+                $mapped = db_query_one("SELECT id FROM payment_methods WHERE code = ?", [strtolower($payment_method)]);
+                if ($mapped) {
+                    $payment_method_id = (int)$mapped['id'];
+                }
+            }
+        }
+
+        if ($payment_mode !== 'unpaid' && $payment_method_id <= 0) {
+            json_error('請提供有效的付款方法');
         }
 
         if (empty($items) || !is_array($items)) {
@@ -86,6 +105,41 @@ switch ($action) {
                     $notes
                 ]);
                 $sale_id = $pdo->lastInsertId();
+
+                // Phase 2: 如果不是 unpaid 模式，建立第一筆付款記錄
+                $initial_amount_paid = 0;
+                $initial_payment_status = 'unpaid';
+                $initial_primary_method_id = null;
+
+                if ($payment_mode !== 'unpaid' && $payment_method_id > 0) {
+                    $paid_now = ($payment_mode === 'full') ? $total : min($amount_received, $total);
+                    $paid_now = max(0, $paid_now);
+
+                    if ($paid_now > 0) {
+                        $pdo->prepare("
+                            INSERT INTO payments (sale_id, payment_method_id, amount, fee_amount, fee_borne_by, paid_at, staff_id)
+                            VALUES (?, ?, ?, 0, 'merchant', NOW(), ?)
+                        ")->execute([
+                            $sale_id,
+                            $payment_method_id,
+                            $paid_now,
+                            $_SESSION['staff_id']
+                        ]);
+
+                        $initial_amount_paid = $paid_now;
+                        $initial_payment_status = ($paid_now >= $total) ? 'paid' : 'partial';
+                        $initial_primary_method_id = $payment_method_id;
+                    }
+                }
+
+                // 更新 sales 的新欄位（Phase 2）
+                if ($initial_amount_paid > 0 || $payment_mode === 'unpaid') {
+                    $pdo->prepare("
+                        UPDATE sales 
+                        SET amount_paid = ?, payment_status = ?, primary_payment_method_id = ?
+                        WHERE id = ?
+                    ")->execute([$initial_amount_paid, $initial_payment_status, $initial_primary_method_id, $sale_id]);
+                }
 
                 // === A 選擇：讀取佣金率（全域預設 + 員工個人覆蓋） ===
                 $globalRates = $pdo->query("SELECT default_commission_service, default_commission_retail, default_commission_open FROM settings WHERE id = 1")->fetch();
@@ -355,14 +409,19 @@ switch ($action) {
                     'points_earned' => $pointsEarned,
                     'customer_new_points' => $customerPointsAfterRedemption ?? $customerNewPoints,
                     'points_used' => $points_used,
-                    'points_discount' => $pointsDiscount ?? 0
+                    'points_discount' => $pointsDiscount ?? 0,
+                    // Phase 2
+                    'initial_amount_paid' => $initial_amount_paid,
+                    'initial_payment_status' => $initial_payment_status
                 ];
             });
 
-            // 記錄審計日誌
+            // 記錄審計日誌（Phase 2 加強）
             log_activity('sale.created', $result['sale_id'], 'sale', [
                 'total' => $result['total'],
-                'payment_method' => $payment_method,
+                'payment_mode' => $payment_mode,
+                'payment_method_id' => $payment_method_id ?: null,
+                'initial_amount_paid' => $initial_amount_paid,
                 'item_count' => count($items),
                 'customer_id' => $result['customer_id'] ?: null
             ]);
@@ -370,7 +429,10 @@ switch ($action) {
             // Phase 2 A5/A8：回傳客戶積分資訊（讓前端可即時顯示）
             $responseData = [
                 'id' => $result['sale_id'],
-                'total' => $result['total']
+                'total' => $result['total'],
+                'payment_mode' => $payment_mode,
+                'initial_amount_paid' => $initial_amount_paid,
+                'initial_payment_status' => $initial_payment_status
             ];
 
             if ($result['customer_id']) {
@@ -439,6 +501,15 @@ switch ($action) {
             ORDER BY pu.id
         ", [$id]);
 
+        // Phase 2: 付款記錄
+        $payments = db_query("
+            SELECT p.amount, p.paid_at, pm.name as method_name
+            FROM payments p
+            JOIN payment_methods pm ON p.payment_method_id = pm.id
+            WHERE p.sale_id = ? AND p.is_refund = 0
+            ORDER BY p.paid_at ASC
+        ", [$id]);
+
         header('Content-Type: text/html; charset=utf-8');
         ?>
         <!DOCTYPE html>
@@ -486,6 +557,15 @@ switch ($action) {
                 <?php if ($customer): ?>
                 <div style="background: #f8f8f8; padding: 3mm 4mm; margin-bottom: 5mm; border-radius: 2mm;">
                     <strong>客戶：</strong> <?= e($customer['name']) ?>　　<?= e($customer['phone']) ?>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($payments)): ?>
+                <div style="margin-bottom: 4mm; font-size: 10pt;">
+                    <strong>付款記錄：</strong><br>
+                    <?php foreach ($payments as $p): ?>
+                        <?= date('m/d H:i', strtotime($p['paid_at'])) ?> <?= e($p['method_name']) ?> HK$ <?= number_format($p['amount'], 2) ?><br>
+                    <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
 

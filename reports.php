@@ -723,15 +723,8 @@ function reportsApp() {
         },
 
         getPaymentLabel(method) {
-            const map = {
-                'cash': '現金',
-                'fps': '轉數快',
-                'card': '信用卡/八達通',
-                'wechat': 'WeChat Pay',
-                'alipay': 'Alipay',
-                'other': '其他'
-            };
-            return map[method] || method;
+            // Phase 2: API 已回傳 payment_methods 表的顯示名稱，直接使用
+            return method || '未知';
         },
 
         // 載入員工清單（供篩選使用）

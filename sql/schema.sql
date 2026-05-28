@@ -382,6 +382,36 @@ INSERT INTO `payment_methods` (`code`, `name`, `fee_model`, `fee_fixed`, `fee_pe
 ('bank_transfer', '銀行轉帳', 'none', 0.00, 0.00, 1, 70, '傳統銀行電匯或 FPS 企業戶，費率多數由客戶承擔或雙方協商。'),
 ('other', '其他', 'none', 0.00, 0.00, 1, 999, '現金以外無法歸類的方式（例如支票、禮券等）。');
 
+-- =====================================================
+-- 18. payments - 多筆付款記錄（Phase 2 新增）
+-- =====================================================
+DROP TABLE IF EXISTS `payments`;
+CREATE TABLE `payments` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `sale_id` INT UNSIGNED NOT NULL,
+  `payment_method_id` INT UNSIGNED NOT NULL,
+  `amount` DECIMAL(10,2) NOT NULL COMMENT '客戶本次實際支付金額',
+  `fee_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '商戶實際承擔的手續費',
+  `fee_borne_by` ENUM('merchant','customer') NOT NULL DEFAULT 'merchant',
+  `paid_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `staff_id` INT UNSIGNED NOT NULL,
+  `ref_number` VARCHAR(120) DEFAULT NULL,
+  `notes` TEXT,
+  `is_refund` TINYINT(1) NOT NULL DEFAULT 0,
+  `refund_of_payment_id` BIGINT UNSIGNED DEFAULT NULL,
+  `installment_no` TINYINT UNSIGNED DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_payments_sale_time` (`sale_id`, `paid_at`),
+  INDEX `idx_payments_method` (`payment_method_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='銷售單多筆付款記錄（Phase 2）';
+
+-- 為 sales 表新增 Phase 2 欄位
+ALTER TABLE `sales` 
+  ADD COLUMN `amount_paid` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '已收款總額' AFTER `total`,
+  ADD COLUMN `payment_status` ENUM('unpaid','partial','paid','refunded','overpaid') NOT NULL DEFAULT 'unpaid' COMMENT '付款狀態' AFTER `amount_paid`,
+  ADD COLUMN `primary_payment_method_id` INT UNSIGNED DEFAULT NULL COMMENT '主要付款方式ID' AFTER `payment_status`;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================
