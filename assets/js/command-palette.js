@@ -2105,8 +2105,9 @@
     const min = Math.round(parseFloat(minPrice) || 0);
     const max = Math.round(parseFloat(maxPrice) || 0);
 
-    const tone = `我為${name}度身訂造咗呢 ${count} 個組合，全部都係落喺您指定嘅 HK$ ${min}–${max} 呢個價位區間之內。`;
-    const priceNote = `呢個範圍係您而家最想要嘅預算，性價比同效果都控制得好好。`;
+    // 加強開頭：明確強調「根據您指定嘅價位」
+    const tone = `根據您指定嘅 HK$ ${min}–${max} 價位，我為${name}精選咗以下 ${count} 個最啱呢個預算嘅組合，全部項目都落喺呢個範圍之內。`;
+    const priceNote = `呢個係您而家最想要嘅價位區間，CP值同效果都控制得好好。`;
     const cta = `您而家要唔要我一次過幫${name}加落去？`;
 
     let newScript = `喂${name ? '，' + name : ''}，${tone}\n\n`;
@@ -2167,9 +2168,14 @@
           <div class="d-flex align-items-center gap-1 ms-2 border-start ps-2" style="font-size:11px;">
             <span class="text-muted">自訂：</span>
             <span>HK$</span>
-            <input type="number" id="custom-price-min" class="form-control form-control-sm" style="width:68px;font-size:11px;padding:1px 4px;" placeholder="450" min="0">
+            <input type="number" id="custom-price-min" class="form-control form-control-sm" style="width:62px;font-size:11px;padding:1px 4px;" placeholder="450" min="0">
             <span>–</span>
-            <input type="number" id="custom-price-max" class="form-control form-control-sm" style="width:68px;font-size:11px;padding:1px 4px;" placeholder="780" min="0">
+            <input type="number" id="custom-price-max" class="form-control form-control-sm" style="width:62px;font-size:11px;padding:1px 4px;" placeholder="780" min="0">
+
+            <!-- 快速微調按鈕 -->
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" id="btn-price-minus" style="font-size:10px;width:28px;" title="全部 -50">-50</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" id="btn-price-plus" style="font-size:10px;width:28px;" title="全部 +50">+50</button>
+
             <button type="button" class="btn btn-sm btn-success py-0 px-2" id="btn-apply-custom-price" style="font-size:10px;">應用</button>
             <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="btn-remember-price-pref" style="font-size:10px;" title="記住此客戶最愛用嘅價位">記住</button>
           </div>
@@ -2229,6 +2235,8 @@
     const customMax = panel.querySelector('#custom-price-max');
     const applyCustomBtn = panel.querySelector('#btn-apply-custom-price');
     const rememberBtn = panel.querySelector('#btn-remember-price-pref');
+    const minusBtn = panel.querySelector('#btn-price-minus');
+    const plusBtn = panel.querySelector('#btn-price-plus');
 
     // 自動套用此客戶之前儲存嘅自訂價位偏好（如果有）
     let autoAppliedPref = false;
@@ -2329,6 +2337,42 @@
       if (window.SalonEase && window.SalonEase.toast) {
         window.SalonEase.toast('自訂價位已應用', 'info', 1200);
       }
+    }
+
+    // 快速 +/- 50 微調（同時調整 min 與 max）
+    function adjustCustomRange(delta) {
+      if (!customMin || !customMax) return;
+
+      let minV = parseFloat(customMin.value) || 0;
+      let maxV = parseFloat(customMax.value) || 0;
+
+      // 如果兩個都未有值，就以目前 textarea 嘅內容或合理默認開始
+      if (minV === 0 && maxV === 0) {
+        minV = 400;
+        maxV = 750;
+      }
+
+      minV = Math.max(0, minV + delta);
+      maxV = Math.max(minV + 50, maxV + delta); // 保持至少有 50 差距
+
+      customMin.value = Math.round(minV);
+      customMax.value = Math.round(maxV);
+
+      // 即時應用
+      applyCustomPriceRange(minV, maxV);
+    }
+
+    if (minusBtn) {
+      minusBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        adjustCustomRange(-50);
+      };
+    }
+    if (plusBtn) {
+      plusBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        adjustCustomRange(50);
+      };
     }
 
     // 處理自訂價位「應用」按鈕
