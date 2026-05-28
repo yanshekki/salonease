@@ -131,6 +131,14 @@ $extraJs = 'hotkeys.js';
                     <label class="form-label">備註</label>
                     <textarea id="customer-notes" rows="2" class="form-control" placeholder="過敏、偏好等..."></textarea>
                 </div>
+
+                <!-- A36：最近積分異動 -->
+                <div id="points-history-section" class="mt-3 d-none">
+                    <label class="form-label small text-muted">最近積分異動（最多 6 筆）</label>
+                    <div id="points-history-list" class="small border rounded p-2 bg-light" style="max-height: 110px; overflow-y: auto; font-size: 0.75rem;">
+                        <!-- JS 動態填入 -->
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -234,6 +242,10 @@ function showAddModal() {
 
     document.getElementById('save-btn').textContent = '新增客戶';
 
+    // A36：新增模式隱藏積分歷史
+    const historySection = document.getElementById('points-history-section');
+    if (historySection) historySection.classList.add('d-none');
+
     const modalEl = document.getElementById('customerModal');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
@@ -256,6 +268,48 @@ async function editCustomer(id) {
         document.getElementById('customer-notes').value = c.notes || '';
 
         document.getElementById('save-btn').textContent = '儲存變更';
+
+        // A36：顯示並載入最近積分異動
+        const historySection = document.getElementById('points-history-section');
+        const historyList = document.getElementById('points-history-list');
+        if (historySection && historyList) {
+            historySection.classList.remove('d-none');
+            historyList.innerHTML = '<div class="text-muted">載入中...</div>';
+
+            const history = c.recent_points_history || [];
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="text-muted">尚無積分異動記錄</div>';
+            } else {
+                let html = '<table class="table table-sm mb-0" style="font-size:0.7rem;"><tbody>';
+                history.forEach(item => {
+                    const details = JSON.parse(item.details || '{}');
+                    let type = '';
+                    let pointsText = '';
+
+                    if (item.action === 'customer.points_earned') {
+                        type = '<span class="badge bg-success-subtle text-success">獲得</span>';
+                        pointsText = `+${details.points || 0}`;
+                    } else if (item.action === 'customer.points_redeemed') {
+                        type = '<span class="badge bg-warning-subtle text-warning">兌換</span>';
+                        pointsText = `-${details.points_used || 0}`;
+                    } else if (item.action === 'customer.points_adjusted') {
+                        const adj = details.points || 0;
+                        type = '<span class="badge bg-info-subtle text-info">調整</span>';
+                        pointsText = (adj > 0 ? '+' : '') + adj;
+                    }
+
+                    html += `
+                        <tr>
+                            <td class="text-nowrap">${item.created_at.substring(0,16).replace('T',' ')}</td>
+                            <td>${type}</td>
+                            <td class="text-end fw-medium">${pointsText}</td>
+                            <td class="text-muted small">${details.reason || details.sale_id ? '銷售' : ''}</td>
+                        </tr>`;
+                });
+                html += '</tbody></table>';
+                historyList.innerHTML = html;
+            }
+        }
 
         const modalEl = document.getElementById('customerModal');
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
