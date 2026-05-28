@@ -152,6 +152,7 @@
 - A4 已完成：客戶忠誠度系統基礎 - 新增 migration 005（customers.points） + 銷售時自動累積點數（每 $10 = 1 點） + audit 記錄
 - A5 已完成：銷售成功回應加入 points_earned 及 customer_new_points，讓前端可即時顯示積分獲得與餘額
 - A6 已完成：客戶管理頁面新增「積分」欄位 + 支援按積分排序（points_desc），讓忠誠度系統對員工可見
+- A7 已完成：在 POS 客戶選擇顯示時自動顯示客戶目前積分餘額（badge 樣式）
 
 ---
 
