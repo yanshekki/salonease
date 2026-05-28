@@ -2540,8 +2540,192 @@
   }
 
   /**
-   * 顯示「缺口智能替代」完整銷售話術預覽面板（Phase 42 客戶回應模擬教練模式）
-   * 支援：即時微調、WhatsApp、客戶 objection 即時重寫、確認後面板不自動隱藏
+   * Phase 43：完整對話流程模擬器核心
+   * 定義一組真實香港美容院客戶常見回應，支援累積式話術優化
+   */
+  const CUSTOMER_RESPONSE_POOL = [
+    { type: 'too_expensive', label: '「太貴呀，可唔可以平啲？」', hint: '價格敏感' },
+    { type: 'done_before',   label: '「呢個之前試過，效果唔係好明顯」', hint: '曾經失望' },
+    { type: 'no_time',       label: '「我而家好忙，冇咁多時間」', hint: '時間壓力' },
+    { type: 'want_more',     label: '「想再強啲效果，有冇更好選擇？」', hint: '追求更好' },
+    { type: 'other_options', label: '「有冇其他選擇？我諗諗先」', hint: '猶豫' }
+  ];
+
+  /**
+   * 啟動完整對話模擬器（Phase 43 核心）
+   * 讓用戶像真正同客戶傾偈咁，一輪一輪即時優化話術，最後生成完整對話紀錄
+   */
+  function startConversationSimulator(panel, mainTa, alternatives, context) {
+    // 防止重複啟動
+    if (document.getElementById('convo-simulator')) {
+      document.getElementById('convo-simulator').remove();
+    }
+
+    const customer = context.customer || (window.SalonEase && window.SalonEase.POS && window.SalonEase.POS.getCurrentCustomer ? window.SalonEase.POS.getCurrentCustomer() : null);
+    const customerName = customer && customer.name ? customer.name : '客戶';
+
+    const simHtml = `
+      <div id="convo-simulator" class="mt-2 p-2 rounded border" style="background:#fffaf0;border-color:#D4A017;">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <div class="fw-semibold text-warning" style="font-size:12px;">🎭 完整對話模擬進行中（第 <span id="convo-turn">1</span>/5 輪）</div>
+          <button type="button" class="btn-close btn-close-sm" id="convo-sim-close" style="font-size:10px;"></button>
+        </div>
+
+        <div class="small text-muted mb-1">模擬真實銷售傾偈流程，每點一次客戶回應，話術即時優化</div>
+
+        <div id="convo-transcript" class="mb-2 p-2 bg-white rounded border" style="max-height:110px;overflow:auto;font-size:11px;line-height:1.4;color:#444;">
+          <div class="text-muted" style="font-size:10px;">【對話開始】</div>
+        </div>
+
+        <div class="small fw-medium mb-1">客戶下一句可能會講：</div>
+        <div class="d-flex flex-wrap gap-1" id="convo-response-list"></div>
+
+        <div class="mt-2 d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-warning flex-fill" id="btn-finish-convo" style="font-size:11px;">
+            ✅ 結束模擬 + 生成完整對話紀錄 + 加入項目
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset-convo" style="font-size:10px;">重置</button>
+        </div>
+      </div>`;
+
+    // 插入模擬器
+    mainTa.insertAdjacentHTML('afterend', simHtml);
+
+    const sim = document.getElementById('convo-simulator');
+    const transcriptEl = document.getElementById('convo-transcript');
+    const responseList = document.getElementById('convo-response-list');
+    const turnEl = document.getElementById('convo-turn');
+
+    let turn = 1;
+    let transcript = [`【開場】我：${mainTa.value.trim().substring(0, 90)}...`];
+
+    function renderTranscript() {
+      transcriptEl.innerHTML = transcript.map(line => `<div style="margin:2px 0;">${line}</div>`).join('');
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+
+    function addToTranscript(speaker, text) {
+      transcript.push(`【第${turn}輪】${speaker}：${text}`);
+      renderTranscript();
+    }
+
+    function renderCustomerResponses() {
+      responseList.innerHTML = '';
+      // 每次顯示 4 個不同回應（隨機但穩定）
+      const shuffled = [...CUSTOMER_RESPONSE_POOL].sort(() => Math.random() - 0.5).slice(0, 4);
+
+      shuffled.forEach(resp => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline-dark py-0 px-2';
+        btn.style.fontSize = '10px';
+        btn.innerHTML = resp.label;
+
+        btn.onclick = () => {
+          // 1. 重寫主話術
+          const currentScript = mainTa.value.trim();
+          const rewritten = rewriteScriptForCustomerResponse(currentScript, resp.type, {
+            customerName: customerName
+          });
+          mainTa.value = rewritten;
+
+          // 2. 更新 transcript
+          addToTranscript('客戶', resp.label);
+          addToTranscript('我（優化後）', rewritten.substring(0, 85) + (rewritten.length > 85 ? '...' : ''));
+
+          turn++;
+          if (turnEl) turnEl.textContent = Math.min(turn, 5);
+
+          // 3. 記錄到 sale-notes（即時）
+          const notesEl = document.getElementById('sale-notes');
+          if (notesEl) {
+            const note = `[對話模擬 第${turn-1}輪] 客戶：${resp.label} → 已即時優化話術`;
+            notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+          }
+
+          // 4. 重新渲染回應（下一輪）
+          if (turn <= 5) {
+            renderCustomerResponses();
+          } else {
+            responseList.innerHTML = '<span class="text-muted small">已完成 5 輪模擬，可點擊下方結束按鈕</span>';
+          }
+        };
+
+        responseList.appendChild(btn);
+      });
+    }
+
+    // 初始渲染
+    renderTranscript();
+    renderCustomerResponses();
+
+    // 關閉模擬器
+    document.getElementById('convo-sim-close').onclick = () => sim.remove();
+
+    // 重置
+    document.getElementById('btn-reset-convo').onclick = () => {
+      sim.remove();
+      startConversationSimulator(panel, mainTa, alternatives, context); // 重新開始
+    };
+
+    // 結束模擬 + 生成完整紀錄 + 加入項目
+    document.getElementById('btn-finish-convo').onclick = () => {
+      const finalScript = mainTa.value.trim();
+
+      // 加入項目
+      let added = 0;
+      alternatives.forEach(alt => {
+        if (window.addToCart) {
+          window.addToCart(alt.type, alt.ref_id, alt.label || alt.name, alt.price);
+          added++;
+        }
+      });
+
+      // 生成完整結構化對話紀錄
+      const fullTranscript = transcript.join('\n');
+
+      const notesEl = document.getElementById('sale-notes');
+      if (notesEl) {
+        const record = `
+【完整銷售對話模擬紀錄】${new Date().toLocaleString('zh-HK')}
+客戶：${customerName}
+模擬輪數：${turn - 1} 輪
+---
+${fullTranscript}
+
+【最終優化話術】
+${finalScript}
+
+【系統自動建議】
+已成功加入 ${added} 個缺口智能替代項目。此對話可直接用作 WhatsApp 跟進或內部培訓紀錄。
+        `.trim();
+
+        notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n\n${record}` : record;
+      }
+
+      // 儲存最後版本
+      window.SalonEase = window.SalonEase || {};
+      window.SalonEase.lastSalesScript = finalScript;
+      window.SalonEase.lastConversationTranscript = fullTranscript;
+
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast(`✅ 完整對話模擬結束！已加入 ${added} 項 + 完整紀錄已寫入備註`, 'success', 2200);
+      }
+
+      sim.remove();
+
+      // 教練模式：保持面板開著，讓用戶可以繼續操作
+      setTimeout(() => {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('🟢 教練模式繼續：您可以再微調話術或搜尋其他項目', 'info', 2800);
+        }
+      }, 2300);
+    };
+  }
+
+  /**
+   * 顯示「缺口智能替代」完整銷售話術預覽面板（Phase 43 完整對話流程模擬器）
+   * 支援：即時微調、WhatsApp、單一objection + 完整對話模擬、確認後面板不自動隱藏
    */
   function showGapFillScriptPreview(alternatives, initialScript, context = {}) {
     if (!resultsEl || !alternatives || !alternatives.length) return;
@@ -2581,6 +2765,14 @@
             <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-response="done_before" style="font-size:10px;">「之前做過」</button>
             <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" data-response="want_more" style="font-size:10px;">「想再強啲效果」</button>
           </div>
+        </div>
+
+        <!-- Phase 43: 完整對話流程模擬器入口 -->
+        <div class="mb-2 pt-1 border-top">
+          <button type="button" class="btn btn-sm btn-outline-warning w-100 py-1" id="btn-start-convo-sim" style="font-size:11px;">
+            🎭 開始完整對話模擬（模擬 4-5 輪真實傾偈）
+          </button>
+          <div class="small text-muted mt-1" style="font-size:9px;">一鍵進入「活生生銷售教練」完整流程，累積優化話術，最後一鍵生成完整對話紀錄 + 加入項目</div>
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
@@ -2667,6 +2859,15 @@
           }
         };
       });
+    }
+
+    // === Phase 43：完整對話流程模擬器（最強教練模式）===
+    const startConvoBtn = document.getElementById('btn-start-convo-sim');
+    if (startConvoBtn) {
+      startConvoBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        startConversationSimulator(panel, ta, alternatives, context);
+      };
     }
 
     // 微調 +/- 50：簡單字串替換價位提示 + 輕微改寫
