@@ -16,6 +16,7 @@ switch ($action) {
 
     case 'list':
         $search = trim(get('search', ''));
+        $sort = get('sort', 'recent');   // recent | points_desc
 
         $sql = "SELECT id, name, phone, email, gender, birthday, notes, total_spent, visit_count, last_visit_at, points 
                 FROM customers 
@@ -30,7 +31,13 @@ switch ($action) {
             $params[] = $like;
         }
 
-        $sql .= " ORDER BY last_visit_at DESC, name ASC LIMIT 100";
+        if ($sort === 'points_desc') {
+            $sql .= " ORDER BY points DESC, name ASC";
+        } else {
+            $sql .= " ORDER BY last_visit_at DESC, name ASC";
+        }
+
+        $sql .= " LIMIT 100";
 
         $customers = db_query($sql, $params);
         json_success($customers);

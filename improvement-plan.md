@@ -150,6 +150,7 @@
 - A2 已完成：產品手動調整庫存功能（admin/manager 可正負數調整 + 原因記錄 + 詳細 Audit） + 產品列表回傳 `is_low_stock` 警示標記
 - A3 已完成：新增 `api/products.php?action=low_stock` 專用警示列表 API + 優化 Dashboard 低量警示卡片（使用 per-product 門檻邏輯）
 - A4 已完成：客戶忠誠度系統基礎 - 新增 migration 005（customers.points） + 銷售時自動累積點數（每 $10 = 1 點） + audit 記錄
+- A5 已完成：銷售成功回應加入 points_earned 及 customer_new_points，讓前端可即時顯示積分獲得與餘額
 
 ---
 

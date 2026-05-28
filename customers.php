@@ -35,6 +35,12 @@ $extraJs = 'hotkeys.js';
             <div class="col-12 col-md-auto">
                 <button onclick="loadCustomers()" class="btn btn-outline-secondary w-100">搜尋</button>
             </div>
+            <div class="col-12 col-md-auto">
+                <select id="sort" class="form-select" onchange="loadCustomers()" style="width: 140px;">
+                    <option value="recent">最近到訪</option>
+                    <option value="points_desc">積分由高到低</option>
+                </select>
+            </div>
         </div>
     </div>
 </div>
@@ -49,12 +55,13 @@ $extraJs = 'hotkeys.js';
                     <th class="d-none d-md-table-cell">電郵</th>
                     <th class="d-none d-md-table-cell">最近到訪</th>
                     <th class="text-end">累計消費</th>
+                    <th class="text-center">積分</th>
                     <th class="text-center">到訪次數</th>
                     <th class="text-end" style="width: 90px;">操作</th>
                 </tr>
             </thead>
             <tbody id="customers-list">
-                <tr><td colspan="7" class="py-5 text-center text-muted">載入中...</td></tr>
+                <tr><td colspan="8" class="py-5 text-center text-muted">載入中...</td></tr>
             </tbody>
         </table>
     </div>
@@ -146,22 +153,24 @@ function debounceLoadCustomers() {
 
 async function loadCustomers() {
     const tbody = document.getElementById('customers-list');
-    tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-muted">載入中...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="py-5 text-center text-muted">載入中...</td></tr>`;
 
     const search = document.getElementById('search').value;
+    const sortEl = document.getElementById('sort');
+    const sort = sortEl ? sortEl.value : 'recent';
 
     try {
-        const res = await SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(search)}`);
+        const res = await SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(search)}&sort=${sort}`);
         renderCustomersTable(res.data);
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-danger">${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-5 text-center text-danger">${err.message}</td></tr>`;
     }
 }
 
 function renderCustomersTable(list) {
     const tbody = document.getElementById('customers-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-muted">沒有符合的客戶</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-5 text-center text-muted">沒有符合的客戶</td></tr>`;
         return;
     }
 
@@ -170,6 +179,7 @@ function renderCustomersTable(list) {
         const lastVisit = c.last_visit_at ? formatDate(c.last_visit_at) : '-';
         const spent = parseFloat(c.total_spent || 0).toFixed(0);
 
+        const points = c.points || 0;
         html += `
             <tr>
                 <td class="fw-medium">${e(c.name)}</td>
@@ -177,6 +187,9 @@ function renderCustomersTable(list) {
                 <td class="small text-muted">${e(c.email || '-')}</td>
                 <td class="small">${lastVisit}</td>
                 <td class="text-end fw-medium">HK$ ${spent}</td>
+                <td class="text-center">
+                    <span class="badge ${points > 0 ? 'bg-success' : 'bg-secondary'}">${points}</span>
+                </td>
                 <td class="text-center">${c.visit_count || 0}</td>
                 <td class="text-end">
                     <button onclick="editCustomer(${c.id})" class="btn btn-link btn-sm text-success p-0">編輯</button>
