@@ -53,7 +53,8 @@ include __DIR__ . '/includes/header.php';
                 <div class="card-body">
                     <div class="text-uppercase text-muted small mb-1">總營業額</div>
                     <div class="fs-4 fw-semibold" x-text="formatMoney(summary.total_sales)">HK$ 0</div>
-                    <div class="small text-success mt-2" x-text="summary.total_transactions + ' 單'"></div>
+                    <div class="small" :class="getChangeClass(summary.total_sales, prevSummary.total_sales)" x-text="getChangeText(summary.total_sales, prevSummary.total_sales)"></div>
+                    <div class="small text-success mt-1" x-text="summary.total_transactions + ' 單'"></div>
                 </div>
             </div>
         </div>
@@ -62,7 +63,8 @@ include __DIR__ . '/includes/header.php';
                 <div class="card-body">
                     <div class="text-uppercase text-muted small mb-1">平均每單</div>
                     <div class="fs-4 fw-semibold" x-text="formatMoney(summary.avg_ticket)">HK$ 0</div>
-                    <div class="small text-muted mt-2">折扣總額 <span x-text="formatMoney(summary.total_discount)"></span></div>
+                    <div class="small" :class="getChangeClass(summary.avg_ticket, prevSummary.avg_ticket)" x-text="getChangeText(summary.avg_ticket, prevSummary.avg_ticket)"></div>
+                    <div class="small text-muted mt-1">折扣總額 <span x-text="formatMoney(summary.total_discount)"></span></div>
                 </div>
             </div>
         </div>
@@ -298,6 +300,13 @@ function reportsApp() {
             total_discount: 0,
             package_sessions: 0
         },
+        prevSummary: {
+            total_sales: 0,
+            total_transactions: 0,
+            avg_ticket: 0,
+            total_discount: 0,
+            package_sessions: 0
+        },
         paymentBreakdown: [],
         topServices: [],
         topProducts: [],
@@ -313,6 +322,7 @@ function reportsApp() {
             try {
                 await Promise.all([
                     this.loadSummary(),
+                    this.loadPrevSummary(),
                     this.loadPaymentBreakdown(),
                     this.loadTopServices(),
                     this.loadTopProducts(),
@@ -328,7 +338,19 @@ function reportsApp() {
 
         // 暴露給熱鍵系統使用
         setQuickRange: function(type) { this.setQuickRange(type); },
-        loadAll: function() { this.loadAll(); }
+        loadAll: function() { this.loadAll(); },
+
+        // A62 小工具：計算「較上期」文字與顏色
+        getChangeText(curr, prev) {
+            if (!prev || prev === 0) return '';
+            const diff = ((curr - prev) / prev) * 100;
+            const sign = diff >= 0 ? '+' : '';
+            return `${sign}${diff.toFixed(1)}%`;
+        },
+        getChangeClass(curr, prev) {
+            if (!prev || prev === 0) return 'text-muted';
+            return (curr - prev) >= 0 ? 'text-success' : 'text-danger';
+        }
     }
 }
 
@@ -367,6 +389,22 @@ document.addEventListener('keydown', function(e) {
                 this.summary = res.data;
             } catch (e) {
                 console.error(e);
+            }
+        },
+
+        // A62：載入上期數據以計算「較上期」百分比
+        async loadPrevSummary() {
+            const duration = new Date(this.to) - new Date(this.from);
+            const prevTo = new Date(new Date(this.from).getTime() - 86400000); // 前一天
+            const prevFrom = new Date(prevTo.getTime() - duration);
+            const pFrom = prevFrom.toISOString().slice(0,10);
+            const pTo = prevTo.toISOString().slice(0,10);
+
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=summary&from=${pFrom}&to=${pTo}`);
+                this.prevSummary = res.data;
+            } catch (e) {
+                this.prevSummary = { total_sales: 0, total_transactions: 0, avg_ticket: 0, total_discount: 0, package_sessions: 0 };
             }
         },
 
