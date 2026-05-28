@@ -303,6 +303,62 @@
     }
   }
 
+  // 智能推薦：根據目前選中的客戶，推薦最相關的組合（常用模板 + 最近購買）
+  async function fetchSmartRecommendationsForCurrentCustomer() {
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+
+    if (!customer || !customer.id) return [];
+
+    const recommendations = [];
+
+    try {
+      // 1. 取得該客戶最近的銷售單（最多 5 張）
+      const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=5`);
+      const recentSales = salesRes.data || [];
+
+      recentSales.forEach(sale => {
+        recommendations.push({
+          id: `history-${sale.id}`,
+          type: 'history_sale',
+          label: `上次購買 #${sale.id}（${sale.sale_date}）`,
+          sublabel: `HK$ ${parseFloat(sale.total).toFixed(0)} · ${sale.item_count} 項`,
+          keywords: '歷史 最近 購買',
+          icon: '🕒',
+          action: 'load-history-sale',
+          saleId: sale.id,
+          priority: 10   // 最近購買權重較高
+        });
+      });
+
+      // 2. 取得員工的常用組合（這些通常是針對客戶的）
+      const templatesRes = await window.SalonEase.fetch('/api/cart_templates.php?action=list');
+      const templates = templatesRes.data || [];
+
+      templates.slice(0, 4).forEach(t => {
+        recommendations.push({
+          id: `template-${t.id}`,
+          type: 'cart_template',
+          label: `常用：${t.name}`,
+          sublabel: `${t.items ? t.items.length : 0} 項`,
+          keywords: t.name + ' 常用 套餐',
+          icon: '⭐',
+          action: 'load-cart-template',
+          templateId: t.id,
+          priority: 8
+        });
+      });
+
+    } catch (err) {
+      console.warn('[CommandPalette] 智能推薦載入失敗', err);
+    }
+
+    // 簡單排序：priority 高的排前面
+    recommendations.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+    return recommendations.slice(0, 8); // 最多顯示 8 個推薦
+  }
+
   async function updateResults(q = '') {
     if (!resultsEl) return;
     const ctx = getContext();
@@ -335,15 +391,23 @@
         dynamicItems = [...dynamicItems, ...matchedPkgs];
       }
     } else if (ctx === 'pos' && q.trim().length === 0) {
-      // POS 頁空白查詢時，優先顯示：
-      // 1. 本單最近加入的項目
-      // 2. 常用購物車組合
-      // 3. 目前客戶可用的套票
+      // POS 頁空白查詢時，智能推薦：
+      // - 如果有選客戶 → 顯示「該客戶的智能推薦」（最近購買 + 常用組合）
+      // - 否則顯示一般最近 + 常用組合
       const recent = getPosRecentSessionItems();
-      const templates = await fetchCartTemplates(); // 空白時也顯示部分常用組合
       const customerPkgs = getCurrentPosCustomerPackages();
 
-      dynamicItems = [...recent, ...templates.slice(0, 6)];
+      const POS = window.SalonEase && window.SalonEase.POS;
+      const hasCustomer = POS && POS.getCurrentCustomer && POS.getCurrentCustomer();
+
+      if (hasCustomer) {
+        // 有客戶時，優先顯示智能推薦
+        const smartRecs = await fetchSmartRecommendationsForCurrentCustomer();
+        dynamicItems = [...smartRecs, ...recent];
+      } else {
+        const templates = await fetchCartTemplates();
+        dynamicItems = [...recent, ...templates.slice(0, 5)];
+      }
 
       customerPkgs.forEach(pkg => {
         if (!dynamicItems.some(x => x.ref_id == pkg.ref_id && x.type === 'package_redemption')) {
@@ -559,6 +623,12 @@
 
     if (item.action === 'search-sales-history') {
       enterSalesHistorySearchMode();
+      return;
+    }
+
+    if (item.action === 'load-history-sale' && item.saleId) {
+      // 智能推薦中點擊歷史銷售
+      await loadItemsFromSale(item.saleId, resultsEl); // 重用之前的函式
       return;
     }
 
