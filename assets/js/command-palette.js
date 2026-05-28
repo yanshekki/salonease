@@ -331,11 +331,15 @@
         })
       );
 
-      // 分析頻率與最後購買時間
+      // 分析頻率 + 關聯（最常一起買）
+      const pairFrequency = {}; // key: "type:refId|type:refId" (排序後)
+
       recentSalesWithItems.forEach(sale => {
         const saleDate = sale.sale_date;
+        const itemsInSale = sale.items || [];
 
-        (sale.items || []).forEach(item => {
+        // 單一項目頻率
+        itemsInSale.forEach(item => {
           const key = `${item.item_type}:${item.ref_id}`;
           itemFrequency[key] = (itemFrequency[key] || 0) + 1;
 
@@ -343,6 +347,21 @@
             lastPurchaseDate[key] = saleDate;
           }
         });
+
+        // 關聯分析：同一次銷售內的項目兩兩配對
+        for (let i = 0; i < itemsInSale.length; i++) {
+          for (let j = i + 1; j < itemsInSale.length; j++) {
+            const a = itemsInSale[i];
+            const b = itemsInSale[j];
+
+            const keyA = `${a.item_type}:${a.ref_id}`;
+            const keyB = `${b.item_type}:${b.ref_id}`;
+
+            // 排序確保 A < B，避免重複
+            const pairKey = keyA < keyB ? `${keyA}|${keyB}` : `${keyB}|${keyA}`;
+            pairFrequency[pairKey] = (pairFrequency[pairKey] || 0) + 1;
+          }
+        }
       });
 
       // 建立「最常購買」推薦（取前幾名）
@@ -369,9 +388,41 @@
           sublabel: `已買 ${count} 次`,
           keywords: '最常 常用 頻繁',
           icon: '🔥',
-          action: 'load-history-sale', // 暫時指向歷史，未來可優化
-          priority: 15 + (3 - idx),     // 最高權重
+          action: 'load-history-sale',
+          priority: 15 + (3 - idx),
           isFrequent: true
+        });
+      });
+
+      // 建立「最常一起買」的關聯推薦（新功能）
+      const sortedPairs = Object.entries(pairFrequency)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+      sortedPairs.forEach(([pairKey, count], idx) => {
+        const [keyA, keyB] = pairKey.split('|');
+
+        let nameA = '項目A';
+        let nameB = '項目B';
+
+        for (const sale of recentSalesWithItems) {
+          const foundA = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === keyA);
+          const foundB = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === keyB);
+          if (foundA) nameA = foundA.name;
+          if (foundB) nameB = foundB.name;
+          if (foundA && foundB) break;
+        }
+
+        recommendations.push({
+          id: `pair-${pairKey}`,
+          type: 'frequent_pair',
+          label: `最常一起買：${nameA} + ${nameB}`,
+          sublabel: `一起買 ${count} 次`,
+          keywords: '一起 搭配 組合 常一起',
+          icon: '🔗',
+          action: 'load-history-sale', // 可以之後優化成載入這兩個項目
+          priority: 18 + (3 - idx),     // 關聯推薦給最高權重
+          isPair: true
         });
       });
 
@@ -404,6 +455,26 @@
             action: 'load-history-sale',
             priority: 12,
             isReplenish: true
+          });
+        }
+      });
+
+      // 簡單交叉銷售建議（例如常見服務搭配產品）
+      // 從最常買的項目中，簡單推一些常見搭配（可之後做成可設定規則）
+      const topFrequentKeys = Object.keys(itemFrequency).sort((a,b) => itemFrequency[b]-itemFrequency[a]).slice(0,3);
+      topFrequentKeys.forEach(key => {
+        const [type] = key.split(':');
+        if (type === 'service') {
+          // 簡單規則：如果常買服務，推薦常見零售產品（這裡用泛化建議）
+          recommendations.push({
+            id: `cross-${key}`,
+            type: 'cross_sell',
+            label: `搭配推薦：護膚產品`,
+            sublabel: `常與此服務一起購買`,
+            keywords: '搭配 推薦 一起',
+            icon: '✨',
+            action: 'load-history-sale',
+            priority: 11
           });
         }
       });
