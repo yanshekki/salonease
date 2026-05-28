@@ -454,6 +454,13 @@ function reportsApp() {
             } catch (e) {
                 console.error(e);
             }
+        },
+
+        async loadPaymentBreakdown() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=payment_breakdown&from=${this.from}&to=${this.to}`);
+                this.paymentBreakdown = res.data || [];
+            } catch (e) {}
         }
     }
 }
@@ -508,13 +515,6 @@ document.addEventListener('keydown', function(e) {
             } catch (e) {
                 this.prevSummary = { total_sales: 0, total_transactions: 0, avg_ticket: 0, total_discount: 0, package_sessions: 0 };
             }
-        },
-
-        async loadPaymentBreakdown() {
-            try {
-                const res = await SalonEase.fetch(`/api/reports.php?action=payment_breakdown&from=${this.from}&to=${this.to}`);
-                this.paymentBreakdown = res.data || [];
-            } catch (e) {}
         },
 
         async loadTopServices() {
