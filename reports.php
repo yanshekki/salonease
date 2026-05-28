@@ -482,6 +482,22 @@ function reportsApp() {
                 const res = await SalonEase.fetch(`/api/reports.php?action=package_redemptions&from=${this.from}&to=${this.to}`);
                 this.packageRedemptions = res.data || [];
             } catch (e) {}
+        },
+
+        // A62：載入上期數據以計算「較上期」百分比
+        async loadPrevSummary() {
+            const duration = new Date(this.to) - new Date(this.from);
+            const prevTo = new Date(new Date(this.from).getTime() - 86400000); // 前一天
+            const prevFrom = new Date(prevTo.getTime() - duration);
+            const pFrom = prevFrom.toISOString().slice(0,10);
+            const pTo = prevTo.toISOString().slice(0,10);
+
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=summary&from=${pFrom}&to=${pTo}`);
+                this.prevSummary = res.data;
+            } catch (e) {
+                this.prevSummary = { total_sales: 0, total_transactions: 0, avg_ticket: 0, total_discount: 0, package_sessions: 0 };
+            }
         }
     }
 }
@@ -521,22 +537,6 @@ document.addEventListener('keydown', function(e) {
 // 這是目前 reports.php 最大的結構問題，需逐步移返去正確位置。
 // 目前這些方法實際上不會被 Alpine component 正確呼叫。
 
-
-        // A62：載入上期數據以計算「較上期」百分比
-        async loadPrevSummary() {
-            const duration = new Date(this.to) - new Date(this.from);
-            const prevTo = new Date(new Date(this.from).getTime() - 86400000); // 前一天
-            const prevFrom = new Date(prevTo.getTime() - duration);
-            const pFrom = prevFrom.toISOString().slice(0,10);
-            const pTo = prevTo.toISOString().slice(0,10);
-
-            try {
-                const res = await SalonEase.fetch(`/api/reports.php?action=summary&from=${pFrom}&to=${pTo}`);
-                this.prevSummary = res.data;
-            } catch (e) {
-                this.prevSummary = { total_sales: 0, total_transactions: 0, avg_ticket: 0, total_discount: 0, package_sessions: 0 };
-            }
-        },
 
         setQuickRange(type) {
             this.activeRange = type;
