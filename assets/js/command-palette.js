@@ -303,7 +303,7 @@
     }
   }
 
-  // 智能推薦：根據目前選中的客戶，推薦最相關的組合（常用模板 + 最近購買）
+  // 智能推薦：根據目前選中的客戶，推薦最相關的組合（頻率 + 補貨時機分析）
   async function fetchSmartRecommendationsForCurrentCustomer() {
     const POS = window.SalonEase && window.SalonEase.POS;
     const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
@@ -311,37 +311,127 @@
     if (!customer || !customer.id) return [];
 
     const recommendations = [];
+    const itemFrequency = {};      // 統計客戶最常買的項目
+    const lastPurchaseDate = {};   // 記錄每個項目上次購買日期
 
     try {
-      // 1. 取得該客戶最近的銷售單（最多 5 張）
-      const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=5`);
+      // 取得該客戶較多歷史銷售（用來做頻率分析）
+      const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=12`);
       const recentSales = salesRes.data || [];
 
-      recentSales.forEach(sale => {
-        recommendations.push({
-          id: `history-${sale.id}`,
-          type: 'history_sale',
-          label: `上次購買 #${sale.id}（${sale.sale_date}）`,
-          sublabel: `HK$ ${parseFloat(sale.total).toFixed(0)} · ${sale.item_count} 項`,
-          keywords: '歷史 最近 購買',
-          icon: '🕒',
-          action: 'load-history-sale',
-          saleId: sale.id,
-          priority: 10   // 最近購買權重較高
+      // 為最近幾張銷售抓取詳細項目，做頻率統計
+      const recentSalesWithItems = await Promise.all(
+        recentSales.slice(0, 6).map(async (sale) => {
+          try {
+            const itemsRes = await window.SalonEase.fetch(`/api/sales.php?action=get_items&sale_id=${sale.id}`);
+            return { ...sale, items: itemsRes.data || [] };
+          } catch {
+            return { ...sale, items: [] };
+          }
+        })
+      );
+
+      // 分析頻率與最後購買時間
+      recentSalesWithItems.forEach(sale => {
+        const saleDate = sale.sale_date;
+
+        (sale.items || []).forEach(item => {
+          const key = `${item.item_type}:${item.ref_id}`;
+          itemFrequency[key] = (itemFrequency[key] || 0) + 1;
+
+          if (!lastPurchaseDate[key] || saleDate > lastPurchaseDate[key]) {
+            lastPurchaseDate[key] = saleDate;
+          }
         });
       });
 
-      // 2. 取得員工的常用組合（這些通常是針對客戶的）
+      // 建立「最常購買」推薦（取前幾名）
+      const sortedFrequent = Object.entries(itemFrequency)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+      sortedFrequent.forEach(([key, count], idx) => {
+        const [type, refId] = key.split(':');
+        // 試著從最近銷售找名字
+        let name = '常用項目';
+        for (const sale of recentSalesWithItems) {
+          const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === key);
+          if (found) {
+            name = found.name;
+            break;
+          }
+        }
+
+        recommendations.push({
+          id: `freq-${key}`,
+          type: 'frequent_item',
+          label: `最常買：${name}`,
+          sublabel: `已買 ${count} 次`,
+          keywords: '最常 常用 頻繁',
+          icon: '🔥',
+          action: 'load-history-sale', // 暫時指向歷史，未來可優化
+          priority: 15 + (3 - idx),     // 最高權重
+          isFrequent: true
+        });
+      });
+
+      // 建立「該補貨了」建議（針對產品類，超過一定天數）
+      const today = new Date();
+      Object.entries(lastPurchaseDate).forEach(([key, dateStr]) => {
+        const [type, refId] = key.split(':');
+        if (type !== 'product') return; // 先只對產品做補貨建議
+
+        const lastDate = new Date(dateStr);
+        const daysSince = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (daysSince >= 60) { // 超過 60 天建議補貨（可之後做成可設定）
+          let name = '產品';
+          for (const sale of recentSalesWithItems) {
+            const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === key);
+            if (found) {
+              name = found.name;
+              break;
+            }
+          }
+
+          recommendations.push({
+            id: `replenish-${key}`,
+            type: 'replenish_suggestion',
+            label: `該補貨了：${name}`,
+            sublabel: `上次購買已 ${daysSince} 天`,
+            keywords: '補貨 補充 該買了',
+            icon: '🧴',
+            action: 'load-history-sale',
+            priority: 12,
+            isReplenish: true
+          });
+        }
+      });
+
+      // 加入原本的歷史銷售與常用組合作為備選
+      recentSales.slice(0, 3).forEach(sale => {
+        recommendations.push({
+          id: `history-${sale.id}`,
+          type: 'history_sale',
+          label: `歷史：#${sale.id}（${sale.sale_date}）`,
+          sublabel: `HK$ ${parseFloat(sale.total).toFixed(0)}`,
+          keywords: '歷史 最近',
+          icon: '🕒',
+          action: 'load-history-sale',
+          saleId: sale.id,
+          priority: 9
+        });
+      });
+
       const templatesRes = await window.SalonEase.fetch('/api/cart_templates.php?action=list');
       const templates = templatesRes.data || [];
-
-      templates.slice(0, 4).forEach(t => {
+      templates.slice(0, 3).forEach(t => {
         recommendations.push({
           id: `template-${t.id}`,
           type: 'cart_template',
           label: `常用：${t.name}`,
-          sublabel: `${t.items ? t.items.length : 0} 項`,
-          keywords: t.name + ' 常用 套餐',
+          sublabel: `${t.items?.length || 0} 項`,
+          keywords: t.name + ' 常用',
           icon: '⭐',
           action: 'load-cart-template',
           templateId: t.id,
@@ -350,13 +440,17 @@
       });
 
     } catch (err) {
-      console.warn('[CommandPalette] 智能推薦載入失敗', err);
+      console.warn('[CommandPalette] 智能推薦分析失敗', err);
     }
 
-    // 簡單排序：priority 高的排前面
-    recommendations.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    // 最終排序：priority 高的 + 頻率/補貨標記的優先
+    recommendations.sort((a, b) => {
+      const scoreA = (b.priority || 0) + (b.isFrequent ? 5 : 0) + (b.isReplenish ? 4 : 0);
+      const scoreB = (a.priority || 0) + (a.isFrequent ? 5 : 0) + (a.isReplenish ? 4 : 0);
+      return scoreA - scoreB;
+    });
 
-    return recommendations.slice(0, 8); // 最多顯示 8 個推薦
+    return recommendations.slice(0, 9);
   }
 
   async function updateResults(q = '') {
@@ -553,12 +647,20 @@
       sec = `<span class="ms-auto text-muted">${item.icon || ''}</span>`;
     }
 
+    // 智能推薦標籤
+    let smartBadge = '';
+    if (item.isFrequent) {
+      smartBadge = `<span class="badge bg-warning-subtle text-warning ms-2" style="font-size:10px">最常用</span>`;
+    } else if (item.isReplenish) {
+      smartBadge = `<span class="badge bg-info-subtle text-info ms-2" style="font-size:10px">該補貨</span>`;
+    }
+
     return `<div class="cmd-row d-flex align-items-center gap-2 px-3 py-2 rounded-2 cursor-pointer ${idx === activeIndex ? 'bg-light' : ''}" data-idx="${idx}" style="cursor:pointer">
       <div style="width:28px" class="text-center fs-5">${item.icon || '🔗'}</div>
       <div class="flex-grow-1 min-w-0">
         <div class="d-flex align-items-center">
           <span class="fw-medium text-dark">${item.label}</span>
-          ${recent}${sku}${lowStock}
+          ${smartBadge}${recent}${sku}${lowStock}
         </div>
         ${item.category ? `<div class="text-muted" style="font-size:11px;line-height:1">${item.category}</div>` : ''}
       </div>
