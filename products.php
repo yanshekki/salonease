@@ -642,7 +642,7 @@ async function viewRecentStockMovements(id, name) {
                 bodyHtml += `<li class="mb-1"><strong>${h.time.substring(0,16).replace('T',' ')}</strong> ${h.type} ${change}（${h.staff}）</li>`;
             });
             bodyHtml += '</ul>';
-            if (history.length > 5) bodyHtml += `<div class="small text-muted mt-2">...共 ${history.length} 筆（可至 CSV 匯出完整記錄）</div>`;
+            bodyHtml += `<div class="small text-muted mt-2">...共 ${history.length} 筆（可至 CSV 匯出完整記錄）</div>`;
         }
 
         document.getElementById('stockHistoryModalBody').innerHTML = bodyHtml;
