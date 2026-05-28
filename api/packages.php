@@ -49,7 +49,14 @@ switch ($action) {
             [$name, $sessions, $price, $validity]
         );
 
-        json_success(['id' => (int)db_last_id()], '套票新增成功');
+        $newId = db_last_id();
+        log_activity('package.created', $newId, 'package', [
+            'name' => $name,
+            'total_sessions' => $sessions,
+            'price' => $price
+        ]);
+
+        json_success(['id' => (int)$newId], '套票新增成功');
         break;
 
     case 'update':
@@ -70,6 +77,12 @@ switch ($action) {
             "UPDATE packages SET name = ?, total_sessions = ?, price = ?, validity_days = ? WHERE id = ?",
             [$name, $sessions, $price, $validity, $id]
         );
+
+        log_activity('package.updated', $id, 'package', [
+            'name' => $name,
+            'total_sessions' => $sessions,
+            'price' => $price
+        ]);
 
         json_success(null, '套票已更新');
         break;

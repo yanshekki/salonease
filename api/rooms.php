@@ -79,6 +79,11 @@ switch ($action) {
         $newStatus = (int)post('status');
 
         db_exec("UPDATE rooms SET is_active = ? WHERE id = ?", [$newStatus, $id]);
+
+        log_activity('room.toggled', $id, 'room', [
+            'new_status' => $newStatus ? 'active' : 'inactive'
+        ]);
+
         json_success(null, $newStatus ? '房間已啟用' : '房間已停用');
         break;
 
