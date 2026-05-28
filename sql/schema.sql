@@ -23,6 +23,7 @@ CREATE TABLE `settings` (
   `default_commission_service` DECIMAL(5,2) NOT NULL DEFAULT 40.00 COMMENT '服務佣金預設百分比',
   `default_commission_retail` DECIMAL(5,2) NOT NULL DEFAULT 15.00 COMMENT '零售佣金預設百分比',
   `default_commission_open` DECIMAL(5,2) NOT NULL DEFAULT 5.00 COMMENT '開單佣金預設百分比',
+  `default_low_stock_threshold` INT NOT NULL DEFAULT 5 COMMENT '低庫存警示預設門檻',
   `business_hours` JSON DEFAULT NULL COMMENT '營業時間 JSON',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -30,8 +31,8 @@ CREATE TABLE `settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='美容院全域設定';
 
 -- 插入預設設定
-INSERT INTO `settings` (`id`, `salon_name`, `address`, `phone`, `printer_width`) VALUES
-(1, 'SalonEase 美容中心', '香港九龍尖沙咀彌敦道 100 號 8 樓', '2123 4567', '58');
+INSERT INTO `settings` (`id`, `salon_name`, `address`, `phone`, `printer_width`, `default_low_stock_threshold`) VALUES
+(1, 'SalonEase 美容中心', '香港九龍尖沙咀彌敦道 100 號 8 樓', '2123 4567', '58', 5);
 
 -- =====================================================
 -- 2. staff - 員工帳號與佣金設定
@@ -125,6 +126,7 @@ CREATE TABLE `products` (
   `price` DECIMAL(8,2) NOT NULL,
   `cost` DECIMAL(8,2) DEFAULT NULL COMMENT '成本價（佣金計算參考）',
   `stock_qty` INT NOT NULL DEFAULT 0,
+  `low_stock_threshold` INT DEFAULT NULL COMMENT '低庫存警示門檻（NULL 則使用全域預設）',
   `category` VARCHAR(50) DEFAULT NULL,
   `is_active` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

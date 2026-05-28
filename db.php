@@ -128,3 +128,14 @@ function db_transaction(callable $callback)
 {
     return Database::transaction($callback);
 }
+
+/**
+ * 取得 PDO 連線實例（最常用快捷方式）
+ * 用法：$pdo = db();
+ * 
+ * 與 db_query / db_query_one 等 helper 配合使用
+ */
+function db(): PDO
+{
+    return Database::getConnection();
+}

@@ -1,0 +1,2 @@
+# 禁止直接透過網址存取 sql 資料夾（包含 schema、seeds 等）
+Require all denied

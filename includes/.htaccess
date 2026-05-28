@@ -1,0 +1,2 @@
+# 禁止直接透過網址存取 includes 資料夾內的檔案
+Require all denied

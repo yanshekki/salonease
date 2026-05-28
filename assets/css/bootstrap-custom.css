@@ -1,0 +1,257 @@
+/**
+ * SalonEase - Bootstrap 5.3.3 Custom Theme (Phase 1)
+ * 品牌顏色 + 元件覆蓋，逐步取代原有 Tailwind 樣式
+ * 香港小型美容院專業、簡潔、暖色調設計
+ */
+
+:root {
+    /* Brand Colors (matching original aesthetic) */
+    --salon-dark: #2C2C2E;
+    --salon-sage: #8FA68F;
+    --salon-gold: #C9A86C;
+    --salon-rose: #C9A8A0;
+    --salon-bg: #FDF8F3;
+    --salon-text: #2C2C2E;
+    --salon-muted: #5A5A5C;
+    --salon-border: #E5E0D8;
+
+    /* Bootstrap Theme Overrides */
+    --bs-primary: #2C2C2E;
+    --bs-primary-rgb: 44, 44, 46;
+    --bs-secondary: #6C757D;
+    --bs-success: #8FA68F;
+    --bs-success-rgb: 143, 166, 143;
+    --bs-info: #8FA68F;
+    --bs-warning: #C9A86C;
+    --bs-danger: #C97C7C;
+    --bs-light: #F8F5F0;
+    --bs-dark: #2C2C2E;
+
+    --bs-body-bg: #FDF8F3;
+    --bs-body-color: #2C2C2E;
+    --bs-border-color: #E5E0D8;
+    --bs-border-radius: 0.75rem; /* ~12px, closer to rounded-xl */
+    --bs-border-radius-lg: 1rem;
+    --bs-border-radius-sm: 0.5rem;
+
+    --bs-font-sans-serif: "Noto Sans TC", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --bs-body-font-family: var(--bs-font-sans-serif);
+}
+
+/* Base */
+html, body {
+    font-family: var(--bs-font-sans-serif);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Background */
+body.bg-body,
+body {
+    background-color: var(--salon-bg) !important;
+}
+
+/* Cards - warm, soft, professional */
+.card {
+    border: 1px solid var(--salon-border);
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    background-color: #fff;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid var(--salon-border);
+    font-weight: 600;
+}
+
+/* Buttons - primary is dark charcoal, accent sage on hover/focus */
+.btn-primary {
+    background-color: var(--salon-dark);
+    border-color: var(--salon-dark);
+    color: #fff;
+    font-weight: 500;
+    border-radius: 0.75rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    transition: all 0.1s ease;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: #1f1f21;
+    border-color: #1f1f21;
+    color: #fff;
+}
+
+.btn-outline-primary {
+    color: var(--salon-dark);
+    border-color: var(--salon-dark);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--salon-dark);
+    color: #fff;
+}
+
+.btn-success,
+.btn-info {
+    background-color: var(--salon-sage);
+    border-color: var(--salon-sage);
+}
+
+.btn-success:hover,
+.btn-info:hover {
+    background-color: #7a927a;
+    border-color: #7a927a;
+}
+
+.btn-dark {
+    background-color: var(--salon-dark);
+    border-color: var(--salon-dark);
+}
+
+/* Form Controls */
+.form-control,
+.form-select {
+    border-radius: 0.75rem;
+    border-color: #d1d0c9;
+    padding: 0.625rem 1rem;
+    font-size: 0.95rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--salon-sage);
+    box-shadow: 0 0 0 0.2rem rgba(143, 166, 143, 0.25);
+    outline: none;
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--salon-text);
+    margin-bottom: 0.35rem;
+}
+
+/* Tables */
+.table {
+    font-size: 0.95rem;
+}
+
+.table thead th {
+    background-color: #f8f5f0;
+    color: var(--salon-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    border-bottom-width: 1px;
+}
+
+.table tbody td {
+    border-color: #f0ede6;
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f5f0;
+}
+
+/* Modal */
+.modal-content {
+    border-radius: 1rem;
+    border: 1px solid var(--salon-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.modal-header {
+    border-bottom-color: var(--salon-border);
+}
+
+.modal-footer {
+    border-top-color: var(--salon-border);
+}
+
+/* Navbar */
+.navbar {
+    background-color: #fff !important;
+    border-bottom: 1px solid var(--salon-border);
+}
+
+.navbar-brand {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+/* Offcanvas (mobile menu) */
+.offcanvas {
+    border-right: 1px solid var(--salon-border);
+}
+
+/* Alerts */
+.alert {
+    border-radius: 0.75rem;
+}
+
+.alert-success {
+    background-color: #f0f7f0;
+    border-color: #c8d9c8;
+    color: #3a5a3a;
+}
+
+.alert-danger {
+    background-color: #fdf2f2;
+    border-color: #f0c8c8;
+    color: #8c3a3a;
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+    border-radius: 0.5rem;
+}
+
+/* Dropdown */
+.dropdown-menu {
+    border-radius: 0.75rem;
+    border-color: var(--salon-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Hotkey hint bar (footer) compatibility during transition */
+.hotkey-bar {
+    background: #fff;
+    border-top: 1px solid var(--salon-border);
+}
+
+/* Print overrides (preserve important ones) */
+@media print {
+    .no-print,
+    nav,
+    .navbar,
+    .offcanvas,
+    .fixed-bottom,
+    .hotkey-bar {
+        display: none !important;
+    }
+}
+
+/* Small polish for Chinese UI */
+h1, h2, h3, h4, h5 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.text-muted {
+    color: var(--salon-muted) !important;
+}
+
+/* Quick action cards hover (Dashboard) - clean replacement for old inline styles */
+.quick-action-card {
+    transition: border-color 0.1s ease, background-color 0.1s ease;
+}
+.quick-action-card:hover {
+    border-color: var(--salon-sage);
+    background-color: #F8F5F0;
+}

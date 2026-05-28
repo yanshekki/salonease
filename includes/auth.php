@@ -34,7 +34,7 @@ function require_login(): void
 /**
  * 取得目前登入使用者資料
  */
-function get_current_user(): ?array
+function get_logged_in_user(): ?array
 {
     if (empty($_SESSION['staff_id'])) {
         return null;
@@ -59,7 +59,7 @@ function require_role(string|array $roles): void
 {
     require_login();
 
-    $user = get_current_user();
+    $user = get_logged_in_user();
     if (!$user) {
         exit('認證失敗');
     }
@@ -141,6 +141,6 @@ function logout(): void
  */
 function is_admin(): bool
 {
-    $user = get_current_user();
+    $user = get_logged_in_user();
     return $user && $user['role'] === 'admin';
 }

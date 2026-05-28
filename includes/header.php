@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/functions.php';
 
-$currentUser = get_current_user();
+$currentUser = get_logged_in_user();
 $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 ?>
 <!DOCTYPE html>
@@ -20,28 +20,19 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(APP_NAME ?? 'SalonEase') ?> · <?= e($pageTitle ?? '管理系統') ?></title>
     
-    <!-- Tailwind CSS CDN + 自訂主題 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'salon-dark': '#2C2C2E',
-                        'salon-sage': '#8FA68F',
-                        'salon-gold': '#C9A86C',
-                        'salon-rose': '#C9A8A0',
-                        'salon-bg': '#FDF8F3',
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Bootstrap 5.3.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Alpine.js CDN -->
+    <!-- Alpine.js CDN（暫時保留，之後可逐步移除） -->
     <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
     
-    <!-- 共用樣式 -->
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Bootstrap 自訂主題（品牌顏色 + 元件覆蓋） -->
+    <link rel="stylesheet" href="/assets/css/bootstrap-custom.css">
+
+    <!-- 共用樣式（過渡期，之後逐步移除 app.css） -->
     <link rel="stylesheet" href="/assets/css/app.css">
     <?php if (isset($extraCss) && $extraCss): ?>
         <link rel="stylesheet" href="/assets/css/<?= e($extraCss) ?>">
@@ -49,81 +40,145 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
-        :root { --font-sans: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { font-family: var(--font-sans); }
-        .nav-active { background-color: #2C2C2E; color: white; }
+        
+        :root {
+            --font-sans: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            
+            /* Bootstrap 品牌顏色覆蓋 - 保留原有 SalonEase 感覺 */
+            --bs-primary: #2C2C2E;
+            --bs-primary-rgb: 44, 44, 46;
+            --bs-secondary: #8FA68F;
+            --bs-success: #8FA68F;
+            --bs-danger: #c62828;
+            --bs-body-bg: #FDF8F3;
+            --bs-body-color: #2C2C2E;
+            --bs-border-color: #EDE5DC;
+        }
+        
+        body { 
+            font-family: var(--font-sans); 
+        }
+        
+        /* 保留原有導航 active 樣式 */
+        .nav-active { 
+            background-color: #2C2C2E; 
+            color: white; 
+        }
     </style>
 </head>
-<body class="bg-[#FDF8F3] text-[#2C2C2E] min-h-screen flex flex-col">
+<body class="bg-body min-vh-100 d-flex flex-column">
     
-    <!-- 頂部導覽列 -->
-    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div class="max-w-screen-2xl mx-auto">
-            <div class="px-6 h-16 flex items-center justify-between">
-                <!-- Logo + 店名 -->
-                <div class="flex items-center gap-x-3">
-                    <a href="/dashboard.php" class="flex items-center gap-x-2.5 group">
-                        <div class="w-9 h-9 bg-[#2C2C2E] text-white rounded-xl flex items-center justify-center font-bold text-xl tracking-[-1px] group-active:scale-95 transition">SE</div>
-                        <div>
-                            <div class="font-semibold text-lg leading-none"><?= e(APP_NAME ?? 'SalonEase') ?></div>
-                            <div class="text-[10px] text-[#8A8A8C] -mt-0.5">香港美容院管理</div>
-                        </div>
-                    </a>
+    <!-- 頂部導覽列 (Bootstrap Navbar) -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container-fluid" style="max-width: 1400px;">
+            <!-- Logo -->
+            <a class="navbar-brand d-flex align-items-center" href="/dashboard.php">
+                <div class="d-flex align-items-center justify-content-center bg-dark text-white rounded-2 me-2" style="width:36px; height:36px; font-weight:700; font-size:1.25rem;">
+                    SE
                 </div>
+                <div>
+                    <div class="fw-semibold fs-5 text-dark"><?= e(APP_NAME ?? 'SalonEase') ?></div>
+                    <div class="text-muted" style="font-size: 10px; line-height: 1;">香港美容院管理</div>
+                </div>
+            </a>
 
-                <!-- 主要導覽 -->
-                <div class="hidden md:flex items-center gap-x-1 text-sm">
-                    <a href="/dashboard.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'dashboard' ? 'nav-active' : '' ?>">
-                        概覽
-                    </a>
-                    <a href="/pos.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'pos' ? 'nav-active' : '' ?>">
-                        POS 銷售
-                    </a>
-                    <a href="/appointments.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'appointments' ? 'nav-active' : '' ?>">
-                        預約管理
-                    </a>
-                    <a href="/customers.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'customers' ? 'nav-active' : '' ?>">
-                        客戶
-                    </a>
-                    <a href="/reports.php" 
-                       class="px-4 py-2 rounded-xl hover:bg-gray-100 transition <?= $currentPage === 'reports' ? 'nav-active' : '' ?>">
-                        報表
-                    </a>
-                </div>
+            <!-- 手機版漢堡按鈕 -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-controls="mobileMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                <!-- 使用者區塊 -->
-                <div class="flex items-center gap-x-3">
-                    <?php if ($currentUser): ?>
-                        <div class="text-right hidden sm:block">
-                            <div class="text-sm font-medium"><?= e($currentUser['name']) ?></div>
-                            <div class="text-[10px] text-[#8A8A8C]"><?= e(ucfirst($currentUser['role'])) ?></div>
-                        </div>
-                        <a href="/settings.php" class="w-9 h-9 bg-[#F3EDE6] hover:bg-[#EDE5DC] rounded-2xl flex items-center justify-center text-lg transition" title="設定">
-                            ⚙️
-                        </a>
-                        <a href="/logout.php" 
-                           class="text-sm px-4 py-2 rounded-xl border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition flex items-center gap-x-1.5"
-                           onclick="return confirm('確定要登出嗎？')">
-                            <span>登出</span>
-                        </a>
-                    <?php endif; ?>
-                </div>
+            <!-- 桌面版導航 -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'dashboard' ? 'active fw-medium' : '' ?>" href="/dashboard.php">概覽</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'pos' ? 'active fw-medium' : '' ?>" href="/pos.php">POS 銷售</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'appointments' ? 'active fw-medium' : '' ?>" href="/appointments.php">預約管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'customers' ? 'active fw-medium' : '' ?>" href="/customers.php">客戶</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'reports' ? 'active fw-medium' : '' ?>" href="/reports.php">報表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'commissions' ? 'active fw-medium' : '' ?>" href="/commissions.php">佣金</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'staff' ? 'active fw-medium' : '' ?>" href="/staff.php">員工</a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 使用者區塊 -->
+            <div class="d-flex align-items-center gap-2">
+                <?php if ($currentUser): ?>
+                    <div class="d-none d-sm-block text-end me-2" style="line-height:1.1;">
+                        <div class="small fw-medium"><?= e($currentUser['name']) ?></div>
+                        <div class="text-muted" style="font-size:10px;"><?= e(ucfirst($currentUser['role'])) ?></div>
+                    </div>
+                    <a href="/settings.php" class="btn btn-light rounded-circle p-0 d-flex align-items-center justify-content-center" style="width:36px; height:36px;" title="設定">
+                        ⚙️
+                    </a>
+                    <a href="/logout.php" class="btn btn-outline-danger btn-sm" onclick="return confirm('確定要登出嗎？')">
+                        登出
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </nav>
 
-    <!-- 主要內容區域（各頁面自己開 <main> 與關閉） -->
-    <div class="flex-1 max-w-screen-2xl mx-auto w-full px-6 pt-6 pb-20">
+    <!-- 手機版 Offcanvas 選單 -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="mobileMenuLabel">SalonEase</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'dashboard' ? 'active fw-semibold' : '' ?>" href="/dashboard.php">概覽</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'pos' ? 'active fw-semibold' : '' ?>" href="/pos.php">POS 銷售</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'appointments' ? 'active fw-semibold' : '' ?>" href="/appointments.php">預約管理</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'customers' ? 'active fw-semibold' : '' ?>" href="/customers.php">客戶</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'reports' ? 'active fw-semibold' : '' ?>" href="/reports.php">報表</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'commissions' ? 'active fw-semibold' : '' ?>" href="/commissions.php">佣金</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <?= $currentPage === 'staff' ? 'active fw-semibold' : '' ?>" href="/staff.php">員工</a>
+                </li>
+                <li class="nav-item mt-3 pt-3 border-top">
+                    <a class="nav-link py-2" href="/settings.php">系統設定</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 text-danger" href="/logout.php" onclick="return confirm('確定要登出嗎？')">登出</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 主要內容區域 -->
+    <main class="flex-grow container-fluid" style="max-width: 1400px; margin: 0 auto; padding: 1.5rem 1rem 4rem;">
         <!-- 頁面標題（可被覆蓋） -->
         <?php if (isset($pageTitle) && $pageTitle): ?>
-            <div class="mb-6">
-                <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
+            <div class="mb-4">
+                <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
                 <?php if (isset($pageSubtitle)): ?>
-                    <p class="text-[#5A5A5C] text-sm mt-0.5"><?= e($pageSubtitle) ?></p>
+                    <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
                 <?php endif; ?>
             </div>
         <?php endif; ?>

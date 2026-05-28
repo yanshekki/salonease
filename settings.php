@@ -1,7 +1,286 @@
-<?php require_once __DIR__ . '/includes/auth.php'; require_login(); $pageTitle = '系統設定'; include __DIR__ . '/includes/header.php'; ?>
-<div class="max-w-2xl mx-auto mt-12 text-center">
-    <div class="text-6xl mb-4">⚙️</div>
-    <h2 class="text-2xl font-semibold mb-2">美容院設定</h2>
-    <p class="text-[#5A5A5C]">Phase 1 將包含員工管理、房間設定、佣金率調整。</p>
+<?php 
+require_once __DIR__ . '/includes/auth.php'; 
+require_login(); 
+$pageTitle = '系統設定'; 
+$extraJs = 'settings.js';   // 稍後可獨立抽離，目前先用內聯 Alpine
+include __DIR__ . '/includes/header.php'; 
+?>
+<div class="container" style="max-width: 800px;" x-data="shopSettings()">
+    <div class="alert alert-light border mb-4 small">
+        目前系統已進入 <strong>維護階段</strong>。
+        核心功能已完成，未來會以穩定性及小優化為主。如有新需求，歡迎提出。
+    </div>
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h5 mb-0">系統設定</h2>
+        <div class="badge bg-light text-dark small d-flex align-items-center gap-1">
+            <span class="fw-medium">SalonEase</span>
+            <span class="font-mono text-success">v1.0.0</span>
+            <span class="text-muted">· 2025 年 5 月</span>
+            <span class="text-success ms-1">(維護階段)</span>
+        </div>
+    </div>
+
+    <!-- 店舖基本資訊 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">店舖基本資訊</div>
+                    <div class="small text-muted">收據、打印會自動使用以下資料</div>
+                </div>
+                <div class="badge bg-light text-dark small">即時生效</div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label small">店舖名稱</label>
+                    <input type="text" x-model="form.salon_name" class="form-control" placeholder="SalonEase 美容中心">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">地址</label>
+                    <input type="text" x-model="form.address" class="form-control" placeholder="香港九龍尖沙咀彌敦道 100 號 8 樓">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">電話</label>
+                    <input type="text" x-model="form.phone" class="form-control" placeholder="2123 4567">
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button @click="saveShop()" 
+                            :disabled="saving"
+                            class="btn btn-dark w-100">
+                        <span x-text="saving ? '儲存中...' : '儲存店舖資訊'"></span>
+                    </button>
+                    <span x-show="saved" x-cloak class="ms-3 small text-success fw-medium">✓ 已儲存</span>
+                </div>
+            </div>
+
+            <div class="mt-3 small text-muted">
+                修改後，所有新打印的收據（熱感紙及 A4）都會即時顯示最新資料。
+            </div>
+        </div>
+    </div>
+
+    <!-- 常用熱鍵一覽 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="fw-semibold mb-3" title="按 ? 鍵可隨時查看目前頁面的完整熱鍵清單">常用熱鍵一覽</div>
+            
+            <div class="row g-4 small">
+                <div class="col-md-6">
+                    <div class="fw-medium mb-2 text-dark">全域熱鍵</div>
+                    <div class="text-muted">
+                        <div><span class="font-mono text-success">?</span>　顯示目前頁面熱鍵說明</div>
+                        <div><span class="font-mono text-success">Ctrl + K</span>　開啟命令面板</div>
+                        <div><span class="font-mono text-success">Alt + H</span>　返回概覽</div>
+                        <div><span class="font-mono text-success">Alt + P</span>　前往 POS</div>
+                        <div><span class="font-mono text-success">Alt + A</span>　前往預約</div>
+                        <div><span class="font-mono text-success">Alt + C</span>　前往客戶</div>
+                        <div><span class="font-mono text-success">Alt + R</span>　前往報表</div>
+                        <div><span class="font-mono text-success">Alt + M</span>　前往佣金查詢</div>
+                        <div><span class="font-mono text-success">Alt + S</span>　前往設定</div>
+                        <div><span class="font-mono text-success">F9</span>　打印上一張收據（58mm）</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="fw-medium mb-2 text-dark">報表 / 佣金頁</div>
+                    <div class="text-muted">
+                        <div><span class="font-mono text-success">T</span>　切換至今日</div>
+                        <div><span class="font-mono text-success">W</span>　切換至本週</div>
+                        <div><span class="font-mono text-success">M</span>　切換至本月</div>
+                        <div><span class="font-mono text-success">R</span>　重新載入資料</div>
+                        <div><span class="font-mono text-success">F5</span>　重新載入資料（不刷新頁面）</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 打印與佣金預設 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">打印與佣金預設</div>
+                    <div class="small text-muted">這些數值會作為新單據的預設值</div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small">熱感紙打印機預設寬度</label>
+                <div class="d-flex gap-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" x-model="form.printer_width" value="58" id="print58">
+                        <label class="form-check-label small" for="print58">58mm（最常用）</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" x-model="form.printer_width" value="80" id="print80">
+                        <label class="form-check-label small" for="print80">80mm</label>
+                    </div>
+                </div>
+                <div class="small text-muted mt-1">結帳後預設打印格式會參考此設定</div>
+            </div>
+
+            <div>
+                <div class="fw-medium small mb-2">佣金預設比率（%）</div>
+                <div class="row g-3">
+                    <div class="col-sm-4">
+                        <label class="form-label small">服務項目</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" x-model.number="form.default_commission_service" 
+                                   step="0.5" min="0" max="100" class="form-control">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label small">零售產品</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" x-model.number="form.default_commission_retail" 
+                                   step="0.5" min="0" max="100" class="form-control">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label small">開單</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" x-model.number="form.default_commission_open" 
+                                   step="0.5" min="0" max="100" class="form-control">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理功能快速入口 -->
+    <div class="row g-3">
+        <div class="col-md-6 col-lg-4">
+            <a href="/customers.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">👥</div>
+                    <div class="fw-semibold">客戶管理</div>
+                    <div class="small text-muted">客戶資料、新增與編輯</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/staff.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🧑‍💼</div>
+                    <div class="fw-semibold">員工管理</div>
+                    <div class="small text-muted">新增、編輯、啟用/停用員工帳號及角色</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/rooms.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🏠</div>
+                    <div class="fw-semibold">房間管理</div>
+                    <div class="small text-muted">管理房間名稱與容量（用於預約）</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/services.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">💆</div>
+                    <div class="fw-semibold">服務項目管理</div>
+                    <div class="small text-muted">管理療程名稱、時長與價格</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/products.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🛍️</div>
+                    <div class="fw-semibold">零售產品管理</div>
+                    <div class="small text-muted">管理產品、售價與庫存</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a href="/packages.php" class="card h-100 text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="fs-3 mb-2">🎫</div>
+                    <div class="fw-semibold">套票管理</div>
+                    <div class="small text-muted">療程卡（套票）定義與定價</div>
+                </div>
+            </a>
+        </div>
+    </div>
 </div>
-<?php $extraJs = 'hotkeys.js'; include __DIR__ . '/includes/footer.php'; ?>
+
+<script>
+function shopSettings() {
+    return {
+        form: {
+            salon_name: 'SalonEase 美容中心',
+            address: '',
+            phone: '',
+            printer_width: '58',
+            default_commission_service: 40,
+            default_commission_retail: 15,
+            default_commission_open: 5,
+            default_low_stock_threshold: 5
+        },
+        saving: false,
+        saved: false,
+
+        init() {
+            this.loadShop();
+        },
+
+        async loadShop() {
+            try {
+                const res = await SalonEase.fetch('/api/settings.php?action=get');
+                if (res.data) {
+                    const d = res.data;
+                    this.form.salon_name = d.salon_name || 'SalonEase 美容中心';
+                    this.form.address = d.address || '';
+                    this.form.phone = d.phone || '';
+                    this.form.printer_width = d.printer_width || '58';
+                    this.form.default_commission_service = parseFloat(d.default_commission_service) || 40;
+                    this.form.default_commission_retail  = parseFloat(d.default_commission_retail) || 15;
+                    this.form.default_commission_open    = parseFloat(d.default_commission_open) || 5;
+                    this.form.default_low_stock_threshold = parseInt(d.default_low_stock_threshold) || 5;
+                }
+            } catch (e) {
+                console.warn('載入設定失敗', e);
+            }
+        },
+
+        async saveShop() {
+            this.saving = true;
+            this.saved = false;
+
+            try {
+                await SalonEase.fetch('/api/settings.php?action=save_shop', {
+                    method: 'POST',
+                    body: {
+                        salon_name: this.form.salon_name,
+                        address: this.form.address,
+                        phone: this.form.phone,
+                        printer_width: this.form.printer_width,
+                        default_commission_service: this.form.default_commission_service,
+                        default_commission_retail: this.form.default_commission_retail,
+                        default_commission_open: this.form.default_commission_open,
+                        default_low_stock_threshold: this.form.default_low_stock_threshold
+                    }
+                });
+
+                SalonEase.toast('設定已成功儲存');
+                this.saved = true;
+                setTimeout(() => { this.saved = false; }, 2800);
+            } catch (err) {
+                SalonEase.toast(err.message || '儲存失敗', 'error');
+            } finally {
+                this.saving = false;
+            }
+        }
+    }
+}
+</script>
+
+<?php include __DIR__ . '/includes/footer.php'; ?>

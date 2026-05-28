@@ -1,46 +1,49 @@
+# ============================================
 # SalonEase - 香港小型美容院管理系統
-# 共享主機安全保護 + 基本設定
-# 部署到 salonease.ysk.hk 時請確保此檔案存在
+# 共享主機安全保護 .htaccess
+# ============================================
 
-# 禁止直接存取敏感檔案與目錄
+# 1. 禁止直接存取敏感檔案
 <Files "config.php">
     Require all denied
 </Files>
 
-<FilesMatch "\.(sql|md|log|bak|example)$">
+<Files "config.local.php">
     Require all denied
 </Files>
 
-<Directory "includes">
+# 2. 禁止存取敏感副檔名檔案
+<FilesMatch "\.(sql|md|log|bak|example|env|ini|dist|lock)$">
     Require all denied
-</Directory>
+</FilesMatch>
 
-<Directory "sql">
-    Require all denied
-</Directory>
-
-<Directory "uploads">
-    # 允許圖片 / 文件存取，但限制執行
-    <FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
-        Require all denied
-    </FilesMatch>
-</Directory>
-
-# 基本 PHP 設定（共享主機常見）
+# 3. 基本 PHP 限制（共享主機常用）
 <IfModule mod_php.c>
     php_value upload_max_filesize 8M
     php_value post_max_size 10M
     php_value max_execution_time 60
     php_value max_input_vars 1000
+    php_value memory_limit 128M
 </IfModule>
 
-# 關閉目錄索引
+# 4. 關閉目錄索引（防止直接列出檔案）
 Options -Indexes
 
-# 字符集
+# 5. 字符集
 AddDefaultCharset UTF-8
 
-# 簡單 SPA-like 感覺（可選，MVP 先不啟用 rewrite）
+# 6. 安全 Header（現代 Apache 支援）
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# 注意：
+# - uploads/ 目錄內的 PHP 執行已被 uploads/.htaccess 禁止
+# - 根目錄不應有全域禁止 PHP 的規則，否則會影響整個網站
+
+# 8. （可選）簡單 SPA 重寫，如日後要做前端路由可開啟
 # RewriteEngine On
 # RewriteCond %{REQUEST_FILENAME} !-f
 # RewriteCond %{REQUEST_FILENAME} !-d
