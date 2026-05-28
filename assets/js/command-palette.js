@@ -513,6 +513,32 @@
         });
       });
 
+      // 季節性建議（獨立加入）
+      const month = new Date().getMonth() + 1;
+      let seasonalLabel = '';
+      let seasonalReason = '';
+      if (month >= 6 && month <= 8) {
+        seasonalLabel = '防曬 / 美白 / 淨化';
+        seasonalReason = '目前為夏季，紫外線強烈，建議主動推薦防曬、美白及淨化護理';
+      } else if (month >= 12 || month <= 2) {
+        seasonalLabel = '保濕 / 修護 / 抗老';
+        seasonalReason = '目前為冬季，肌膚容易乾燥，適合推薦深度保濕與修護系列';
+      }
+
+      if (seasonalLabel) {
+        recommendations.push({
+          id: `seasonal-${month}`,
+          type: 'seasonal_suggestion',
+          label: `季節推薦：${seasonalLabel}`,
+          sublabel: `現在很適合推廣`,
+          suggestedReason: seasonalReason,
+          keywords: '季節 夏天 冬天 推薦',
+          icon: '🌸',
+          action: 'quick-add-recommendation',
+          priority: 13
+        });
+      }
+
     } catch (err) {
       console.warn('[CommandPalette] 進階智能推薦分析失敗', err);
     }
