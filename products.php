@@ -167,12 +167,17 @@ $extraJs = 'hotkeys.js';
             </div>
             <div class="modal-body">
                 <input type="hidden" id="stock-product-id">
+                <input type="hidden" id="stock-lowstock-threshold">
                 <div class="mb-3">
                     <label class="form-label small">目前庫存</label>
                     <div id="stock-current" class="fs-5 fw-semibold"></div>
                     <!-- A28：調整後庫存即時預覽 -->
                     <div class="mt-1 small text-muted">
                         調整後：<span id="stock-after-preview" class="fw-semibold text-dark">—</span>
+                    </div>
+                    <!-- A30：調整後低庫存警告 -->
+                    <div id="stock-lowstock-warning" class="mt-1 small text-danger d-none">
+                        ⚠ 調整後仍低於安全庫存門檻
                     </div>
                 </div>
                 <div class="mb-3">
@@ -277,7 +282,7 @@ function renderProductsTable(list) {
                 <td class="font-medium">${parseFloat(p.price).toFixed(2)}</td>
                 <td class="${stockColor}">
                     <?php if ($canAdjustStock): ?>
-                    <span onclick="event.stopImmediatePropagation(); adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}')" 
+                    <span onclick="event.stopImmediatePropagation(); adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}', ${threshold})" 
                           style="cursor: pointer; text-decoration: underline; text-decoration-style: dotted;" 
                           title="點擊快速調整庫存">
                         ${p.stock_qty}
@@ -292,7 +297,7 @@ function renderProductsTable(list) {
                 <td class="text-right">
                     <button onclick="editProduct(${p.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
                     <?php if ($canAdjustStock): ?>
-                    <button onclick="adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-primary p-0 me-2">調整庫存</button>
+                    <button onclick="adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}', ${threshold})" class="btn btn-link btn-sm text-primary p-0 me-2">調整庫存</button>
                     <button onclick="quickStockPlus10(${p.id}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-success p-0 me-2" title="快速入庫 10 件">+10 入庫</button>
                     <button onclick="quickRestockToThreshold(${p.id}, ${p.stock_qty}, ${threshold}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-warning p-0 me-2" style="${isLowStock ? '' : 'display:none'}" title="一鍵補 ${needed} 件至安全庫存門檻">補到門檻 (+${needed})</button>
                     <?php endif; ?>
@@ -432,16 +437,21 @@ document.addEventListener('keydown', function(e) {
 /* Phase 2 A19：產品庫存調整 UI */
 let stockAdjustModalInstance = null;
 
-function adjustProductStock(id, currentQty, name) {
+function adjustProductStock(id, currentQty, name, lowStockThreshold = 5) {
     document.getElementById('stock-product-id').value = id;
     document.getElementById('stock-product-name').textContent = `— ${name}`;
     document.getElementById('stock-current').textContent = currentQty;
     document.getElementById('stock-adjustment').value = '';
     document.getElementById('stock-reason').value = '';
+    document.getElementById('stock-lowstock-threshold').value = lowStockThreshold;
 
     // A28：初始化預覽
     const previewEl = document.getElementById('stock-after-preview');
     if (previewEl) previewEl.textContent = currentQty;
+
+    // A30：清除警告
+    const warningEl = document.getElementById('stock-lowstock-warning');
+    if (warningEl) warningEl.classList.add('d-none');
 
     const modalEl = document.getElementById('stockAdjustModal');
     stockAdjustModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -517,15 +527,28 @@ function updateStockPreview() {
     const currentEl = document.getElementById('stock-current');
     const adjustInput = document.getElementById('stock-adjustment');
     const previewEl = document.getElementById('stock-after-preview');
+    const warningEl = document.getElementById('stock-lowstock-warning');
+    const thresholdInput = document.getElementById('stock-lowstock-threshold');
 
     if (!currentEl || !adjustInput || !previewEl) return;
 
     const current = parseInt(currentEl.textContent) || 0;
     const adjustment = parseInt(adjustInput.value) || 0;
     const after = current + adjustment;
+    const threshold = parseInt(thresholdInput ? thresholdInput.value : 5) || 5;
 
     previewEl.textContent = after;
     previewEl.className = adjustment > 0 ? 'fw-semibold text-success' : (adjustment < 0 ? 'fw-semibold text-danger' : 'fw-semibold text-dark');
+
+    // A30：低庫存警告
+    if (warningEl) {
+        if (after <= threshold) {
+            warningEl.textContent = `⚠ 調整後仍低於安全庫存門檻（剩 ${after} 件，門檻 ${threshold} 件）`;
+            warningEl.classList.remove('d-none');
+        } else {
+            warningEl.classList.add('d-none');
+        }
+    }
 }
 
 /* A24：列表快速 +10 入庫（不開 modal，直接呼叫 API） */
