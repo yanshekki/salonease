@@ -98,7 +98,14 @@ $extraJs = 'hotkeys.js';
                             <td class="small" x-text="log.entity_type ? log.entity_type + ' #' + log.entity_id : '-'"></td>
                             <td class="small text-muted" x-text="log.ip_address || '-'"></td>
                             <td class="small">
-                                <span x-show="log.details" class="text-muted" style="font-size:12px;" x-text="JSON.stringify(log.details)"></span>
+                                <span x-show="log.details" class="text-muted" style="font-size:12px;">
+                                    <template x-if="log.details.name">
+                                        <span x-text="log.details.name"></span>
+                                    </template>
+                                    <template x-else>
+                                        <span x-text="JSON.stringify(log.details).substring(0, 60) + (JSON.stringify(log.details).length > 60 ? '...' : '')"></span>
+                                    </template>
+                                </span>
                             </td>
                         </tr>
                     </template>
