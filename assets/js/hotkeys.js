@@ -23,26 +23,45 @@
         page: []
     };
 
+    // 命令面板 - 最近使用紀錄
+    const RECENT_KEY = 'salonease_cmd_recent';
+    const MAX_RECENT = 6;
+
+    function getRecentCommands() {
+        try {
+            return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        } catch {
+            return [];
+        }
+    }
+
+    function saveRecentCommand(id) {
+        try {
+            let recent = getRecentCommands();
+            recent = recent.filter(x => x !== id);
+            recent.unshift(id);
+            if (recent.length > MAX_RECENT) recent.length = MAX_RECENT;
+            localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+        } catch {}
+    }
+
     function showCommandPalette() {
-        // Remove any existing palette
         document.getElementById('commandPaletteModal')?.remove();
 
         const modalHTML = `
             <div class="modal fade" id="commandPaletteModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
-                <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
-                    <div class="modal-content shadow-lg">
+                <div class="modal-dialog modal-dialog-centered" style="max-width: 540px;">
+                    <div class="modal-content shadow">
                         <div class="modal-header py-2 px-3 border-bottom-0">
                             <input type="text" id="cmd-input" 
                                    class="form-control form-control-sm border-0 shadow-none px-0" 
-                                   placeholder="搜尋頁面或快速動作..." 
+                                   placeholder="搜尋頁面或動作..." 
                                    style="font-size: 15px;">
                         </div>
-                        <div class="modal-body p-0" id="cmd-results" style="max-height: 340px; overflow-y: auto;">
-                            <!-- Populated dynamically -->
+                        <div class="modal-body p-0" id="cmd-results" style="max-height: 380px; overflow-y: auto;">
                         </div>
-                        <div class="modal-footer py-2 px-3 small text-muted border-top-0 d-flex justify-content-between">
-                            <span>↑↓ 選擇 • Enter 執行 • Esc 關閉</span>
-                            <span class="text-muted">Ctrl+K</span>
+                        <div class="modal-footer py-2 px-3 small text-muted border-top-0">
+                            ↑↓ 選擇 • Enter 執行 • Esc 關閉
                         </div>
                     </div>
                 </div>
@@ -62,34 +81,62 @@
         let currentFiltered = [];
 
         const commands = [
-            // 頁面導航
-            { label: 'POS 銷售', type: 'nav', url: '/pos.php', shortcut: 'Alt+P' },
-            { label: '預約管理', type: 'nav', url: '/appointments.php', shortcut: 'Alt+A' },
-            { label: '客戶管理', type: 'nav', url: '/customers.php', shortcut: 'Alt+C' },
-            { label: '概覽首頁', type: 'nav', url: '/dashboard.php', shortcut: 'Alt+H' },
-            { label: '報表', type: 'nav', url: '/reports.php', shortcut: 'Alt+R' },
-            { label: '佣金查詢', type: 'nav', url: '/commissions.php', shortcut: 'Alt+M' },
-            { label: '系統設定', type: 'nav', url: '/settings.php', shortcut: 'Alt+S' },
-            { label: '員工管理', type: 'nav', url: '/staff.php' },
-            { label: '服務項目', type: 'nav', url: '/services.php' },
-            { label: '產品管理', type: 'nav', url: '/products.php' },
-            { label: '套票管理', type: 'nav', url: '/packages.php' },
-            { label: '房間管理', type: 'nav', url: '/rooms.php' },
+            // 頁面
+            { id: 'pos',          label: 'POS 銷售',               type: 'page', url: '/pos.php', shortcut: 'Alt+P' },
+            { id: 'appointments', label: '預約管理',               type: 'page', url: '/appointments.php', shortcut: 'Alt+A' },
+            { id: 'customers',    label: '客戶管理',               type: 'page', url: '/customers.php', shortcut: 'Alt+C' },
+            { id: 'dashboard',    label: '概覽首頁',               type: 'page', url: '/dashboard.php', shortcut: 'Alt+H' },
+            { id: 'reports',      label: '報表',                   type: 'page', url: '/reports.php', shortcut: 'Alt+R' },
+            { id: 'commissions',  label: '佣金查詢',               type: 'page', url: '/commissions.php', shortcut: 'Alt+M' },
+            { id: 'settings',     label: '系統設定',               type: 'page', url: '/settings.php', shortcut: 'Alt+S' },
+            { id: 'staff',        label: '員工管理',               type: 'page', url: '/staff.php' },
+            { id: 'services',     label: '服務項目管理',           type: 'page', url: '/services.php' },
+            { id: 'products',     label: '產品管理',               type: 'page', url: '/products.php' },
+            { id: 'packages',     label: '套票管理',               type: 'page', url: '/packages.php' },
+            { id: 'rooms',        label: '房間管理',               type: 'page', url: '/rooms.php' },
 
-            // 快速動作
-            { label: '新增客戶', type: 'action', action: () => { modal.hide(); setTimeout(() => window.location.href = '/customers.php?new=1', 200); } },
-            { label: '新增預約', type: 'action', action: () => { modal.hide(); setTimeout(() => window.location.href = '/appointments.php?new=1', 200); } },
-            { label: '打印上一張收據 (58mm)', type: 'action', action: () => { modal.hide(); setTimeout(() => window.printLastReceipt?.('58'), 150); } },
-            { label: '切換到今日報表', type: 'action', action: () => { modal.hide(); setTimeout(() => { window.location.href = '/reports.php'; /* 可擴充 setQuickRange */ }, 200); } },
+            // 動作
+            { id: 'new-customer', label: '新增客戶',               type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/customers.php?new=1', 180); } },
+            { id: 'new-appointment', label: '新增預約',            type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/appointments.php?new=1', 180); } },
+            { id: 'print-receipt', label: '打印上一張收據 (58mm)', type: 'action', action: () => { modal.hide(); setTimeout(() => window.printLastReceipt?.('58'), 120); } },
+            { id: 'report-today', label: '切換到今日報表',         type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
+            { id: 'report-week',  label: '切換到本週報表',         type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
         ];
+
+        function getRecentCommandsList() {
+            const recentIds = getRecentCommands();
+            return recentIds
+                .map(id => commands.find(c => c.id === id))
+                .filter(Boolean);
+        }
 
         function renderResults(filter = '') {
             const q = filter.toLowerCase().trim();
-            currentFiltered = commands.filter(cmd =>
-                cmd.label.toLowerCase().includes(q)
-            );
+            const recent = getRecentCommandsList();
 
-            if (currentFiltered.length === 0) {
+            let toShow = [];
+
+            if (!q) {
+                // 沒有搜尋時：顯示「最近使用」 + 其餘指令
+                const recentSet = new Set(recent.map(c => c.id));
+                const others = commands.filter(c => !recentSet.has(c.id));
+
+                if (recent.length > 0) {
+                    toShow.push({ isSection: true, title: '最近使用' });
+                    toShow.push(...recent);
+                }
+                toShow.push({ isSection: true, title: '所有功能' });
+                toShow.push(...others);
+                currentFiltered = toShow.filter(item => !item.isSection);
+            } else {
+                const filtered = commands.filter(cmd =>
+                    cmd.label.toLowerCase().includes(q)
+                );
+                currentFiltered = filtered;
+                toShow = [...filtered];
+            }
+
+            if (toShow.length === 0) {
                 resultsContainer.innerHTML = `<div class="px-3 py-3 text-muted small">找不到符合的結果</div>`;
                 selectedIndex = -1;
                 return;
@@ -99,33 +146,42 @@
             if (selectedIndex < 0) selectedIndex = 0;
 
             let html = '';
-            currentFiltered.forEach((cmd, index) => {
-                const isSelected = index === selectedIndex;
+            let cmdIndex = 0;
+
+            toShow.forEach(item => {
+                if (item.isSection) {
+                    html += `<div class="px-3 pt-2 pb-1 small text-muted fw-medium">${item.title}</div>`;
+                    return;
+                }
+
+                const isSelected = cmdIndex === selectedIndex;
                 html += `
                     <div class="cmd-item px-3 py-2 d-flex justify-content-between align-items-center ${isSelected ? 'bg-primary-subtle' : ''}" 
-                         data-index="${index}" style="cursor: pointer;">
-                        <span>${cmd.label}</span>
-                        ${cmd.shortcut ? `<span class="text-muted small">${cmd.shortcut}</span>` : ''}
+                         data-cmd-index="${cmdIndex}" style="cursor: pointer;">
+                        <span>${item.label}</span>
+                        ${item.shortcut ? `<span class="text-muted small">${item.shortcut}</span>` : ''}
                     </div>
                 `;
+                cmdIndex++;
             });
 
             resultsContainer.innerHTML = html;
 
-            // Click handlers
+            // Click & hover
             resultsContainer.querySelectorAll('.cmd-item').forEach(item => {
-                const idx = parseInt(item.dataset.index);
+                const idx = parseInt(item.dataset.cmdIndex);
                 item.addEventListener('click', () => {
                     executeCommand(currentFiltered[idx]);
                 });
                 item.addEventListener('mouseenter', () => {
                     selectedIndex = idx;
-                    renderResults(input.value); // re-render to update highlight
+                    renderResults(input.value);
                 });
             });
         }
 
         function executeCommand(cmd) {
+            saveRecentCommand(cmd.id);
             modal.hide();
             setTimeout(() => {
                 if (cmd.url) {
@@ -133,13 +189,13 @@
                 } else if (cmd.action) {
                     cmd.action();
                 }
-            }, 120);
+            }, 100);
         }
 
         function updateSelection() {
             const items = resultsContainer.querySelectorAll('.cmd-item');
             items.forEach((item, idx) => {
-                if (idx === selectedIndex) {
+                if (parseInt(item.dataset.cmdIndex) === selectedIndex) {
                     item.classList.add('bg-primary-subtle');
                 } else {
                     item.classList.remove('bg-primary-subtle');
@@ -158,7 +214,7 @@
             updateSelection();
         });
 
-        // Full keyboard navigation
+        // Keyboard navigation
         input.addEventListener('keydown', (e) => {
             const max = currentFiltered.length - 1;
 
@@ -166,30 +222,25 @@
                 e.preventDefault();
                 selectedIndex = Math.min(selectedIndex + 1, max);
                 updateSelection();
-            } 
-            else if (e.key === 'ArrowUp') {
+            } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 selectedIndex = Math.max(selectedIndex - 1, 0);
                 updateSelection();
-            } 
-            else if (e.key === 'Enter') {
+            } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (currentFiltered[selectedIndex]) {
                     executeCommand(currentFiltered[selectedIndex]);
                 }
-            } 
-            else if (e.key === 'Escape') {
+            } else if (e.key === 'Escape') {
                 modal.hide();
             }
         });
 
-        // Auto focus input
         setTimeout(() => {
             input.focus();
             input.select();
-        }, 80);
+        }, 60);
 
-        // Cleanup
         modalEl.addEventListener('hidden.bs.modal', () => {
             modalEl.remove();
         });
