@@ -20,15 +20,8 @@
     { id: 'nav-settings', label: '系統設定', url: '/settings.php', keywords: '設定 員工 房間 服務 產品', icon: '⚙️', contexts: ['*'] },
   ];
 
-  // POS 情境下可直接加入購物車的示範 catalog（真實 POS 實作後改為動態 API）
-  const POS_CATALOG = [
-    { id: 'svc-1', type: 'service', label: '經典面部護理 60分', price: 380, keywords: '面部 護理 保濕', icon: '💆', category: '面部護理' },
-    { id: 'svc-2', type: 'service', label: '深層清潔護理 75分', price: 480, keywords: '清潔 粉刺', icon: '🧼', category: '面部護理' },
-    { id: 'svc-3', type: 'service', label: '全身淋巴引流 90分', price: 680, keywords: '淋巴 瘦身', icon: '🌿', category: '身體護理' },
-    { id: 'prod-1', type: 'product', label: '保濕精華液 30ml', price: 280, keywords: '精華 保濕', icon: '🧴', sku: 'ES-001', stock: 12 },
-    { id: 'prod-2', type: 'product', label: '胺基酸潔面乳 150ml', price: 120, keywords: '潔面 敏感肌', icon: '🧴', sku: 'CL-022', stock: 7 },
-    { id: 'prod-3', type: 'product', label: '防曬乳 SPF50 50ml', price: 158, keywords: '防曬 夏日', icon: '☀️', sku: 'SU-050', stock: 19 },
-  ];
+  // 動態 POS 項目快取（避免重複 fetch）
+  let posDynamicCache = { query: '', items: [], ts: 0 };
 
   let modalEl = null;
   let bsModal = null;
@@ -107,28 +100,110 @@
 
   function getItems(ctx) {
     let arr = [...BASE_ACTIONS];
-    if (ctx === 'pos') {
-      POS_CATALOG.forEach(p => arr.push({ ...p, action: 'add-to-cart', contexts: ['pos'] }));
-    }
     return arr;
   }
 
-  function updateResults(q = '') {
+  // 真正從 API 動態取得 POS 可銷售項目（服務 + 產品）
+  async function fetchPosItems(query) {
+    if (!query || query.trim().length < 1) return [];
+
+    const q = query.trim();
+    const cacheKey = q.toLowerCase();
+
+    // 簡單快取（5 秒）
+    if (posDynamicCache.query === cacheKey && (Date.now() - posDynamicCache.ts) < 5000) {
+      return posDynamicCache.items;
+    }
+
+    try {
+      const [svcRes, prodRes] = await Promise.all([
+        window.SalonEase.fetch(`/api/services.php?action=list&search=${encodeURIComponent(q)}&status=1`),
+        window.SalonEase.fetch(`/api/products.php?action=list&search=${encodeURIComponent(q)}&status=1`)
+      ]);
+
+      const services = (svcRes.data || []).map(s => ({
+        id: `svc-${s.id}`,
+        ref_id: s.id,
+        type: 'service',
+        label: s.name,
+        price: parseFloat(s.price) || 0,
+        keywords: s.category || '',
+        icon: '💆',
+        category: s.category,
+        duration_min: s.duration_min,
+        action: 'add-to-cart'
+      }));
+
+      const products = (prodRes.data || []).map(p => ({
+        id: `prod-${p.id}`,
+        ref_id: p.id,
+        type: 'product',
+        label: p.name,
+        price: parseFloat(p.price) || 0,
+        keywords: `${p.sku || ''} ${p.category || ''}`,
+        icon: '🧴',
+        sku: p.sku,
+        stock: p.stock_qty,
+        effective_low_stock_threshold: p.effective_low_stock_threshold,
+        action: 'add-to-cart'
+      }));
+
+      const combined = [...services, ...products];
+
+      // 更新快取
+      posDynamicCache = { query: cacheKey, items: combined, ts: Date.now() };
+      return combined;
+
+    } catch (err) {
+      console.warn('[CommandPalette] POS 動態搜尋失敗', err);
+      return [];
+    }
+  }
+
+  async function updateResults(q = '') {
     if (!resultsEl) return;
     const ctx = getContext();
     currentContext = ctx;
-    const items = getItems(ctx);
 
-    let scored = items.map(it => ({ ...it, score: calculateScore(q, it, ctx) }));
+    let baseItems = getItems(ctx);
+    let dynamicItems = [];
+
+    // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋
+    if (ctx === 'pos' && q.trim().length >= 1) {
+      // 先顯示 loading
+      renderLoadingState(q);
+      dynamicItems = await fetchPosItems(q);
+    } else if (ctx === 'pos' && q.trim().length === 0) {
+      // POS 頁空白查詢 → 只顯示靜態導航，不顯示整本 catalog
+      dynamicItems = [];
+    }
+
+    let allItems = [...baseItems, ...dynamicItems];
+
+    let scored = allItems.map(it => ({ ...it, score: calculateScore(q, it, ctx) }));
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       const ra = loadRecent().usage.indexOf(a.id), rb = loadRecent().usage.indexOf(b.id);
       return (ra === -1 ? 999 : ra) - (rb === -1 ? 999 : rb);
     });
     if (q.trim()) scored = scored.filter(s => s.score > 16);
-    currentResults = scored.slice(0, 16);
+    currentResults = scored.slice(0, 18);
     activeIndex = 0;
     renderResults(q);
+  }
+
+  function renderLoadingState(q) {
+    if (!resultsEl) return;
+    const ctxLabel = getContextLabel(currentContext);
+    resultsEl.innerHTML = `
+      <div class="px-3 py-2 small text-muted d-flex justify-content-between align-items-center border-bottom">
+        <div>目前在 <span class="fw-medium text-dark">${ctxLabel}</span></div>
+      </div>
+      <div class="p-4 text-center text-muted">
+        <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+        正在搜尋「${q}」的服務與產品...
+      </div>
+    `;
   }
 
   function renderResults(q) {
@@ -156,7 +231,10 @@
       });
     }
 
-    const section = q.trim() ? '搜尋結果' : (currentContext === 'pos' ? '推薦服務／產品（可直接加入購物車）' : '所有功能');
+    let section = q.trim() ? '搜尋結果' : '所有功能';
+    if (currentContext === 'pos') {
+      section = q.trim() ? '服務 / 產品搜尋結果（可直接加入購物車）' : '快速功能（輸入關鍵字可即時搜尋服務與產品）';
+    }
     html += `<div class="px-3 pt-2 pb-1 small text-muted fw-medium">${section}</div>`;
 
     currentResults.forEach((item, i) => {
@@ -294,13 +372,24 @@
 
     // 顯示時渲染
     modalEl.addEventListener('shown.bs.modal', () => {
-      updateResults('');
+      updateResults('');   // async ok
       inputEl.focus();
       inputEl.select();
     });
 
-    // 即時搜尋
-    inputEl.addEventListener('input', e => updateResults(e.target.value));
+    // 即時搜尋（POS 頁動態搜尋時自動 debounce）
+    let searchTimer = null;
+    inputEl.addEventListener('input', e => {
+      const val = e.target.value;
+      clearTimeout(searchTimer);
+
+      // POS 頁輸入較長時給予輕微 debounce，避免狂打 API
+      const delay = (getContext() === 'pos' && val.trim().length >= 2) ? 180 : 0;
+
+      searchTimer = setTimeout(() => {
+        updateResults(val);   // async 自動處理
+      }, delay);
+    });
 
     // 鍵盤導航
     inputEl.addEventListener('keydown', e => {
