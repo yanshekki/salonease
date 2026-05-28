@@ -290,6 +290,54 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A143：庫存分析（周轉率 + 缺貨趨勢） -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="fw-semibold mb-3 d-flex align-items-center justify-content-between">
+                庫存分析
+                <span class="small text-muted" x-show="inventoryLoading">載入中...</span>
+            </div>
+
+            <div class="row g-3">
+                <!-- 庫存周轉率 -->
+                <div class="col-12 col-lg-6">
+                    <div class="fw-medium small mb-2">庫存周轉率（前 8 名）</div>
+                    <div x-show="inventoryLoading" class="text-center py-3 text-muted small">
+                        <span class="spinner-border spinner-border-sm me-2"></span> 計算中...
+                    </div>
+                    <canvas x-show="!inventoryLoading && inventoryTurnover.length > 0" id="inventoryTurnoverChart" height="120"></canvas>
+                    <div x-show="!inventoryLoading && inventoryTurnover.length === 0" class="text-muted small py-3 text-center border rounded bg-light">
+                        查詢期間無產品銷售記錄
+                    </div>
+
+                    <div class="small mt-2" style="max-height: 120px; overflow:auto;" x-show="inventoryTurnover.length > 0">
+                        <template x-for="p in inventoryTurnover.slice(0,5)">
+                            <div class="d-flex justify-content-between small py-0.5 border-bottom">
+                                <div x-text="p.name"></div>
+                                <div class="text-muted">
+                                    銷 <span x-text="p.sales_qty"></span> / 庫 <span x-text="p.stock_qty"></span> 
+                                    <span class="fw-medium text-success" x-text="p.turnover + 'x'"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 缺貨趨勢 -->
+                <div class="col-12 col-lg-6">
+                    <div class="fw-medium small mb-2">缺貨趨勢（低庫存產品數）</div>
+                    <div x-show="inventoryLoading" class="text-center py-3 text-muted small">
+                        <span class="spinner-border spinner-border-sm me-2"></span> 計算中...
+                    </div>
+                    <canvas x-show="!inventoryLoading && stockoutTrend.length > 0" id="stockoutTrendChart" height="120"></canvas>
+                    <div x-show="!inventoryLoading && stockoutTrend.length === 0" class="text-muted small py-3 text-center border rounded bg-light">
+                        查詢期間無缺貨趨勢數據
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3">
         
         <!-- 付款方式分佈 -->
@@ -426,6 +474,13 @@ function reportsApp() {
         dailySalesData: [],      // A141 新增：真實每日銷售數據
         dailySalesLoading: false, // A142 新增：每日銷售數據載入中狀態
 
+        // A143：庫存報表
+        inventoryTurnover: [],
+        stockoutTrend: [],
+        inventoryLoading: false,
+        inventoryTurnoverChart: null,
+        stockoutTrendChart: null,
+
         summary: {
             total_sales: 0,
             total_transactions: 0,
@@ -461,7 +516,9 @@ function reportsApp() {
                     this.loadTopProducts(),
                     this.loadPackageRedemptions(),
                     this.loadStaffRanking(),
-                    this.loadDailySales()   // A141
+                    this.loadDailySales(),   // A141
+                    this.loadInventoryTurnover(), // A143
+                    this.loadStockoutTrend()      // A143
                 ]);
             } finally {
                 this.loading = false;
@@ -567,6 +624,31 @@ function reportsApp() {
                 this.dailySalesData = [];
             } finally {
                 this.dailySalesLoading = false;
+            }
+        },
+
+        // A143：載入庫存周轉率
+        async loadInventoryTurnover() {
+            this.inventoryLoading = true;
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=inventory_turnover&from=${this.from}&to=${this.to}`);
+                this.inventoryTurnover = res.data || [];
+            } catch (e) {
+                console.warn('載入庫存周轉率失敗', e);
+                this.inventoryTurnover = [];
+            }
+        },
+
+        // A143：載入缺貨趨勢
+        async loadStockoutTrend() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=stockout_trend&from=${this.from}&to=${this.to}`);
+                this.stockoutTrend = res.data || [];
+            } catch (e) {
+                console.warn('載入缺貨趨勢失敗', e);
+                this.stockoutTrend = [];
+            } finally {
+                this.inventoryLoading = false;
             }
         },
 
@@ -780,6 +862,55 @@ function reportsApp() {
                                 }
                             }
                         }
+                    }
+                });
+            }
+
+            // A143：庫存周轉率長條圖
+            const invCtx = document.getElementById('inventoryTurnoverChart');
+            if (invCtx) {
+                if (this.inventoryTurnoverChart) this.inventoryTurnoverChart.destroy();
+                const labels = this.inventoryTurnover.slice(0, 8).map(p => p.name.length > 10 ? p.name.substring(0,10)+'...' : p.name);
+                const data = this.inventoryTurnover.slice(0, 8).map(p => p.turnover);
+                this.inventoryTurnoverChart = new Chart(invCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '周轉率',
+                            data: data,
+                            backgroundColor: '#8FA68F'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+
+            // A143：缺貨趨勢線圖
+            const stockoutCtx = document.getElementById('stockoutTrendChart');
+            if (stockoutCtx) {
+                if (this.stockoutTrendChart) this.stockoutTrendChart.destroy();
+                const labels = this.stockoutTrend.map(d => d.date.substring(5));
+                const data = this.stockoutTrend.map(d => d.low_stock_count);
+                this.stockoutTrendChart = new Chart(stockoutCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '低庫存產品數',
+                            data: data,
+                            borderColor: '#C97C7C',
+                            backgroundColor: 'rgba(201, 124, 124, 0.15)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
                     }
                 });
             }

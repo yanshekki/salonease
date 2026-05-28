@@ -8,6 +8,8 @@
  * GET /api/reports.php?action=package_redemptions&from=...&to=...
  * GET /api/reports.php?action=staff_sales_ranking&from=...&to=&staff_id= (optional)
  * GET /api/reports.php?action=daily_sales&from=...&to=...   （A140 新增）
+ * GET /api/reports.php?action=inventory_turnover&from=...&to=...  （A143 新增）
+ * GET /api/reports.php?action=stockout_trend&from=...&to=...     （A143 新增）
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -97,6 +99,80 @@ switch ($action) {
             'from' => $from,
             'to'   => $to,
             'staff_id' => $staffId
+        ]);
+        break;
+
+    case 'inventory_turnover':
+        // A143：庫存周轉率報表
+        // 計算期間內每個產品的銷售數量 + 目前庫存，算周轉率 = 銷量 / 目前庫存
+        $rows = db_query("
+            SELECT 
+                p.id,
+                p.name,
+                p.stock_qty,
+                COALESCE(SUM(si.qty), 0) AS sales_qty
+            FROM products p
+            LEFT JOIN sale_items si ON si.ref_id = p.id 
+                AND si.item_type = 'product'
+                AND si.sale_id IN (
+                    SELECT id FROM sales WHERE sale_date BETWEEN ? AND ?
+                )
+            GROUP BY p.id, p.name, p.stock_qty
+            ORDER BY sales_qty DESC
+            LIMIT 20
+        ", [$from, $to]);
+
+        $result = [];
+        foreach ($rows as $r) {
+            $stock = max(1, (int)$r['stock_qty']); // 避免除以 0
+            $turnover = round((int)$r['sales_qty'] / $stock, 2);
+            $result[] = [
+                'product_id'   => (int)$r['id'],
+                'name'         => $r['name'],
+                'stock_qty'    => (int)$r['stock_qty'],
+                'sales_qty'    => (int)$r['sales_qty'],
+                'turnover'     => $turnover,
+                'turnover_days' => $turnover > 0 ? round(1 / $turnover * 30, 1) : null // 粗估每月周轉天數
+            ];
+        }
+
+        json_success([
+            'data' => $result,
+            'from' => $from,
+            'to'   => $to
+        ]);
+        break;
+
+    case 'stockout_trend':
+        // A143：缺貨趨勢（每日低庫存產品數量）
+        $rows = db_query("
+            SELECT 
+                sale_date,
+                COUNT(*) AS low_stock_count
+            FROM (
+                SELECT DISTINCT s.sale_date, p.id
+                FROM sales s
+                CROSS JOIN products p
+                WHERE s.sale_date BETWEEN ? AND ?
+                  AND p.stock_qty <= COALESCE(p.low_stock_threshold, 
+                        (SELECT default_low_stock_threshold FROM settings LIMIT 1), 5)
+            ) t
+            GROUP BY sale_date
+            ORDER BY sale_date ASC
+        ", [$from, $to]);
+
+        $result = [];
+        foreach ($rows as $r) {
+            $result[] = [
+                'date' => $r['sale_date'],
+                'low_stock_count' => (int)$r['low_stock_count']
+            ];
+        }
+
+        json_success([
+            'data' => $result,
+            'from' => $from,
+            'to'   => $to
         ]);
         break;
 
