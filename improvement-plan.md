@@ -149,6 +149,7 @@
 - A1 已完成：銷售結帳時自動扣減產品庫存（含售前檢查 + 交易內安全扣減 + Audit Log）
 - A2 已完成：產品手動調整庫存功能（admin/manager 可正負數調整 + 原因記錄 + 詳細 Audit） + 產品列表回傳 `is_low_stock` 警示標記
 - A3 已完成：新增 `api/products.php?action=low_stock` 專用警示列表 API + 優化 Dashboard 低量警示卡片（使用 per-product 門檻邏輯）
+- A4 已完成：客戶忠誠度系統基礎 - 新增 migration 005（customers.points） + 銷售時自動累積點數（每 $10 = 1 點） + audit 記錄
 
 ---
 
