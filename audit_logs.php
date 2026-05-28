@@ -51,13 +51,21 @@ $extraJs = 'hotkeys.js';
                 <label class="form-label small">搜尋</label>
                 <input type="text" x-model="search" @input="page=1" class="form-control form-control-sm" placeholder="搜尋操作、員工、細節...">
             </div>
-            <div class="col-md-3 d-flex align-items-end">
+            <div class="col-md-2 d-flex align-items-end">
                 <div class="form-check">
                     <input type="checkbox" x-model="myActionsOnly" @change="page=1" class="form-check-input" id="myActionsOnly">
                     <label class="form-check-label small" for="myActionsOnly">只看我的操作</label>
                 </div>
             </div>
-            <div class="col-md-3 d-flex align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small">每頁</label>
+                <select x-model="perPage" @change="page=1" class="form-select form-select-sm">
+                    <template x-for="opt in perPageOptions" :key="opt">
+                        <option :value="opt" x-text="opt"></option>
+                    </template>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
                 <button @click="loadLogs()" class="btn btn-outline-secondary btn-sm w-100">重新載入</button>
             </div>
         </div>
@@ -136,6 +144,7 @@ function auditLogs() {
         logs: [],
         search: '',
         myActionsOnly: false,
+        perPageOptions: [10, 20, 50, 100],
 
         init() {
             this.loadActions();
