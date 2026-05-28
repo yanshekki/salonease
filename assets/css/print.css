@@ -4,7 +4,7 @@
  * 使用 mm 單位 + monospace 確保對齊
  */
 
-/* ===================== 熱感紙收據 ===================== */
+/* ===================== 熱感紙收據（A149 優化版） ===================== */
 @media print {
     @page {
         size: 58mm auto;
@@ -16,10 +16,12 @@
         margin: 0 !important;
         padding: 0 !important;
         background: #fff;
-        font-family: "Courier New", "Lucida Console", monospace;
+        font-family: "Courier New", "Lucida Console", "Noto Sans TC", monospace;
         font-size: 10.5px;
-        line-height: 1.35;
+        line-height: 1.4;
         color: #000;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
     .no-print,
@@ -33,14 +35,14 @@
     .receipt-thermal {
         width: 100%;
         max-width: 58mm;
-        padding: 3mm 2.5mm 5mm;
+        padding: 2.5mm 2mm 4mm;
         box-sizing: border-box;
     }
 
     .receipt-thermal-80 {
-        max-width: 80mm;
-        font-size: 12px;
-        padding: 4mm 3mm;
+        max-width: 80mm !important;
+        font-size: 11.5px !important;
+        padding: 3mm 2.5mm 5mm !important;
     }
 
     .receipt-header {
@@ -49,20 +51,20 @@
     }
 
     .receipt-header .salon-name {
-        font-size: 13px;
+        font-size: 13.5px;
         font-weight: 700;
         letter-spacing: 0.5px;
     }
 
     .receipt-header .shop-info {
-        font-size: 8.5px;
-        line-height: 1.2;
-        margin-top: 1px;
+        font-size: 8px;
+        line-height: 1.15;
+        margin-top: 0.5mm;
     }
 
     .separator {
         border-top: 1px dashed #333;
-        margin: 2.5mm 0;
+        margin: 2mm 0;
     }
 
     .receipt-table {
@@ -71,42 +73,49 @@
     }
 
     .receipt-table td {
-        padding: 0.8mm 0;
+        padding: 0.6mm 0;
         vertical-align: top;
     }
 
-    .receipt-table .desc { width: 52%; }
-    .receipt-table .qty  { width: 14%; text-align: center; }
-    .receipt-table .amt  { width: 34%; text-align: right; font-variant-numeric: tabular-nums; }
+    .receipt-table .desc { width: 55%; }
+    .receipt-table .qty  { width: 12%; text-align: center; }
+    .receipt-table .amt  { width: 33%; text-align: right; font-variant-numeric: tabular-nums; }
 
     .receipt-total {
         font-weight: 700;
-        font-size: 11.5px;
+        font-size: 12px;
+        margin-top: 1.5mm;
     }
 
     .receipt-footer {
-        margin-top: 3mm;
-        font-size: 9px;
+        margin-top: 2.5mm;
+        font-size: 8.5px;
         text-align: center;
-        line-height: 1.3;
+        line-height: 1.25;
     }
 
-    .receipt-small { font-size: 9px; }
+    .receipt-small { font-size: 8.5px; }
+
+    .receipt-item {
+        border-bottom: 1px dotted #999;
+        padding-bottom: 0.8mm;
+        margin-bottom: 0.8mm;
+    }
 }
 
-/* ===================== A4 收據 / 合約 ===================== */
+/* ===================== A4 收據 / 合約（A149 優化版） ===================== */
 @media print and (min-width: 200mm) {
     @page {
         size: A4;
-        margin: 10mm 12mm;
+        margin: 12mm 15mm;
     }
 
     .receipt-a4 {
         width: 100%;
         max-width: 210mm;
-        font-family: system-ui, "Noto Sans TC", sans-serif;
+        font-family: system-ui, "Noto Sans TC", "PingFang TC", sans-serif;
         font-size: 11pt;
-        line-height: 1.5;
+        line-height: 1.55;
         color: #222;
         background: #fff;
     }
@@ -114,8 +123,8 @@
     .receipt-a4 .shop-header {
         text-align: center;
         border-bottom: 3px solid #2C2C2E;
-        padding-bottom: 8mm;
-        margin-bottom: 8mm;
+        padding-bottom: 7mm;
+        margin-bottom: 7mm;
     }
 
     .receipt-a4 table {
@@ -124,17 +133,22 @@
     }
 
     .receipt-a4 th, .receipt-a4 td {
-        padding: 2mm 3mm;
-        border-bottom: 1px solid #ccc;
+        padding: 1.8mm 2.5mm;
+        border-bottom: 1px solid #ddd;
         text-align: left;
     }
 
     .receipt-a4 .signature {
-        margin-top: 12mm;
+        margin-top: 10mm;
         border-top: 1px solid #888;
-        width: 55mm;
+        width: 50mm;
         padding-top: 1mm;
         font-size: 9.5pt;
+    }
+
+    .receipt-a4 .small-note {
+        font-size: 9pt;
+        color: #555;
     }
 }
 
