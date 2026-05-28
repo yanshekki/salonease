@@ -13,126 +13,135 @@ $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
-        <p class="text-[#5A5A5C] text-sm mt-1"><?= e($pageSubtitle) ?></p>
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+    <div class="mb-3 mb-md-0">
+        <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+        <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
     </div>
-    <button onclick="showAddModal()"
-            class="salon-btn salon-btn-primary flex items-center gap-x-2">
+    <button onclick="showAddModal()" class="btn btn-primary d-flex align-items-center gap-2">
         <span>+ 新增產品</span>
-        <span class="text-xs opacity-75">[N]</span>
+        <span class="small opacity-75">[N]</span>
     </button>
 </div>
 
-<div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4 flex flex-wrap gap-3 items-end">
-    <div class="flex-1 min-w-[240px]">
-        <label class="block text-xs text-[#5A5A5C] mb-1">搜尋（名稱 / SKU）</label>
-        <input type="text" id="search" class="salon-input" oninput="debounceLoadProducts()">
-    </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">類別</label>
-        <select id="category-filter" class="salon-input" onchange="loadProducts()">
-            <option value="">全部</option>
-            <option value="護膚品">護膚品</option>
-            <option value="身體護理">身體護理</option>
-            <option value="其他">其他</option>
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">狀態</label>
-        <select id="status-filter" class="salon-input" onchange="loadProducts()">
-            <option value="">全部</option>
-            <option value="1">已啟用</option>
-            <option value="0">已停用</option>
-        </select>
-    </div>
-    <div class="flex items-center pt-5">
-        <label class="flex items-center gap-2 text-sm cursor-pointer" title="只顯示庫存低於門檻的產品">
-            <input type="checkbox" id="low-stock-only" onchange="loadProducts()" class="accent-[#2C2C2E]">
-            <span>只顯示低庫存</span>
-            <span class="text-[10px] text-[#8A8A8C]">(依目前門檻)</span>
-        </label>
-        <span class="text-[10px] text-[#8A8A8C] pt-5">（產品低於門檻時會顯示紅色警示）</span>
-    </div>
-    <button onclick="loadProducts()" class="salon-btn salon-btn-secondary h-[42px]" title="重新載入產品列表">重新載入</button>
-</div>
-
-<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <table class="salon-table w-full">
-        <thead>
-            <tr>
-                <th>產品名稱</th>
-                <th>SKU</th>
-                <th>售價</th>
-                <th>庫存</th>
-                <th>類別</th>
-                <th>狀態</th>
-                <th class="text-right">操作</th>
-            </tr>
-        </thead>
-        <tbody id="products-list">
-            <tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
-        </tbody>
-    </table>
-</div>
-
-<!-- Modal -->
-<div id="product-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideProductModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg" id="modal-title">新增產品</div>
-            <button onclick="hideProductModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
-
-        <div class="p-5 space-y-4">
-            <input type="hidden" id="product-id">
-
-            <div>
-                <label class="block text-sm font-medium mb-1">產品名稱 <span class="text-red-500">*</span></label>
-                <input type="text" id="product-name" class="salon-input">
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small text-muted mb-1">搜尋（名稱 / SKU）</label>
+                <input type="text" id="search" class="form-control" oninput="debounceLoadProducts()">
             </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">SKU</label>
-                    <input type="text" id="product-sku" class="salon-input">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">類別</label>
-                    <select id="product-category" class="salon-input">
-                        <option value="">未分類</option>
-                        <option value="護膚品">護膚品</option>
-                        <option value="身體護理">身體護理</option>
-                        <option value="其他">其他</option>
-                    </select>
-                </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">類別</label>
+                <select id="category-filter" class="form-select" onchange="loadProducts()">
+                    <option value="">全部</option>
+                    <option value="護膚品">護膚品</option>
+                    <option value="身體護理">身體護理</option>
+                    <option value="其他">其他</option>
+                </select>
             </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">售價（HK$） <span class="text-red-500">*</span></label>
-                    <input type="number" step="0.01" id="product-price" class="salon-input">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">成本價</label>
-                    <input type="number" step="0.01" id="product-cost" class="salon-input" value="0">
-                </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">狀態</label>
+                <select id="status-filter" class="form-select" onchange="loadProducts()">
+                    <option value="">全部</option>
+                    <option value="1">已啟用</option>
+                    <option value="0">已停用</option>
+                </select>
             </div>
-
-            <div>
-                <label class="block text-sm font-medium mb-1">初始庫存數量</label>
-                <input type="number" id="product-stock" class="salon-input" value="0">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1" title="留空則使用設定頁的全域預設門檻">低庫存門檻（留空則用全域預設）</label>
-                <input type="number" id="product-low-stock" class="salon-input" value="" placeholder="例如 5" title="留空則使用設定頁的全域預設門檻">
+            <div class="col-12 col-md-auto d-flex align-items-end">
+                <div class="form-check me-3">
+                    <input class="form-check-input" type="checkbox" id="low-stock-only" onchange="loadProducts()">
+                    <label class="form-check-label small text-muted" for="low-stock-only" title="只顯示庫存低於門檻的產品">
+                        只顯示低庫存
+                    </label>
+                </div>
+                <button onclick="loadProducts()" class="btn btn-outline-secondary">重新載入</button>
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-            <button onclick="hideProductModal()" class="salon-btn salon-btn-secondary">取消</button>
-            <button onclick="saveProduct()" class="salon-btn salon-btn-primary" id="save-btn">新增產品</button>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>產品名稱</th>
+                    <th>SKU</th>
+                    <th>售價</th>
+                    <th>庫存</th>
+                    <th>類別</th>
+                    <th>狀態</th>
+                    <th class="text-end" style="width: 120px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="products-list">
+                <tr><td colspan="7" class="py-5 text-center text-muted">載入中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal (Bootstrap) -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">新增產品</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="product-id">
+
+                <div class="mb-3">
+                    <label class="form-label">產品名稱 <span class="text-danger">*</span></label>
+                    <input type="text" id="product-name" class="form-control">
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">SKU</label>
+                        <input type="text" id="product-sku" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">類別</label>
+                        <select id="product-category" class="form-select">
+                            <option value="">未分類</option>
+                            <option value="護膚品">護膚品</option>
+                            <option value="身體護理">身體護理</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">售價（HK$） <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" id="product-price" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">成本價</label>
+                        <input type="number" step="0.01" id="product-cost" class="form-control" value="0">
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">初始庫存數量</label>
+                        <input type="number" id="product-stock" class="form-control" value="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" title="留空則使用設定頁的全域預設門檻">低庫存門檻（留空則用全域預設）</label>
+                        <input type="number" id="product-low-stock" class="form-control" value="" placeholder="例如 5">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="saveProduct()" class="btn btn-primary" id="save-btn">新增產品</button>
+            </div>
         </div>
     </div>
 </div>
@@ -231,9 +240,11 @@ function showAddModal() {
 
     document.getElementById('save-btn').textContent = '新增產品';
 
-    document.getElementById('product-modal').classList.remove('hidden');
-    document.getElementById('product-modal').classList.add('flex');
-    setTimeout(() => document.getElementById('product-name').focus(), 100);
+    const modalEl = document.getElementById('productModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    setTimeout(() => document.getElementById('product-name').focus(), 400);
 }
 
 async function editProduct(id) {
@@ -254,17 +265,18 @@ async function editProduct(id) {
 
         document.getElementById('save-btn').textContent = '儲存變更';
 
-        document.getElementById('product-modal').classList.remove('hidden');
-        document.getElementById('product-modal').classList.add('flex');
+        const modalEl = document.getElementById('productModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
     } catch (err) {
         SalonEase.toast(err.message, 'error');
     }
 }
 
 function hideProductModal() {
-    const modal = document.getElementById('product-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalEl = document.getElementById('productModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 async function saveProduct() {
