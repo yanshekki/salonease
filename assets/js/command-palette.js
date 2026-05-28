@@ -370,6 +370,65 @@
     }
   }
 
+  /**
+   * 從目前可見結果中收集高貼合度項目，並儲存為常用組合
+   */
+  async function saveCurrentHighClosenessItemsAsTemplate(band) {
+    if (!band) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('暫無有效價位區間', 'info');
+      }
+      return;
+    }
+
+    const highClosenessItems = [];
+    const minCloseness = 60; // 合理門檻
+
+    currentResults.forEach(item => {
+      if (!item.price || item.type === 'package_redemption') return;
+
+      const closeness = getPriceClosenessScore(item.price, band);
+      if (closeness >= minCloseness) {
+        highClosenessItems.push({
+          type: item.type,
+          ref_id: item.ref_id,
+          name: item.label || item.name,
+          unit_price: item.price
+        });
+      }
+    });
+
+    if (highClosenessItems.length === 0) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('目前冇足夠高貼合度項目可儲存', 'info');
+      }
+      return;
+    }
+
+    const defaultName = `價位優選 ${band.label} (${highClosenessItems.length}項)`;
+    const name = prompt('請輸入常用組合名稱：', defaultName);
+    if (!name) return;
+
+    try {
+      const res = await window.SalonEase.fetch('/api/cart_templates.php?action=create', {
+        method: 'POST',
+        body: JSON.stringify({ name, items: highClosenessItems })
+      });
+
+      if (res && res.success) {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(`✅ 已儲存為常用組合：「${name}」（${highClosenessItems.length}項）`, 'success');
+        }
+      } else {
+        throw new Error(res?.message || '儲存失敗');
+      }
+    } catch (err) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('儲存常用組合失敗：' + (err.message || err), 'error');
+      }
+    }
+  }
+
   // 取得本次 POS 開單期間最近加入的項目（快速重複銷售）
   function getPosRecentSessionItems() {
     const POS = window.SalonEase && window.SalonEase.POS;
@@ -1086,6 +1145,20 @@
             <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('custom')}" data-price-mode="custom" style="font-size:9px;">最啱您</button>
             <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('premium')}" data-price-mode="premium" style="font-size:9px;">升級</button>
             <button type="button" class="btn btn-sm py-0 px-1 btn-outline-success ms-1" id="btn-high-closeness-filter" style="font-size:9px;" title="只顯示貼合度 70%+ 項目">高貼合</button>
+            ${ (function() {
+              const band = getEffectivePriceBand();
+              if (!band) return '';
+              let highCount = 0;
+              currentResults.forEach(it => {
+                if (it.price && (it.type === 'service' || it.type === 'product')) {
+                  if (getPriceClosenessScore(it.price, band) >= 70) highCount++;
+                }
+              });
+              if (highCount > 0 && highCount < 4) {
+                return `<span class="text-danger ms-1" style="font-size:8px;">缺口（僅 ${highCount} 個高貼合）</span>`;
+              }
+              return '';
+            })() }
           `;
         }
       } else {
@@ -1271,12 +1344,32 @@
           detailEl.className = 'price-heat-detail ms-1 small text-muted';
           detailEl.style.fontSize = '9px';
           detailEl.innerHTML = `（${detail}）`;
-          heat.parentElement.insertBefore(detailEl, heat.nextSibling);
 
-          // 3 秒後自動消失
-          setTimeout(() => {
+          // 加上可點擊的儲存圖示
+          const saveIcon = document.createElement('span');
+          saveIcon.className = 'ms-1';
+          saveIcon.style.cursor = 'pointer';
+          saveIcon.style.fontSize = '10px';
+          saveIcon.innerHTML = '💾';
+          saveIcon.title = '將目前高貼合度項目儲存為常用組合';
+
+          saveIcon.onclick = async (ev) => {
+            ev.stopImmediatePropagation();
+            await saveCurrentHighClosenessItemsAsTemplate(band);
+            // 儲存後清除 detail
             if (detailEl && detailEl.parentElement) detailEl.parentElement.removeChild(detailEl);
-          }, 3200);
+          };
+
+          const wrapper = document.createElement('span');
+          wrapper.appendChild(detailEl);
+          wrapper.appendChild(saveIcon);
+
+          heat.parentElement.insertBefore(wrapper, heat.nextSibling);
+
+          // 4 秒後自動消失
+          setTimeout(() => {
+            if (wrapper && wrapper.parentElement) wrapper.parentElement.removeChild(wrapper);
+          }, 4200);
         }
       };
     });
