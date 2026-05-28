@@ -223,6 +223,7 @@ include __DIR__ . '/includes/header.php';
                 <span class="badge ms-2 small" :class="getChangeClass(summary.total_sales, prevSummary.total_sales)">
                     {{ getChangeText(summary.total_sales, prevSummary.total_sales) }}
                 </span>
+                <span class="ms-2 small text-muted">總 {{ formatMoney(summary.total_sales) }}</span>
             </div>
             <canvas id="salesTrendChart" height="80"></canvas>
             <div class="small text-muted mt-1" style="font-size:0.7rem;">
