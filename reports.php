@@ -190,6 +190,9 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A94：Phase 3 - 圖表小標題 -->
+    <div class="small fw-semibold text-muted mb-2">圖表</div>
+
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
