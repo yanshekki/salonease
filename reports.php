@@ -215,6 +215,15 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- 銷售趨勢圖表（A125 起步） -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="fw-semibold mb-3">銷售趨勢</div>
+            <canvas id="salesTrendChart" height="80"></canvas>
+            <div class="small text-muted mt-2" style="font-size:0.65rem;">（隨日期範圍即時更新，後續版本將接入真實每日數據）</div>
+        </div>
+    </div>
+
     <!-- 員工銷售排行 -->
     <div class="card mb-3">
         <div class="card-body">
@@ -387,6 +396,7 @@ function reportsApp() {
         // 圖表實例
         paymentChart: null,
         servicesChart: null,
+        salesTrendChart: null,   // A125 新增：銷售趨勢圖表
 
         summary: {
             total_sales: 0,
@@ -606,7 +616,37 @@ function reportsApp() {
                         scales: { y: { beginAtZero: true } }
                     }
                 });
-            },
+            }
+
+            // 銷售趨勢圖表（A125 基本版本）
+            const trendCtx = document.getElementById('salesTrendChart');
+            if (trendCtx) {
+                if (this.salesTrendChart) this.salesTrendChart.destroy();
+                const trendLabels = ['開始', '中段', '結束'];
+                const trendData = [
+                    Math.max(0, this.summary.total_sales * 0.6),
+                    this.summary.total_sales * 0.85,
+                    this.summary.total_sales
+                ];
+                this.salesTrendChart = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: trendLabels,
+                        datasets: [{
+                            label: '銷售額',
+                            data: trendData,
+                            borderColor: '#8FA68F',
+                            backgroundColor: 'rgba(143, 166, 143, 0.1)',
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+        },
 
         setQuickRange(type) {
             this.activeRange = type;
