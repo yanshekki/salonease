@@ -2860,6 +2860,11 @@
             if (window.SalonEase && window.SalonEase.toast) {
               window.SalonEase.toast(`✅ 已一鍵補位加入 ${added} 個最接近替代`, 'success', 1600);
             }
+
+            // Phase 47：批量補位成功後，即時彈出完整療程自動配對建議
+            setTimeout(() => {
+              renderTherapyBundleSuggestions(sim, mainTa, addToTranscriptFn, customerName, names);
+            }, 180);
           };
         }
       }
@@ -2867,7 +2872,122 @@
   }
 
   /**
-   * 啟動完整對話模擬器（Phase 43 核心 + Phase 44 即時推薦 + Phase 45 熱力圖）
+   * Phase 47：完整療程自動配對（批量補位後主動建議）
+   * 根據剛才補位嘅項目，即時建議 2-3 個常見搭配，組成完整療程
+   */
+  function renderTherapyBundleSuggestions(sim, mainTa, addToTranscriptFn, customerName, recentGapNames = []) {
+    if (!sim) return;
+
+    const old = sim.querySelector('#convo-therapy-bundle');
+    if (old) old.remove();
+
+    const bundleDiv = document.createElement('div');
+    bundleDiv.id = 'convo-therapy-bundle';
+    bundleDiv.className = 'mt-2 p-2 rounded border';
+    bundleDiv.style.background = '#f0fff4';
+    bundleDiv.style.borderColor = '#28a745';
+
+    // 簡單情境化搭配建議（可之後接真實 frequentPairs 邏輯）
+    const bundles = [
+      { label: '居家修復套裝', reason: '延長效果，客人都話一次過爽晒' },
+      { label: '加強版精華療程', reason: '補位 + 這個，效果會加乘' },
+      { label: '會員專屬保養組合', reason: '長期回客最受歡迎搭配' }
+    ];
+
+    let html = `
+      <div class="small fw-semibold text-success mb-1">✨ 根據而家補位內容，建議完整療程組合：</div>
+      <div class="d-flex flex-wrap gap-1 mb-1">`;
+
+    bundles.forEach((b, i) => {
+      html += `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size:10px;" data-bundle-idx="${i}">
+        + ${b.label}
+        <span class="text-success" style="font-size:9px;">（${b.reason}）</span>
+      </button>`;
+    });
+
+    html += `</div>
+      <button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;" id="therapy-bundle-batch">
+        一鍵加入完整療程搭配
+      </button>
+      <div class="small text-muted mt-1" style="font-size:9px;">加入後會自動生成「呢個補位 + 呢個搭配，效果會加乘」銷售話</div>`;
+
+    bundleDiv.innerHTML = html;
+
+    // 插入到 simulator 較後面
+    sim.appendChild(bundleDiv);
+
+    // 個別加入
+    bundleDiv.querySelectorAll('button[data-bundle-idx]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const idx = parseInt(btn.dataset.bundleIdx);
+        const b = bundles[idx];
+        if (!b) return;
+
+        if (window.addToCart) {
+          window.addToCart('service', 0, b.label, 0);
+        }
+
+        const line = `呢個補位 + 「${b.label}」，效果會加乘，客人都話一次過爽晒`;
+        if (addToTranscriptFn) addToTranscriptFn('我（完整療程）', line);
+
+        let script = mainTa.value.trim();
+        if (!script.includes('加乘')) {
+          script = script.replace(/您而家要唔要我.*?$/u, '') + ` ${line}。`;
+        }
+        mainTa.value = script;
+
+        const notesEl = document.getElementById('sale-notes');
+        if (notesEl) {
+          const note = `[完整療程自動配對] 已加入搭配「${b.label}」 — 補位 + 搭配，效果加乘`;
+          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+        }
+
+        btn.remove();
+        if (bundleDiv.querySelectorAll('button[data-bundle-idx]').length === 0) {
+          bundleDiv.remove();
+        }
+      };
+    });
+
+    // 批量加入完整療程
+    const batchBundleBtn = bundleDiv.querySelector('#therapy-bundle-batch');
+    if (batchBundleBtn) {
+      batchBundleBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+
+        bundles.forEach(b => {
+          if (window.addToCart) {
+            window.addToCart('service', 0, b.label, 0);
+          }
+        });
+
+        const line = `呢個補位 + 呢個搭配，效果會加乘，客人都話一次過爽晒`;
+        if (addToTranscriptFn) addToTranscriptFn('我（完整療程）', line);
+
+        let script = mainTa.value.trim();
+        if (!script.includes('加乘')) {
+          script = script.replace(/您而家要唔要我.*?$/u, '') + ` ${line}。`;
+        }
+        mainTa.value = script;
+
+        const notesEl = document.getElementById('sale-notes');
+        if (notesEl) {
+          const note = `[完整療程自動配對] 已加入完整療程搭配：${bundles.map(b => b.label).join(' + ')} — 補位 + 搭配，效果加乘`;
+          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+        }
+
+        bundleDiv.remove();
+
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('✅ 已加入完整療程搭配，效果會加乘！', 'success', 1800);
+        }
+      };
+    }
+  }
+
+  /**
+   * 啟動完整對話模擬器（Phase 43 核心 + Phase 44 即時推薦 + Phase 45 熱力圖 + Phase 47 療程配對）
    * 讓用戶像真正同客戶傾偈咁，一輪一輪即時優化話術，最後生成完整對話紀錄
    */
   function startConversationSimulator(panel, mainTa, alternatives, context) {
