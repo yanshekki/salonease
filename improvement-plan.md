@@ -166,6 +166,7 @@
 - A18 已完成：積分累積率（points_earn_rate）與兌換率（points_redemption_rate）真正可從設定頁調整 + sales 結帳邏輯全面使用設定值（補完 A12 僅加欄位未實作之缺口）
 - A19 已完成：在產品管理頁加入「調整庫存」按鈕 + modal（admin/manager 專用），讓 A2 的 adjust_stock API 真正可從畫面操作
 - A20 已完成：產品列表「庫存」數字點擊即可快速開啟調整 modal（A19 功能增強，操作更直覺）
+- A21 已完成：在產品編輯 Modal 加入「最近庫存異動」列表（讀取 audit_logs，最多 8 筆調整與銷售扣減）
 
 ---
 
