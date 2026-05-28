@@ -350,6 +350,20 @@ $avgTicketDiff = $thisMonthAvgTicket - $lastMonthAvgTicket;
     </div>
 </div>
 
+<!-- A60：Phase 3 - 本月交易數 vs 上月（數據洞察） -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="fw-semibold small mb-1">本月交易數 vs 上月</div>
+        <div class="d-flex align-items-baseline gap-2">
+            <div class="fs-5 fw-semibold"><?= (int)($thisMonthTxCount['cnt'] ?? 0) ?> 單</div>
+            <div class="small <?= ($thisMonthTxCount['cnt'] - $lastMonthTxCount['cnt']) >= 0 ? 'text-success' : 'text-danger' ?>">
+                <?= ($thisMonthTxCount['cnt'] - $lastMonthTxCount['cnt']) >= 0 ? '+' : '' ?><?= (int)($thisMonthTxCount['cnt'] - $lastMonthTxCount['cnt']) ?> 單
+            </div>
+        </div>
+        <div class="small text-muted mt-1">較上月</div>
+    </div>
+</div>
+
 <!-- 快速操作卡片 -->
 <div class="card mb-4">
     <div class="card-body">
