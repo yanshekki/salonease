@@ -547,7 +547,13 @@ function updateStockPreview() {
     const threshold = parseInt(thresholdInput ? thresholdInput.value : 5) || 5;
 
     previewEl.textContent = after;
-    previewEl.className = adjustment > 0 ? 'fw-semibold text-success' : (adjustment < 0 ? 'fw-semibold text-danger' : 'fw-semibold text-dark');
+
+    // A34：調整後仍低庫存時，預覽強制顯示警示紅色
+    if (after <= threshold) {
+        previewEl.className = 'fw-semibold text-danger';
+    } else {
+        previewEl.className = adjustment > 0 ? 'fw-semibold text-success' : (adjustment < 0 ? 'fw-semibold text-danger' : 'fw-semibold text-dark');
+    }
 
     // A30：低庫存警告
     if (warningEl) {
