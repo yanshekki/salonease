@@ -746,6 +746,8 @@
 
     // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋（服務/產品 + 客戶 + 常用組合）
     if (ctx === 'pos' && q.trim().length >= 1) {
+      // 清掉英雄卡片狀態
+      if (window.SalonEase) window.SalonEase._cmdHeroRecs = [];
       // 先顯示 loading
       renderLoadingState(q);
 
@@ -780,8 +782,24 @@
       if (hasCustomer) {
         // 有客戶時，優先顯示智能推薦
         const smartRecs = await fetchSmartRecommendationsForCurrentCustomer();
-        dynamicItems = [...smartRecs, ...recent];
+
+        // === A 選項新功能：抽取 Top 英雄組合（獨立視覺卡片區）===
+        const heroTypes = ['compound_recommendation', 'price_suggestion', 'smart_bundle'];
+        const heroRecs = smartRecs
+          .filter(r => heroTypes.includes(r.type) || r.isPair || r.priority >= 18)
+          .slice(0, 3);
+
+        // 剩餘的普通智能推薦
+        const normalSmart = smartRecs.filter(r => !heroRecs.some(h => h.id === r.id));
+
+        // 把 hero 資訊存到全域，方便 renderResults 特別處理
+        window.SalonEase = window.SalonEase || {};
+        window.SalonEase._cmdHeroRecs = heroRecs;
+
+        dynamicItems = [...normalSmart, ...recent];
       } else {
+        window.SalonEase = window.SalonEase || {};
+        window.SalonEase._cmdHeroRecs = [];
         const templates = await fetchCartTemplates();
         dynamicItems = [...recent, ...templates.slice(0, 5)];
       }
@@ -847,6 +865,40 @@
       <div class="text-muted" style="font-size:10px">↑↓ 選擇 · Enter 執行 · Esc 關閉</div>
     </div>`;
 
+    // === A 選項：POS + 空白查詢 + 有客戶時，優先顯示「Top 3 最可能接受的智能組合」英雄卡片 ===
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const hasCustomer = POS && POS.getCurrentCustomer && POS.getCurrentCustomer();
+    const heroes = (window.SalonEase && window.SalonEase._cmdHeroRecs) || [];
+
+    if (currentContext === 'pos' && !q.trim() && hasCustomer && heroes.length > 0) {
+      html += `<div class="px-3 pt-2 pb-1 small text-success fw-semibold d-flex align-items-center">
+        <span>⭐ Top ${heroes.length} 最可能接受的智能組合（根據您歷史）</span>
+      </div>`;
+
+      heroes.forEach((hero, hIdx) => {
+        const itemsCount = (hero.suggestedItems || []).length;
+        const reasonShort = hero.suggestedReason ? hero.suggestedReason.substring(0, 72) + (hero.suggestedReason.length > 72 ? '...' : '') : '';
+        const bandBadge = hero.priceBand ? `<span class="badge bg-success-subtle text-success ms-1" style="font-size:9px">HK$${hero.priceBand.min}-${hero.priceBand.max}</span>` : '';
+
+        html += `
+          <div class="cmd-hero mx-2 my-1 p-2 rounded-3 border" style="background:#f8f5f0;border-left:4px solid #8FA68F;" data-hero-idx="${hIdx}">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1 min-w-0 pe-2">
+                <div class="fw-semibold text-dark small">${hero.icon || '🎁'} ${hero.label}</div>
+                <div class="text-muted" style="font-size:10.5px;line-height:1.25;margin-top:2px;">${hero.sublabel || ''} ${bandBadge}</div>
+                ${reasonShort ? `<div class="text-success" style="font-size:10px;margin-top:3px;">${reasonShort}</div>` : ''}
+              </div>
+              <div class="text-end flex-shrink-0">
+                <button type="button" class="btn btn-sm btn-success py-0 px-2 mb-1" style="font-size:11px;" data-hero-action="add" data-hero-idx="${hIdx}">一鍵加入組合${itemsCount ? `(${itemsCount})` : ''}</button><br>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:10px;" data-hero-action="copy-script" data-hero-idx="${hIdx}">💬 複製話術</button>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      html += `<div class="px-3 pt-2 pb-0 small text-muted fw-medium">其餘推薦項目</div>`;
+    }
+
     if (!currentResults.length) {
       let emptyMsg = `找不到符合「${q}」的項目`;
       if (currentContext === 'pos') {
@@ -854,6 +906,8 @@
       }
       html += `<div class="p-4 text-center text-muted">${emptyMsg}</div>`;
       resultsEl.innerHTML = html;
+      // 即使有英雄卡片，都要綁定事件
+      bindHeroCardEvents();
       return;
     }
 
@@ -873,10 +927,16 @@
       if (q.trim()) {
         section = '服務 / 產品 / 客戶 / 套票';
       } else {
+        // 當有英雄卡片時，下面顯示「其餘智能推薦 + 最近項目」
+        const hasHero = (window.SalonEase && window.SalonEase._cmdHeroRecs && window.SalonEase._cmdHeroRecs.length > 0);
         const hasRecent = getPosRecentSessionItems().length > 0;
-        section = hasRecent 
-          ? '本單最近加入（快速重複） + 客戶可用套票'
-          : '快速功能 + 客戶可用套票（可直接扣減）';
+        if (hasHero) {
+          section = hasRecent ? '其餘推薦 + 本單最近加入' : '其餘智能推薦項目';
+        } else {
+          section = hasRecent 
+            ? '本單最近加入（快速重複） + 客戶可用套票'
+            : '快速功能 + 客戶可用套票（可直接扣減）';
+        }
       }
     }
     html += `<div class="px-3 pt-2 pb-1 small text-muted fw-medium">${section}</div>`;
@@ -906,7 +966,43 @@
         }
       });
     });
+
+    // 綁定英雄卡片按鈕（一鍵加入組合 + 複製話術）
+    bindHeroCardEvents();
+
     highlight();
+  }
+
+  function bindHeroCardEvents() {
+    if (!resultsEl) return;
+    const heroCards = resultsEl.querySelectorAll('.cmd-hero');
+    heroCards.forEach(card => {
+      const addBtn = card.querySelector('[data-hero-action="add"]');
+      const copyBtn = card.querySelector('[data-hero-action="copy-script"]');
+      const hIdx = parseInt(card.dataset.heroIdx || card.getAttribute('data-hero-idx'));
+
+      if (addBtn) {
+        addBtn.onclick = (e) => {
+          e.stopImmediatePropagation();
+          const heroes = (window.SalonEase && window.SalonEase._cmdHeroRecs) || [];
+          const hero = heroes[hIdx];
+          if (hero) quickAddHeroBundle(hero);
+        };
+      }
+      if (copyBtn) {
+        copyBtn.onclick = (e) => {
+          e.stopImmediatePropagation();
+          const heroes = (window.SalonEase && window.SalonEase._cmdHeroRecs) || [];
+          const hero = heroes[hIdx];
+          if (hero) {
+            const script = generateFullBundleSalesScript(hero, {
+              daysSinceLastVisit: (typeof daysSinceLastVisit !== 'undefined' ? daysSinceLastVisit : 45)
+            });
+            copySalesScriptToClipboard(script);
+          }
+        };
+      }
+    });
   }
 
   function rowHTML(item, idx, isRecent) {
@@ -1630,6 +1726,122 @@
       script += ` 您覺得呢個建議如何呀？`;
     }
     return script;
+  }
+
+  /**
+   * 專為「Top 3 最可能接受的智能組合」產生極致完整銷售腳本
+   * 包含：個人化開場 + 3個具體好處 + 價格錨定 + 社群證明 + 軟收結 + WhatsApp-ready
+   */
+  function generateFullBundleSalesScript(rec, extra = {}) {
+    const label = rec.label || '呢個組合';
+    const reason = rec.suggestedReason || '';
+    const days = extra.daysSinceLastVisit || 45;
+    const isLongAbsent = days > 85;
+    const band = rec.priceBand;
+
+    let opening = isLongAbsent 
+      ? `「喂，${extra.customerName ? extra.customerName + '，' : ''}好耐冇見到您啦！呢段時間有冇特別保養呀？」`
+      : `「又見到您，好開心！上次您做完之後反應都幾好呀。」`;
+
+    let benefits = '';
+    if (rec.type === 'compound_recommendation' || rec.type === 'smart_bundle') {
+      benefits = `第一，呢兩個項目一齊用，效果會加乘；第二，您之前已經試過其中一樣，接受度高；第三，呢個價位區間係您自己最舒服嘅，性價比最高。`;
+    } else if (rec.type === 'price_suggestion') {
+      const bandText = band ? `大約 HK$ ${band.median} 左右` : '您習慣嘅價位';
+      benefits = `最啱您嘅價位 ${bandText}，效果同體驗都有明顯提升，好多同您消費習慣相近嘅客人，都覺得呢個組合最啱自己。`;
+    } else {
+      benefits = `根據您嘅歷史記錄，呢個組合係您最常一齊買、反應最好嘅搭配，CP值好高。`;
+    }
+
+    const priceAnchor = band 
+      ? `整體只係比您平時多咗少少錢，感覺卻完全唔同層次。`
+      : `價錢都幾親民，效果卻好正。`;
+
+    const close = `您而家要唔要我幫您即刻加落去？或者我可以再調一調，睇下邊個組合最啱您今次嘅需要。`;
+
+    return `${opening} ${benefits} ${priceAnchor} ${close}`;
+  }
+
+  function copySalesScriptToClipboard(text) {
+    const cleanText = text.replace(/^「|」$/g, ''); // 移除引號方便 WhatsApp 貼上
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(cleanText).then(() => {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('✅ 銷售話術已複製，可直接貼去 WhatsApp', 'success', 2200);
+        }
+      }).catch(() => {
+        fallbackCopy(cleanText);
+      });
+    } else {
+      fallbackCopy(cleanText);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (window.SalonEase && window.SalonEase.toast) {
+      window.SalonEase.toast('✅ 已複製銷售話術', 'success', 2000);
+    }
+  }
+
+  // 專門處理 Top 英雄組合的一鍵加入（多項目 + 更豐富話術 + 自動記錄來源）
+  async function quickAddHeroBundle(rec) {
+    const items = rec.suggestedItems || [];
+    if (items.length === 0) {
+      // 退回普通流程
+      return quickAddRecommendedItems(rec);
+    }
+
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+
+    // 加入所有項目
+    for (const item of items) {
+      if (window.addToCart) {
+        window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+      }
+    }
+
+    // 結構化記錄推薦來源
+    const notesEl = document.getElementById('sale-notes');
+    if (notesEl) {
+      const tag = `[智能組合推薦] ${rec.label} | 來源：${rec.type} | 匹配原因：${rec.suggestedReason ? rec.suggestedReason.substring(0, 80) : '歷史分析'} | ${new Date().toLocaleDateString('zh-HK')}`;
+      const cur = notesEl.value.trim();
+      notesEl.value = cur ? `${cur}\n${tag}` : tag;
+    }
+
+    const richScript = generateFullBundleSalesScript(rec, {
+      daysSinceLastVisit: (typeof daysSinceLastVisit !== 'undefined' ? daysSinceLastVisit : 40),
+      customerName: customer ? customer.name : ''
+    });
+
+    hide();
+
+    if (window.SalonEase && window.SalonEase.toast) {
+      window.SalonEase.toast(`✅ 已加入整個組合（${items.length} 項）`, 'success', 1600);
+      
+      setTimeout(() => {
+        // 顯示完整話術 + 提供「複製」操作提示
+        const scriptShort = richScript.length > 110 ? richScript.substring(0, 107) + '...' : richScript;
+        window.SalonEase.toast(scriptShort, 'info', 6000);
+        
+        // 額外提供一個可點擊的 toast 提示複製
+        setTimeout(() => {
+          if (window.SalonEase && window.SalonEase.toast) {
+            window.SalonEase.toast('💬 想直接複製完整話術去 WhatsApp？按 Ctrl+K 後輸入「複製話術」或稍後再開命令面板選擇', 'info', 4200);
+          }
+        }, 6200);
+      }, 1900);
+    }
+
+    // 把完整 script 存到 window，方便之後快速複製（用戶可再開 Ctrl+K 打 "複製"）
+    window.SalonEase = window.SalonEase || {};
+    window.SalonEase.lastSalesScript = richScript;
   }
 
   // 從智能推薦直接一鍵加入（帶建議原因 + 自動產生銷售話術 + 記錄到備註）
