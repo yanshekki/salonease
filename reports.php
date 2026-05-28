@@ -618,15 +618,17 @@ function reportsApp() {
                 });
             }
 
-            // 銷售趨勢圖表（A125 基本版本）
+            // 銷售趨勢圖表（A126 改善：使用 prev + current 更真實數據）
             const trendCtx = document.getElementById('salesTrendChart');
             if (trendCtx) {
                 if (this.salesTrendChart) this.salesTrendChart.destroy();
-                const trendLabels = ['開始', '中段', '結束'];
+                const prev = this.prevSummary.total_sales || 0;
+                const curr = this.summary.total_sales || 0;
+                const trendLabels = ['上期', '中段', '本期'];
                 const trendData = [
-                    Math.max(0, this.summary.total_sales * 0.6),
-                    this.summary.total_sales * 0.85,
-                    this.summary.total_sales
+                    prev,
+                    prev + (curr - prev) * 0.5,
+                    curr
                 ];
                 this.salesTrendChart = new Chart(trendCtx, {
                     type: 'line',
