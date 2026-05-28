@@ -308,7 +308,15 @@
 
 **Phase 3 目前真實進度**：約 80%（運維工具 + Audit Log + 統一匯出 + 打印優化 + 文件整理已完成，Phase 3 主要工作正式就緒）。
 
-**目前進行中**：A150 已完成。Phase 3 主要工作已全部完成。下一步可選擇 merge A150，或結束 Phase 3 並轉入 Phase 4 規劃。
+**目前進行中**：A151 - docs/ 目錄整理收尾（用戶選擇 B）。這是 Phase 3 最後收尾 chunk，整理技術文件，使其反映最新狀態。
+
+**A151 定義（合理大小 chunk）**：
+- 整理 docs/ 目錄：更新 BOOTSTRAP_MIGRATION_SUMMARY.md、PHASE1_CSRF_TEST_CHECKLIST.md、UI_HOTKEY_MIGRATION_PLAN.md
+- 加入 Phase 3 完成說明
+- 清理過時內容、統一格式
+- **完成定義**：docs/ 目錄清晰反映目前系統狀態
+
+完成後先 update plan，再決定是否 merge。
 
 **A150 已完成**（用戶選擇 B）：Phase 3 文件整理收尾 chunk 已完成並 commit。
 
@@ -447,7 +455,9 @@
    - （A147 進行中：更好篩選 + CSV 匯出）
 
 6. **其他收尾項目**  
-   - （已完成 A148 統一匯出入口 + A149 打印優化 + A150 文件整理）
+   - （已完成 A148 統一匯出入口 + A149 打印優化 + A150 文件整理 + A151 docs/ 目錄整理）
+
+**A151 進行中**（用戶選擇 B）：docs/ 目錄整理收尾（更新技術文件、加入 Phase 3 完成說明）
 
 
 
