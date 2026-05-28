@@ -289,6 +289,28 @@ switch ($action) {
                     'reason'     => $details['reason'] ?? ($details['sale_id'] ? '銷售單 #' . $details['sale_id'] : '')
                 ];
             }
+
+            // A37：支援 CSV 匯出
+            if (get('format') === 'csv') {
+                header('Content-Type: text/csv; charset=utf-8');
+                header('Content-Disposition: attachment; filename="stock_movements_' . $id . '_' . date('Ymd') . '.csv"');
+                echo "\xEF\xBB\xBF"; // BOM for Excel UTF-8
+                echo "時間,員工,類型,原庫存,新庫存,調整數,原因\n";
+                foreach ($history as $h) {
+                    echo sprintf(
+                        "%s,%s,%s,%s,%s,%s,%s\n",
+                        $h['time'],
+                        $h['staff'],
+                        $h['type'],
+                        $h['old'] ?? '',
+                        $h['new'] ?? '',
+                        $h['adjustment'] ?? '',
+                        str_replace(',', '，', $h['reason'])
+                    );
+                }
+                exit;
+            }
+
             json_success($history);
         } catch (Exception $e) {
             json_error('查詢失敗');
