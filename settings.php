@@ -338,6 +338,11 @@ include __DIR__ . '/includes/header.php';
                     </a>
                 </div>
                 <div class="col-12 col-md-6">
+                    <a href="/payment_methods.php" class="d-block border rounded p-2 text-decoration-none hover-bg-light">
+                        💳 付款方法管理 <span class="text-muted">（自訂手續費規則）</span>
+                    </a>
+                </div>
+                <div class="col-12 col-md-6">
                     <button @click="manualBackup()" class="d-block w-100 border rounded p-2 text-start btn btn-link text-decoration-none hover-bg-light">
                         💾 完整資料庫備份 <span class="text-muted">（.sql.gz）</span>
                     </button>

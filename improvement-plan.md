@@ -531,4 +531,12 @@
 
 ---
 
+### 新功能：多付款 + 付款方法 + 手續費（2026-05-28 啟動）
+- Phase 1 已完成（獨立 branch `feature/multi-payment-phase1`，開發主體已移至 `/home/ki/文件/salonease`）
+  - `payment_methods` 表 + 8 種香港實用方法 + 4 種手續費模型
+  - 完整管理頁面 + API（含即時手續費試算器）
+  - 僅設定基礎，**尚未影響**現有銷售 / POS / 報表流程
+- 嚴格遵守用戶要求：**完成整個 Phase 後才 merge**
+- Phase 2（payments 表 + 多付記錄）待啟動
+
 *本計劃將隨著實際執行情況持續更新。*

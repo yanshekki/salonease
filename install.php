@@ -440,6 +440,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'insta
                         $total = $subtotal - $discount;
 
                         // 選擇支付方式（加權）
+                        // 注意：Phase 1 後 payment_methods 表已存在，未來 Phase 2 會改用 payment_method_id
                         $pm = 'fps';
                         $r = mt_rand(0, 99);
                         $cum = 0;
