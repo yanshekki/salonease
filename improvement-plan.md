@@ -235,7 +235,8 @@
 - A53：本任務（Phase 3 初步路線圖寫入計劃）
 - A54：Dashboard 加入「本月熱門服務 Top 3」小卡片（Phase 3 首個數據洞察功能）
 - A55：Dashboard 加入「本月熱門產品 Top 3」小卡片，與 A54 對稱
-- A56+：繼續 Dashboard 數據強化、報表視覺化等小任務
+- A56：Dashboard 加入「本月營業額 vs 上月」比較卡片，提供營業趨勢洞察
+- A57+：繼續 Dashboard 數據強化或開始報表視覺化
 
 **執行方式**：嚴格沿用 Phase 2 成功模式，每完成一個有意義小任務即 commit + --no-ff merge origin/main + push，main 永遠保持穩定。
 
