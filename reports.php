@@ -176,6 +176,15 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A90：Phase 3 - 本月總營業額 vs 上月（簡單摘要） -->
+    <div class="mb-3">
+        <div class="small text-muted mb-1">本月總營業額 vs 上月</div>
+        <div class="d-flex align-items-baseline gap-2">
+            <span class="fw-medium" x-text="formatMoney(summary.total_sales)"></span>
+            <span class="small" :class="getChangeClass(summary.total_sales, prevSummary.total_sales)" x-text="getChangeText(summary.total_sales, prevSummary.total_sales)"></span>
+        </div>
+    </div>
+
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
