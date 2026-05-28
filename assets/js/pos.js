@@ -574,50 +574,11 @@ function setupCustomerSearch() {
             try {
                 const res = await SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(keyword)}`);
                 if (res.data && res.data.length > 0) {
-                    const c = res.data[0];
-                    // A1-1h 防呆：切換客戶時，如果購物車有套票扣減，清除它們
-                    const hadPackageRedemption = cart.some(item => item.type === 'package');
-                    if (hadPackageRedemption) {
-                        cart = cart.filter(item => item.type !== 'package');
-                        renderCart();
-                        updateCartTotals();
-                        SalonEase.toast('已清除之前客戶的套票扣減項目', 'info');
-                    }
-
-                    currentCustomer = c;
-                    let infoHtml = `<span class="text-[#8FA68F]">✓ ${e(c.name)} (${e(c.phone)})</span>`;
-
-                    // 載入客戶持有的有效套票
-                    await loadCustomerPackages(c.id);
-
-                    if (customerPackages.length > 0) {
-                        infoHtml += ` <span class="text-xs text-purple-600 cursor-pointer" onclick="showCustomerPackagesQuick()">(有 ${customerPackages.length} 張可用套票)</span>`;
-                    }
-
-                    document.getElementById('pos-customer-info').innerHTML = infoHtml;
-
-                    // === A1-1f 改進：如果客戶有可用套票，自動切換到「套票」分類 ===
-                    if (customerPackages.length > 0) {
-                        // 只有在目前不是套票分類時才自動切換，避免干擾用戶
-                        const packageBtn = document.getElementById('filter-package');
-                        if (!packageBtn || !packageBtn.classList.contains('btn-dark')) {
-                            filterItems('package');
-                        } else {
-                            // 如果已經在套票分類，直接刷新顯示客戶的套票
-                            renderCustomerPackages();
-                        }
-                    } else {
-                        // 如果客戶沒有套票，但目前在套票分類，切回「全部」
-                        const packageBtn = document.getElementById('filter-package');
-                        if (packageBtn && packageBtn.classList.contains('btn-dark')) {
-                            filterItems('all');
-                        }
-                    }
+                    await setCurrentCustomer(res.data[0]);
                 } else {
-                    currentCustomer = null;
-                    customerPackages = [];
-                    document.getElementById('pos-customer-info').innerHTML = 
-                        `<span class="text-[#8A8A8C]">找不到客戶</span>`;
+                    await setCurrentCustomer(null);
+                    const infoEl = document.getElementById('pos-customer-info');
+                    if (infoEl) infoEl.innerHTML = `<span class="text-[#8A8A8C]">找不到客戶</span>`;
                 }
             } catch (e) {
                 console.error(e);
@@ -641,6 +602,70 @@ async function loadCustomerPackages(customerId) {
     } catch (err) {
         console.error('載入客戶套票失敗', err);
         customerPackages = [];
+    }
+}
+
+/**
+ * 統一的客戶切換函式（供命令面板 + 原本的客戶搜尋輸入框共用）
+ */
+async function setCurrentCustomer(customer) {
+    if (!customer) {
+        // 清除客戶
+        const hadPackageRedemption = cart.some(item => item.type === 'package');
+        if (hadPackageRedemption) {
+            cart = cart.filter(item => item.type !== 'package');
+            renderCart();
+            updateCartTotals();
+            SalonEase.toast('已清除購物車中的套票扣減項目（客戶已清除）', 'info');
+        }
+
+        currentCustomer = null;
+        customerPackages = [];
+        const infoEl = document.getElementById('pos-customer-info');
+        if (infoEl) infoEl.innerHTML = '';
+
+        const packageBtn = document.getElementById('filter-package');
+        if (packageBtn && packageBtn.classList.contains('btn-dark')) {
+            filterItems('all');
+        }
+        return;
+    }
+
+    // 切換客戶前清除舊客戶的套票扣減
+    const hadPackageRedemption = cart.some(item => item.type === 'package');
+    if (hadPackageRedemption) {
+        cart = cart.filter(item => item.type !== 'package');
+        renderCart();
+        updateCartTotals();
+        SalonEase.toast('已清除之前客戶的套票扣減項目', 'info');
+    }
+
+    currentCustomer = customer;
+
+    let infoHtml = `<span class="text-[#8FA68F]">✓ ${e(customer.name)} (${e(customer.phone)})</span>`;
+
+    await loadCustomerPackages(customer.id);
+
+    if (customerPackages.length > 0) {
+        infoHtml += ` <span class="text-xs text-purple-600 cursor-pointer" onclick="showCustomerPackagesQuick()">(有 ${customerPackages.length} 張可用套票)</span>`;
+    }
+
+    const infoEl = document.getElementById('pos-customer-info');
+    if (infoEl) infoEl.innerHTML = infoHtml;
+
+    // 如果客戶有可用套票，自動切換到套票分類
+    if (customerPackages.length > 0) {
+        const packageBtn = document.getElementById('filter-package');
+        if (!packageBtn || !packageBtn.classList.contains('btn-dark')) {
+            filterItems('package');
+        } else {
+            renderCustomerPackages();
+        }
+    } else {
+        const packageBtn = document.getElementById('filter-package');
+        if (packageBtn && packageBtn.classList.contains('btn-dark')) {
+            filterItems('all');
+        }
     }
 }
 
@@ -1050,7 +1075,16 @@ window.SalonEase.POS = {
     },
 
     // 本單最近加入的項目（命令面板快速重複銷售用）
-    getRecentSessionItems: () => Array.isArray(recentSessionItems) ? [...recentSessionItems] : []
+    getRecentSessionItems: () => Array.isArray(recentSessionItems) ? [...recentSessionItems] : [],
+
+    // 命令面板可呼叫的客戶切換（支援直接從 Ctrl+K 選客戶）
+    setCurrentCustomer: async (customer) => {
+        if (typeof setCurrentCustomer === 'function') {
+            await setCurrentCustomer(customer);
+            return true;
+        }
+        return false;
+    }
 };
 
-console.log('%c[SalonEase] POS 命名空間已暴露（含套票扣減 + 本單最近項目）', 'color:#8FA68F;font-size:9px');
+console.log('%c[SalonEase] POS 命名空間已暴露（含套票扣減 + 本單最近 + 客戶切換）', 'color:#8FA68F;font-size:9px');

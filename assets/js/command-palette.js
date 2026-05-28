@@ -190,6 +190,29 @@
     return POS.getRecentSessionItems();
   }
 
+  // 動態搜尋客戶（POS 頁專用，可直接切換客戶）
+  async function fetchPosCustomers(query) {
+    if (!query || query.trim().length < 1) return [];
+    try {
+      const res = await window.SalonEase.fetch(
+        `/api/customers.php?action=list&search=${encodeURIComponent(query)}&limit=6`
+      );
+      return (res.data || []).map(c => ({
+        id: `customer-${c.id}`,
+        type: 'customer',
+        label: c.name,
+        sublabel: c.phone || '',
+        keywords: `${c.name} ${c.phone || ''}`,
+        icon: '👤',
+        action: 'switch-customer',
+        customerData: c
+      }));
+    } catch (err) {
+      console.warn('[CommandPalette] 客戶搜尋失敗', err);
+      return [];
+    }
+  }
+
   async function updateResults(q = '') {
     if (!resultsEl) return;
     const ctx = getContext();
@@ -198,11 +221,17 @@
     let baseItems = getItems(ctx);
     let dynamicItems = [];
 
-    // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋服務/產品
+    // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋（服務/產品 + 客戶）
     if (ctx === 'pos' && q.trim().length >= 1) {
       // 先顯示 loading
       renderLoadingState(q);
-      dynamicItems = await fetchPosItems(q);
+
+      const [servicesProducts, customers] = await Promise.all([
+        fetchPosItems(q),
+        fetchPosCustomers(q)
+      ]);
+
+      dynamicItems = [...servicesProducts, ...customers];
 
       // 額外加入：已選客戶的套票扣減（若有符合搜尋字串）
       const customerPkgs = getCurrentPosCustomerPackages();
@@ -271,7 +300,7 @@
       </div>
       <div class="p-4 text-center text-muted">
         <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-        正在搜尋「${q}」的服務與產品...
+        正在搜尋「${q}」的服務、產品與客戶...
       </div>
     `;
   }
@@ -308,11 +337,11 @@
     let section = q.trim() ? '搜尋結果' : '所有功能';
     if (currentContext === 'pos') {
       if (q.trim()) {
-        section = '服務 / 產品 / 套票搜尋結果';
+        section = '服務 / 產品 / 客戶 / 套票';
       } else {
         const hasRecent = getPosRecentSessionItems().length > 0;
         section = hasRecent 
-          ? '本單最近加入（點擊快速重複） + 客戶可用套票'
+          ? '本單最近加入（快速重複） + 客戶可用套票'
           : '快速功能 + 客戶可用套票（可直接扣減）';
       }
     }
@@ -331,8 +360,9 @@
       row.addEventListener('click', e => {
         const item = currentResults[idx];
         if (e.target.closest('.cmd-add-btn')) {
-          // 套票扣減走獨立路徑
-          if (item.type === 'package_redemption' || item.action === 'add-package') {
+          if (item.action === 'switch-customer' && item.customerData) {
+            doSwitchCustomer(item.customerData);
+          } else if (item.type === 'package_redemption' || item.action === 'add-package') {
             doAddPackageRedemption(item);
           } else {
             doAddToCart(item);
@@ -358,6 +388,8 @@
     if (isPackage) {
       const remain = item.remaining ? `剩 ${item.remaining} 次` : '';
       sec = `<button type="button" class="cmd-add-btn btn btn-sm py-0 px-2 ms-2" style="font-size:12px; background:#c084fc; color:white; border:none;">扣減套票</button>`;
+    } else if (item.action === 'switch-customer') {
+      sec = `<button type="button" class="cmd-add-btn btn btn-sm btn-outline-primary py-0 px-2 ms-2" style="font-size:12px">切換客戶</button>`;
     } else if (isNormalAdd) {
       sec = `<button type="button" class="cmd-add-btn btn btn-sm btn-success py-0 px-2 ms-2" style="font-size:12px">加入購物車</button>`;
     } else {
@@ -399,6 +431,11 @@
 
     if (item.action === 'add-package' || item.type === 'package_redemption') {
       doAddPackageRedemption(item);
+      return;
+    }
+
+    if (item.action === 'switch-customer' && item.customerData) {
+      doSwitchCustomer(item.customerData);
       return;
     }
 
@@ -456,6 +493,26 @@
 
     // 如果 POS 沒有暴露或客戶未選，給提示
     if (confirm(`「${item.label}」套票扣減需要先在 POS 選擇客戶。\n\n立即前往 POS 頁？`)) {
+      location.href = '/pos.php';
+    }
+  }
+
+  // 從命令面板切換客戶
+  async function doSwitchCustomer(customerData) {
+    const POS = window.SalonEase && window.SalonEase.POS;
+    if (POS && typeof POS.setCurrentCustomer === 'function') {
+      await POS.setCurrentCustomer(customerData);
+      hide();
+
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast(`已切換客戶：${customerData.name}`, 'success', 1800);
+      }
+      return;
+    }
+
+    // fallback
+    hide();
+    if (confirm(`已找到客戶「${customerData.name}」。\n請前往 POS 頁完成切換。`)) {
       location.href = '/pos.php';
     }
   }
