@@ -134,13 +134,13 @@
     if (item.contexts && (item.contexts.includes('*') || item.contexts.includes(ctx))) score += 16;
     if (ctx === 'pos' && (item.type === 'service' || item.type === 'product')) score += 28;
 
-    // 全域自訂價位模式：如果客戶有儲存最愛價位，落喺範圍內嘅服務/產品大幅加分
+    // 全域自訂價位模式（支援暫時切換保守型 / 升級體驗 / 最啱您）
     if (ctx === 'pos' && (item.type === 'service' || item.type === 'product') && item.price) {
-      const pref = getCustomerPricePref();
-      if (pref && pref.min != null && pref.max != null) {
+      const band = getEffectivePriceBand();
+      if (band && band.min != null && band.max != null) {
         const p = parseFloat(item.price);
-        if (p >= pref.min && p <= pref.max) {
-          score += 22;   // 強力加權，讓最啱客戶預算嘅項目排得更高
+        if (p >= band.min && p <= band.max) {
+          score += 22;
         }
       }
     }
@@ -264,6 +264,24 @@
       const saved = localStorage.getItem(`salonease_cust_price_pref_${customer.id}`);
       if (saved) return JSON.parse(saved);
     } catch {}
+    return null;
+  }
+
+  // 取得目前有效嘅價位區間（支援暫時切換模式）
+  function getEffectivePriceBand() {
+    const mode = (window.SalonEase && window.SalonEase._cmdPriceMode) || 'custom';
+    const saved = getCustomerPricePref();
+
+    if (mode === 'conservative') {
+      return { min: 0, max: 650, label: '保守型' };
+    }
+    if (mode === 'premium') {
+      return { min: 550, max: 99999, label: '升級體驗' };
+    }
+    // custom or default
+    if (saved && saved.min != null && saved.max != null) {
+      return { min: saved.min, max: saved.max, label: '最啱您' };
+    }
     return null;
   }
 
@@ -971,10 +989,18 @@
     if (currentContext === 'pos') {
       if (q.trim()) {
         section = '服務 / 產品 / 客戶 / 套票';
-        // 全域自訂價位模式提示
-        const pref = getCustomerPricePref();
-        if (pref && pref.min != null && pref.max != null) {
-          section += ` <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:9px;">最愛價位 HK$${Math.round(pref.min)}–${Math.round(pref.max)}</span>`;
+
+        const band = getEffectivePriceBand();
+        if (band) {
+          const currentMode = (window.SalonEase && window.SalonEase._cmdPriceMode) || 'custom';
+          const activeClass = (m) => currentMode === m ? 'btn-success' : 'btn-outline-secondary';
+
+          section += `
+            <span class="badge bg-primary-subtle text-primary ms-1 me-1" style="font-size:9px;">價位模式</span>
+            <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('conservative')}" data-price-mode="conservative" style="font-size:9px;">保守</button>
+            <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('custom')}" data-price-mode="custom" style="font-size:9px;">最啱您</button>
+            <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('premium')}" data-price-mode="premium" style="font-size:9px;">升級</button>
+          `;
         }
       } else {
         // 當有英雄卡片時，下面顯示「其餘智能推薦 + 最近項目」
@@ -997,6 +1023,29 @@
     });
 
     resultsEl.innerHTML = html;
+
+    // 價位模式切換按鈕（全域自訂價位模式）
+    resultsEl.querySelectorAll('[data-price-mode]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const newMode = btn.dataset.priceMode;
+        window.SalonEase = window.SalonEase || {};
+        window.SalonEase._cmdPriceMode = newMode;
+
+        // 重新計分 + 重新渲染（保持目前輸入）
+        if (currentResults && currentResults.length > 0) {
+          const q = inputEl ? inputEl.value : '';
+          let scored = currentResults.map(it => ({ ...it, score: calculateScore(q, it, currentContext) }));
+          scored.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            const ra = loadRecent().usage.indexOf(a.id), rb = loadRecent().usage.indexOf(b.id);
+            return (ra === -1 ? 999 : ra) - (rb === -1 ? 999 : rb);
+          });
+          currentResults = scored;
+          renderResults(q);   // 重新渲染，會自動套用新 active 樣式
+        }
+      };
+    });
 
     resultsEl.querySelectorAll('.cmd-row').forEach(row => {
       const idx = parseInt(row.dataset.idx);
@@ -2977,6 +3026,8 @@
     if (window.SalonEase) {
       window.SalonEase._cmdSelectedHeroes = new Set();
       window.SalonEase._cmdHeroRecs = [];
+      // 重置暫時價位模式
+      delete window.SalonEase._cmdPriceMode;
     }
     if (bsModal) bsModal.hide();
   }
