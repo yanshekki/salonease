@@ -17,7 +17,7 @@ switch ($action) {
     case 'list':
         $search = trim(get('search', ''));
 
-        $sql = "SELECT id, name, phone, email, gender, birthday, notes, total_spent, visit_count, last_visit_at 
+        $sql = "SELECT id, name, phone, email, gender, birthday, notes, total_spent, visit_count, last_visit_at, points 
                 FROM customers 
                 WHERE 1=1";
         $params = [];
