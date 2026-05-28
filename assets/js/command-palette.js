@@ -1481,36 +1481,40 @@
                 bulkAltBtn.type = 'button';
                 bulkAltBtn.className = 'btn btn-sm btn-warning py-0 px-1 ms-2';
                 bulkAltBtn.style.fontSize = '8px';
-                bulkAltBtn.innerHTML = '一鍵加入呢批替代';
-                bulkAltBtn.title = '一鍵將以上 2-3 個最接近替代項目全部加入購物車';
+                bulkAltBtn.innerHTML = '一鍵加入 + 完整銷售話術';
+                bulkAltBtn.title = '一鍵加入呢批替代 + 自動產生專業香港粵語銷售腳本並彈出可編輯預覽';
 
                 bulkAltBtn.onclick = (ev3) => {
                   ev3.stopImmediatePropagation();
 
-                  let added = 0;
-                  alternatives.forEach(alt => {
-                    if (window.addToCart) {
-                      window.addToCart(alt.type, alt.ref_id, alt.label || alt.name, alt.price);
-                      added++;
-                    }
-                  });
-
-                  if (added > 0) {
-                    // 自動記錄銷售話術（價位智能缺口提示）
-                    const notesEl = document.getElementById('sale-notes');
-                    if (notesEl) {
-                      const note = `[價位智能缺口提示] 高貼合項目選擇較少，自動建議加入 ${added} 個最接近替代項目。`;
-                      notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
-                    }
-
-                    if (window.SalonEase && window.SalonEase.toast) {
-                      window.SalonEase.toast(`✅ 已一鍵加入 ${added} 個替代項目（缺口智能建議）`, 'success', 1800);
-                    }
-                  }
-
-                  // 清除整個 detail wrapper
+                  // 清除 detail wrapper（先移除，避免干擾）
                   const w = bulkAltBtn.parentElement;
                   if (w && w.parentElement) w.parentElement.removeChild(w);
+
+                  // 準備 context
+                  const POS = window.SalonEase && window.SalonEase.POS;
+                  const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+                  const bandNow = (typeof getEffectivePriceBand === 'function') ? getEffectivePriceBand() : null;
+
+                  // 產生極致完整缺口銷售腳本
+                  const script = generateGapFillSalesScript(alternatives, {
+                    customer,
+                    band: bandNow,
+                    highCount: (typeof currentResults !== 'undefined' ? currentResults.filter(it => {
+                      if (!it.price) return false;
+                      const c = (typeof getPriceClosenessScore === 'function' && bandNow) ? getPriceClosenessScore(it.price, bandNow) : 50;
+                      return c >= 70;
+                    }).length : 2),
+                    daysSinceLastVisit: (typeof daysSinceLastVisit !== 'undefined' ? daysSinceLastVisit : 35),
+                    avgCloseness: alternatives.reduce((s, a) => s + ((typeof getPriceClosenessScore === 'function' && bandNow && a.price) ? getPriceClosenessScore(a.price, bandNow) : 55), 0) / Math.max(1, alternatives.length)
+                  });
+
+                  // 顯示專業預覽面板（可即時微調 + 複製 + 確認記錄）
+                  showGapFillScriptPreview(alternatives, script, {
+                    customer,
+                    band: bandNow,
+                    avgCloseness: alternatives.reduce((s, a) => s + ((typeof getPriceClosenessScore === 'function' && bandNow && a.price) ? getPriceClosenessScore(a.price, bandNow) : 55), 0) / Math.max(1, alternatives.length)
+                  });
                 };
 
                 suggestDiv.appendChild(bulkAltBtn);
@@ -2427,6 +2431,181 @@
     const close = `您而家要唔要我幫您即刻加落去？或者我可以再調一調，睇下邊個組合最啱您今次嘅需要。`;
 
     return `${opening} ${benefits} ${priceAnchor} ${close}`;
+  }
+
+  /**
+   * 專為「價位智能缺口提示」產生極致完整銷售腳本（香港粵語專業風格）
+   * 包含：個人化開場 + 缺口原因解釋 + 為何揀呢批替代 + 3個具體好處 + 價格定位 + 軟性收結
+   */
+  function generateGapFillSalesScript(alternatives, extra = {}) {
+    const count = (alternatives || []).length;
+    if (count === 0) return '「呢個建議我覺得都幾啱您，您要唔要試下？」';
+
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const customer = extra.customer || (POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null);
+    const name = customer && customer.name ? customer.name : '您';
+    const band = extra.band || (typeof getEffectivePriceBand === 'function' ? getEffectivePriceBand() : null);
+    const highCount = extra.highCount || 0;
+    const days = extra.daysSinceLastVisit || 30;
+    const isLongAbsent = days > 70;
+
+    const avgCloseness = alternatives.reduce((sum, alt) => {
+      const c = (typeof getPriceClosenessScore === 'function' && alt.price && band)
+        ? getPriceClosenessScore(alt.price, band) : 58;
+      return sum + c;
+    }, 0) / count;
+
+    let opening = isLongAbsent
+      ? `「喂，${name}，好耐冇見到您啦！呢段時間有冇特別留意皮膚狀態呀？」`
+      : `「又見到您，好開心！${name}，上次做完之後反應都幾正面呀。」`;
+
+    const gapExplain = highCount > 0
+      ? `我剛剛幫您分析咗您最鍾意嘅價位區間，發現高貼合度（70%+）嘅選擇得 ${highCount} 個，選擇面有啲窄。所以特別為您搵咗 ${count} 個最接近您偏好嘅替代項目，平均貼合度 ${Math.round(avgCloseness)}%。`
+      : `根據您過去嘅消費習慣，我發現呢個價位區間嘅高貼合選擇唔多，所以特登幫您度身搵咗 ${count} 個最啱您嘅替代，貼合度都幾高。`;
+
+    const benefits = `第一，呢幾樣價錢同您最舒服嘅範圍好貼，接受度最高；第二，可以即刻補返之前嘅「缺口」，令效果返到最佳狀態；第三，好多同您消費水平相近嘅客人，都係靠呢類組合做定期保養，性價比同滿意度都幾高。`;
+
+    const priceNote = band
+      ? `整體預算大約喺 HK$ ${Math.round(band.min)}–${Math.round(band.max)} 之間，冇超出您平時習慣太多。`
+      : `價錢都幾親民，感覺卻會明顯更好。`;
+
+    const cta = `您而家要唔要我即刻幫您一次過加呢 ${count} 樣落購物車？加完我可以再同您微調下次方向，或者儲存做常用組合。」`;
+
+    return `${opening} ${gapExplain} ${benefits} ${priceNote} ${cta}`;
+  }
+
+  /**
+   * 顯示「缺口智能替代」完整銷售話術預覽面板（輕量版，專為 Phase 40 設計）
+   * 支援：即時微調（+/- 50）、可編輯 textarea、複製 WhatsApp、一鍵確認加入 + 自動記錄完整腳本
+   */
+  function showGapFillScriptPreview(alternatives, initialScript, context = {}) {
+    if (!resultsEl || !alternatives || !alternatives.length) return;
+
+    const panelId = 'gap-fill-preview-panel';
+    const old = document.getElementById(panelId);
+    if (old) old.remove();
+
+    const customer = context.customer || null;
+    const band = context.band || null;
+    const count = alternatives.length;
+
+    const panelHtml = `
+      <div id="${panelId}" class="mx-2 my-3 p-3 rounded-4 border shadow-sm" style="background:#fffef9;border-color:#D4A017;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold text-warning">📝 缺口智能銷售話術（可即時編輯）</div>
+          <button type="button" class="btn-close btn-close-sm" id="gap-preview-close" aria-label="Close"></button>
+        </div>
+
+        <div class="small text-muted mb-1">價位智能缺口提示 · ${count} 個最接近替代 · 點擊微調後確認加入</div>
+
+        <textarea id="gap-script-text" class="form-control mb-2" rows="6" style="font-size:13.5px;line-height:1.5;">${initialScript}</textarea>
+
+        <div class="d-flex gap-1 mb-2 align-items-center flex-wrap">
+          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="gap-price-minus" style="font-size:10px;" title="話術微調：價位 -50">價位 -50</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="gap-price-plus" style="font-size:10px;" title="話術微調：價位 +50">價位 +50</button>
+          <span class="small text-muted ms-1">（即時更新話術內價位參考）</span>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="gap-preview-copy">💬 複製話術</button>
+          <button type="button" class="btn btn-warning btn-sm flex-fill" id="gap-preview-confirm">✅ 確認加入 + 記錄完整話術</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="gap-preview-cancel">取消</button>
+        </div>
+        <div class="small text-muted mt-1">確認後會自動加入購物車 + 將完整腳本寫入備註欄（可直接用作 WhatsApp 跟進）</div>
+      </div>`;
+
+    // 插入到結果區較後面（或 action bar 之後）
+    const actionBar = resultsEl.querySelector('.mx-2.mt-1.mb-2.p-2.rounded-3');
+    if (actionBar) {
+      actionBar.insertAdjacentHTML('afterend', panelHtml);
+    } else {
+      resultsEl.insertAdjacentHTML('beforeend', panelHtml);
+    }
+
+    const panel = document.getElementById(panelId);
+    const ta = document.getElementById('gap-script-text');
+    const closeBtn = document.getElementById('gap-preview-close');
+    const copyBtn = document.getElementById('gap-preview-copy');
+    const confirmBtn = document.getElementById('gap-preview-confirm');
+    const cancelBtn = document.getElementById('gap-preview-cancel');
+    const minusBtn = document.getElementById('gap-price-minus');
+    const plusBtn = document.getElementById('gap-price-plus');
+
+    if (closeBtn) closeBtn.onclick = () => panel.remove();
+    if (cancelBtn) cancelBtn.onclick = () => panel.remove();
+
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        const val = ta.value.trim();
+        copySalesScriptToClipboard(val);
+      };
+    }
+
+    // 微調 +/- 50：簡單字串替換價位提示 + 輕微改寫
+    function microAdjustPrice(delta) {
+      let text = ta.value;
+      // 簡單調整所有出現的 HK$ 數字（保守處理）
+      text = text.replace(/HK\$\s*(\d+)/g, (m, numStr) => {
+        const n = parseInt(numStr, 10);
+        return `HK$ ${Math.max(100, Math.round(n + delta))}`;
+      });
+      // 同時在文末補充一句微調提示
+      if (!text.includes('微調')) {
+        text = text.replace(/」$/, `（我已幫您微調 ${delta > 0 ? '+' : ''}${delta} 左右參考價位）」`);
+      }
+      ta.value = text;
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast(`已微調參考價位 ${delta > 0 ? '+' : ''}${delta}`, 'info', 900);
+      }
+    }
+    if (minusBtn) minusBtn.onclick = (e) => { e.stopImmediatePropagation(); microAdjustPrice(-50); };
+    if (plusBtn) plusBtn.onclick = (e) => { e.stopImmediatePropagation(); microAdjustPrice(50); };
+
+    // 核心：確認加入 + 記錄完整話術
+    if (confirmBtn) {
+      confirmBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const finalScript = ta.value.trim();
+
+        // 1. 全部加入購物車
+        let added = 0;
+        alternatives.forEach(alt => {
+          if (window.addToCart) {
+            window.addToCart(alt.type, alt.ref_id, alt.label || alt.name, alt.price);
+            added++;
+          }
+        });
+
+        // 2. 寫入 sale-notes（結構化 + 完整腳本）
+        const notesEl = document.getElementById('sale-notes');
+        if (notesEl) {
+          const tag = `[價位智能缺口提示] ${new Date().toLocaleDateString('zh-HK')} · 自動建議 ${added} 個最接近替代（平均貼合 ${Math.round(context.avgCloseness || 55)}%）`;
+          const fullNote = `${tag}\n完整銷售話術：\n${finalScript}`;
+          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n\n${fullNote}` : fullNote;
+        }
+
+        // 3. 記錄到 lastSalesScript 方便之後快速複製
+        window.SalonEase = window.SalonEase || {};
+        window.SalonEase.lastSalesScript = finalScript;
+
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(`✅ 已加入 ${added} 個缺口替代 + 完整話術已記錄`, 'success', 2200);
+        }
+
+        panel.remove();
+
+        // 可選：成功後自動隱藏命令面板，讓用戶專心看 POS 購物車
+        setTimeout(() => {
+          if (typeof hide === 'function') hide();
+        }, 650);
+      };
+    }
+
+    // 焦點到 textarea 方便即時微調
+    setTimeout(() => {
+      if (ta) ta.focus();
+      if (ta) ta.select();
+    }, 120);
   }
 
   function copySalesScriptToClipboard(text) {
@@ -3545,6 +3724,9 @@
       delete window.SalonEase._cmdPriceFilter;
       delete window.SalonEase._cmdHighClosenessOnly;
     }
+    // 清理任何預覽面板（英雄 + 新增嘅缺口話術預覽）
+    document.getElementById('hero-preview-panel')?.remove();
+    document.getElementById('gap-fill-preview-panel')?.remove();
     if (bsModal) bsModal.hide();
   }
 
@@ -3555,6 +3737,9 @@
       window.SalonEase._cmdSelectedHeroes = new Set();
       window.SalonEase._cmdHeroRecs = [];
     }
+    // 確保預覽面板完全清除
+    document.getElementById('hero-preview-panel')?.remove();
+    document.getElementById('gap-fill-preview-panel')?.remove();
   }
 
   // 公開
