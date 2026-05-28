@@ -45,14 +45,15 @@ switch ($action) {
         if (!is_post()) json_error('只接受 POST 請求', 405);
         require_csrf();
 
-        $name = trim(post('name'));
+        $name = sanitize_string(post('name', ''));
         $duration = (int)post('duration_min', 60);
-        $price = (float)post('price');
-        $category = trim(post('category'));
+        $price = (float)post('price', 0);
+        $category = sanitize_string(post('category', ''));
 
-        if (!$name || $price <= 0) {
-            json_error('服務名稱與價格為必填');
-        }
+        if ($err = validate_required($name, '服務名稱')) json_error($err);
+        if ($err = validate_money($price, '價格')) json_error($err);
+        if ($err = validate_positive_int($duration, '療程時間', 5)) json_error($err);
+        if ($err = validate_length($name, '服務名稱', 100, 1)) json_error($err);
 
         db_exec(
             "INSERT INTO services (name, duration_min, price, category, is_active) VALUES (?, ?, ?, ?, 1)",
@@ -74,14 +75,16 @@ switch ($action) {
         require_csrf();
 
         $id = (int)post('id');
-        $name = trim(post('name'));
+        $name = sanitize_string(post('name', ''));
         $duration = (int)post('duration_min', 60);
-        $price = (float)post('price');
-        $category = trim(post('category'));
+        $price = (float)post('price', 0);
+        $category = sanitize_string(post('category', ''));
 
-        if (!$id || !$name) {
-            json_error('缺少必要資料');
-        }
+        if ($err = validate_required($id, '服務 ID')) json_error($err);
+        if ($err = validate_required($name, '服務名稱')) json_error($err);
+        if ($err = validate_money($price, '價格')) json_error($err);
+        if ($err = validate_positive_int($duration, '療程時間', 5)) json_error($err);
+        if ($err = validate_length($name, '服務名稱', 100, 1)) json_error($err);
 
         db_exec(
             "UPDATE services SET name = ?, duration_min = ?, price = ?, category = ? WHERE id = ?",

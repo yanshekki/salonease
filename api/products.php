@@ -59,16 +59,18 @@ switch ($action) {
         if (!is_post()) json_error('只接受 POST 請求', 405);
         require_csrf();
 
-        $name = trim(post('name'));
-        $sku = trim(post('sku'));
-        $price = (float)post('price');
+        $name = sanitize_string(post('name', ''));
+        $sku = sanitize_string(post('sku', ''));
+        $price = (float)post('price', 0);
         $cost = (float)post('cost', 0);
         $stock = (int)post('stock_qty', 0);
-        $category = trim(post('category'));
+        $category = sanitize_string(post('category', ''));
 
-        if (!$name || $price <= 0) {
-            json_error('產品名稱與售價為必填');
-        }
+        if ($err = validate_required($name, '產品名稱')) json_error($err);
+        if ($err = validate_money($price, '售價')) json_error($err);
+        if ($err = validate_money($cost, '成本', true)) json_error($err);
+        if ($err = validate_length($name, '產品名稱', 100, 1)) json_error($err);
+        if ($err = validate_length($sku, 'SKU', 50)) json_error($err);
 
         db_exec(
             "INSERT INTO products (name, sku, price, cost, stock_qty, category, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)",
@@ -90,17 +92,19 @@ switch ($action) {
         require_csrf();
 
         $id = (int)post('id');
-        $name = trim(post('name'));
-        $sku = trim(post('sku'));
-        $price = (float)post('price');
+        $name = sanitize_string(post('name', ''));
+        $sku = sanitize_string(post('sku', ''));
+        $price = (float)post('price', 0);
         $cost = (float)post('cost', 0);
         $stock = (int)post('stock_qty', 0);
         $low_stock = post('low_stock_threshold') !== '' ? (int)post('low_stock_threshold') : null;
-        $category = trim(post('category'));
+        $category = sanitize_string(post('category', ''));
 
-        if (!$id || !$name) {
-            json_error('缺少必要資料');
-        }
+        if ($err = validate_required($id, '產品 ID')) json_error($err);
+        if ($err = validate_required($name, '產品名稱')) json_error($err);
+        if ($err = validate_money($price, '售價')) json_error($err);
+        if ($err = validate_length($name, '產品名稱', 100, 1)) json_error($err);
+        if ($err = validate_length($sku, 'SKU', 50)) json_error($err);
 
         db_exec(
             "UPDATE products SET name = ?, sku = ?, price = ?, cost = ?, stock_qty = ?, low_stock_threshold = ?, category = ? WHERE id = ?",
