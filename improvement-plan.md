@@ -233,6 +233,7 @@
 - A120 已完成：reports.php 將 loadStaffList 方法移入 reportsApp() 內部（JS 結構清理第十一步）
 - A121 已完成：reports.php 將 exportStaffRankingCSV 方法移入 reportsApp() 內部（JS 結構清理第十二步）
 - A122 已完成：reports.php 將 updateCharts 方法移入 reportsApp() 內部（JS 結構清理第十三步）
+- A123 已完成：reports.php 將 setQuickRange 方法移入 reportsApp() 內部 + 移除 stub 及 orphaned 版本（JS 結構清理第十四步，此階段清理基本完成）
 
 ---
 
