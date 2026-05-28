@@ -225,6 +225,9 @@ include __DIR__ . '/includes/header.php';
                 </span>
             </div>
             <canvas id="salesTrendChart" height="80"></canvas>
+            <div class="small text-muted mt-1" style="font-size:0.7rem;">
+                每日平均：{{ formatMoney( summary.total_sales / Math.max(1, Math.ceil( (new Date(to) - new Date(from)) / (1000*60*60*24) )) ) }}
+            </div>
             <div class="small text-muted mt-2" style="font-size:0.65rem;">（隨日期範圍即時更新，後續版本將接入真實每日數據）</div>
         </div>
     </div>
