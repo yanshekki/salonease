@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $pageTitle = '套票管理';
 $pageSubtitle = '管理療程卡（套票）定義';
@@ -206,7 +207,10 @@ async function savePackage() {
 
         await SalonEase.fetch(`/api/packages.php?action=${action}`, {
             method: 'POST',
-            body: payload
+            body: {
+                ...payload,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
 
         hidePackageModal();
@@ -226,7 +230,11 @@ async function togglePackage(id, currentStatus) {
     try {
         await SalonEase.fetch('/api/packages.php?action=toggle', {
             method: 'POST',
-            body: { id, status: newStatus }
+            body: { 
+                id, 
+                status: newStatus,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
         SalonEase.toast(`套票已${actionText}`);
         loadPackages();
