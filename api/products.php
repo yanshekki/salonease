@@ -45,11 +45,14 @@ switch ($action) {
 
         $products = db_query($sql, $params);
 
-        // 計算有效門檻（per-product 優先，否則用全域）
+        // 計算有效門檻 + 是否低量警示（Phase 2 A2）
         foreach ($products as &$p) {
-            $p['effective_low_stock_threshold'] = $p['low_stock_threshold'] !== null 
+            $threshold = $p['low_stock_threshold'] !== null 
                 ? (int)$p['low_stock_threshold'] 
                 : $globalLowStock;
+
+            $p['effective_low_stock_threshold'] = $threshold;
+            $p['is_low_stock'] = (int)$p['stock_qty'] <= $threshold;
         }
 
         json_success($products);
@@ -128,6 +131,67 @@ switch ($action) {
 
         db_exec("UPDATE products SET is_active = ? WHERE id = ?", [$newStatus, $id]);
         json_success(null, $newStatus ? '產品已啟用' : '產品已停用');
+        break;
+
+    // Phase 2 A2：手動調整產品庫存（僅限 admin/manager）
+    case 'adjust_stock':
+        if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
+        require_role(['admin', 'manager']);
+
+        $id = (int)post('id');
+        $adjustment = (int)post('adjustment', 0);   // 正數增加，負數減少
+        $reason = sanitize_string(post('reason', ''));
+
+        if ($err = validate_required($id, '產品 ID')) json_error($err);
+        if ($adjustment === 0) {
+            json_error('調整數量不能為 0');
+        }
+        if ($err = validate_length($reason, '原因', 200)) json_error($err);
+
+        try {
+            $result = db_transaction(function($pdo) use ($id, $adjustment, $reason) {
+                // 取得目前庫存
+                $current = $pdo->prepare("SELECT name, stock_qty FROM products WHERE id = ? FOR UPDATE");
+                $current->execute([$id]);
+                $row = $current->fetch();
+
+                if (!$row) {
+                    throw new Exception('找不到該產品');
+                }
+
+                $oldStock = (int)$row['stock_qty'];
+                $newStock = $oldStock + $adjustment;
+
+                if ($newStock < 0) {
+                    throw new Exception("調整後庫存不可為負數（目前 {$oldStock}，調整 {$adjustment}）");
+                }
+
+                // 更新庫存
+                $update = $pdo->prepare("UPDATE products SET stock_qty = ? WHERE id = ?");
+                $update->execute([$newStock, $id]);
+
+                // 寫入審計日誌
+                log_activity('product.stock_adjusted', $id, 'product', [
+                    'old_stock'   => $oldStock,
+                    'adjustment'  => $adjustment,
+                    'new_stock'   => $newStock,
+                    'reason'      => $reason ?: '手動調整',
+                    'adjusted_by' => $_SESSION['staff_id'] ?? null
+                ]);
+
+                return [
+                    'id'        => $id,
+                    'name'      => $row['name'],
+                    'old_stock' => $oldStock,
+                    'new_stock' => $newStock
+                ];
+            });
+
+            json_success($result, '庫存已調整');
+        } catch (Exception $e) {
+            json_error($e->getMessage());
+        }
         break;
 
     default:
