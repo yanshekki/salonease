@@ -248,6 +248,53 @@ switch ($action) {
         }
         break;
 
+    // Phase 2 A21：產品單一庫存異動歷史（給編輯 Modal 使用）
+    case 'stock_history':
+        $id = (int)get('id', 0);
+        if ($id <= 0) json_error('缺少產品 ID');
+
+        // 只允許 admin / manager 查看
+        if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
+            json_error('權限不足', 403);
+        }
+
+        try {
+            $sql = "
+                SELECT 
+                    al.created_at,
+                    s.name as staff_name,
+                    al.action,
+                    al.details
+                FROM audit_logs al
+                LEFT JOIN staff s ON al.staff_id = s.id
+                WHERE al.entity_type = 'product' 
+                  AND al.entity_id = ?
+                  AND al.action IN ('product.stock_adjusted', 'product.stock_deducted')
+                ORDER BY al.created_at DESC
+                LIMIT 8
+            ";
+            $rows = db_query($sql, [$id]);
+
+            $history = [];
+            foreach ($rows as $r) {
+                $details = json_decode($r['details'] ?? '{}', true) ?: [];
+                $type = ($r['action'] === 'product.stock_adjusted') ? '手動調整' : '銷售扣減';
+                $history[] = [
+                    'time'       => $r['created_at'],
+                    'staff'      => $r['staff_name'] ?: '系統',
+                    'type'       => $type,
+                    'old'        => $details['old_stock'] ?? $details['stock_qty'] ?? null,
+                    'new'        => $details['new_stock'] ?? null,
+                    'adjustment' => $details['adjustment'] ?? null,
+                    'reason'     => $details['reason'] ?? ($details['sale_id'] ? '銷售單 #' . $details['sale_id'] : '')
+                ];
+            }
+            json_success($history);
+        } catch (Exception $e) {
+            json_error('查詢失敗');
+        }
+        break;
+
     default:
         json_error('未知的操作', 400);
 }
