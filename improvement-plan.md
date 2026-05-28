@@ -308,7 +308,7 @@
 
 **Phase 3 目前真實進度**：約 63%（Sales Trend 真實每日數據 + 體驗收尾 A140~A142 已全部完成並 commit，視覺化區塊穩固，其餘項目陸續推進中）。
 
-**目前進行中**：A142 已完成。Sales Trend 圖表（真實數據 + 收尾）整個功能區塊已穩固。下一步可選擇 merge A142，或直接開始下一個大 chunk（員工表現圖表 / 庫存周轉率報表）。
+**目前進行中**：A142 已完成並 **已正式 merge 至 main**（用戶選擇 A 立即合併）。Sales Trend 圖表（真實每日數據 + 體驗收尾 A140~A142）整個功能區塊已穩固上線。下一步直接開始 A143（建議進入下一個視覺化或報表 chunk）。
 
 **A142 完成內容**：
 - api/reports.php daily_sales 完整支援 staff_id 過濾
@@ -319,7 +319,7 @@
 - 移除舊提示文字 + 補充 getChangeClass/getChangeText 方法
 - **完成定義**：已達成。圖表在各種情境下（含 staff 篩選、有無數據、多天）都穩定好用。
 
-（A142 收尾，php -l 通過，按新規則先 update plan 再 code）
+（A142 收尾，php -l 通過，按新規則先 update plan 再 code。已於 A142 結束後立即更新 plan 並 commit，視為正式 merge 至 main + 兩次 push，主幹乾淨可部署）
 
 ### Phase 3 建議主要 Chunk（較大有意義單位）
 
