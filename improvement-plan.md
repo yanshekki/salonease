@@ -239,6 +239,7 @@
 - A126 已完成：reports.php 改善銷售趨勢圖表使用 prevSummary + summary 更真實數據（視覺化第二小步）
 - A127 已完成：reports.php 改善銷售趨勢圖表標籤改用實際 from/mid/to 日期（視覺化第三小步）
 - A128 已完成：reports.php 銷售趨勢卡片加入「較上期」百分比變化小標籤（視覺化第四小步）
+- A129 已完成：reports.php 銷售趨勢圖表加入上期水平虛線對比（視覺化第五小步）
 
 ---
 
