@@ -23,10 +23,28 @@ switch ($action) {
         $discount = (float)post('discount', 0);
         $payment_method = post('payment_method', 'cash');
         $amount_received = (float)post('amount_received', 0);
-        $notes = trim(post('notes'));
+        $notes = sanitize_string(post('notes', ''));
 
-        if (empty($items)) {
+        // Phase 1 驗證強化
+        if ($err = validate_money($discount, '折扣')) json_error($err);
+        if ($err = validate_length($notes, '備註', 500)) json_error($err);
+
+        $allowedPayments = ['cash', 'card', 'fps', 'other'];
+        if (!in_array($payment_method, $allowedPayments, true)) {
+            json_error('付款方式無效');
+        }
+
+        if (empty($items) || !is_array($items)) {
             json_error('購物車不能為空');
+        }
+
+        // 驗證每個 item 基本結構
+        foreach ($items as $idx => $item) {
+            if (!isset($item['type'], $item['ref_id'], $item['name'], $item['unit_price'], $item['qty'])) {
+                json_error("購物車第 " . ($idx+1) . " 項資料不完整");
+            }
+            if ($err = validate_positive_int($item['qty'], "第 " . ($idx+1) . " 項數量", 1)) json_error($err);
+            if ($err = validate_money($item['unit_price'], "第 " . ($idx+1) . " 項單價")) json_error($err);
         }
 
         try {
