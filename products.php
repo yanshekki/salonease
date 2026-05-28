@@ -489,6 +489,9 @@ async function submitStockAdjustment() {
     }
 
     try {
+        const currentStock = parseInt(document.getElementById('stock-current').textContent) || 0;
+        const newStock = currentStock + adjustment;
+
         await SalonEase.fetch('/api/products.php?action=adjust_stock', {
             method: 'POST',
             body: {
@@ -500,7 +503,7 @@ async function submitStockAdjustment() {
         });
 
         if (stockAdjustModalInstance) stockAdjustModalInstance.hide();
-        SalonEase.toast('庫存已成功調整');
+        SalonEase.toast(`庫存已調整（原 ${currentStock} → 新 ${newStock}）`);
         loadProducts();
     } catch (err) {
         SalonEase.toast(err.message || '調整失敗', 'error');
