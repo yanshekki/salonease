@@ -189,6 +189,47 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- 快速補貨預設（A38） -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">快速補貨預設數量</div>
+                    <div class="small text-muted">設定產品列表「快速入庫」按鈕的預設值</div>
+                </div>
+                <div class="badge bg-light text-dark small">即時生效</div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small">快速 +5 入庫</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" x-model.number="form.quick_restock_5" 
+                               step="1" min="1" max="100" class="form-control">
+                        <span class="input-group-text">件</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">快速 +10 入庫</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" x-model.number="form.quick_restock_10" 
+                               step="1" min="1" max="100" class="form-control">
+                        <span class="input-group-text">件</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">快速 +20 入庫</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" x-model.number="form.quick_restock_20" 
+                               step="1" min="1" max="100" class="form-control">
+                        <span class="input-group-text">件</span>
+                    </div>
+                </div>
+            </div>
+            <div class="small text-muted mt-2">修改後，產品列表的快速入庫按鈕會使用這些預設值</div>
+        </div>
+    </div>
+
     <!-- 管理功能快速入口 -->
     <div class="row g-3">
         <div class="col-md-6 col-lg-4">
@@ -261,7 +302,10 @@ function shopSettings() {
             default_commission_open: 5,
             default_low_stock_threshold: 5,
             points_earn_rate: 10,
-            points_redemption_rate: 10
+            points_redemption_rate: 10,
+            quick_restock_5: 5,
+            quick_restock_10: 10,
+            quick_restock_20: 20
         },
         saving: false,
         saved: false,
@@ -285,6 +329,9 @@ function shopSettings() {
                     this.form.default_low_stock_threshold = parseInt(d.default_low_stock_threshold) || 5;
                     this.form.points_earn_rate = parseInt(d.points_earn_rate) || 10;
                     this.form.points_redemption_rate = parseInt(d.points_redemption_rate) || 10;
+                    this.form.quick_restock_5  = parseInt(d.quick_restock_5) || 5;
+                    this.form.quick_restock_10 = parseInt(d.quick_restock_10) || 10;
+                    this.form.quick_restock_20 = parseInt(d.quick_restock_20) || 20;
                 }
             } catch (e) {
                 console.warn('載入設定失敗', e);
@@ -309,7 +356,10 @@ function shopSettings() {
                         default_commission_open: this.form.default_commission_open,
                         default_low_stock_threshold: this.form.default_low_stock_threshold,
                         points_earn_rate: this.form.points_earn_rate,
-                        points_redemption_rate: this.form.points_redemption_rate
+                        points_redemption_rate: this.form.points_redemption_rate,
+                        quick_restock_5: this.form.quick_restock_5,
+                        quick_restock_10: this.form.quick_restock_10,
+                        quick_restock_20: this.form.quick_restock_20
                     }
                 });
 
