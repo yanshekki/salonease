@@ -562,19 +562,36 @@
         });
       });
 
-      // 根據客戶平均消費力，產生價格區間 / 升級建議
+      // 根據客戶平均消費力，產生更精準的價格區間 + 適合等級推薦
       if (avgSpend > 0) {
-        const suggestedUpgrade = Math.round(avgSpend * 1.25); // 建議比平均高 25% 的組合
+        const lowTier = Math.round(avgSpend * 0.7);
+        const midTier = Math.round(avgSpend * 1.1);
+        const highTier = Math.round(avgSpend * 1.4);
+
+        let tierLabel = '';
+        let tierReason = '';
+
+        if (avgSpend < 400) {
+          tierLabel = `價值組合（約 HK$ ${lowTier}–${midTier}）`;
+          tierReason = `根據您平時消費習慣，建議選擇性價比高的搭配組合`;
+        } else if (avgSpend < 800) {
+          tierLabel = `平衡升級（約 HK$ ${midTier}–${highTier}）`;
+          tierReason = `根據您平時消費習慣，建議可適度升級搭配，感受更好效果`;
+        } else {
+          tierLabel = `高端體驗（約 HK$ ${highTier}+）`;
+          tierReason = `根據您平時消費習慣，建議體驗更高階的服務與產品組合`;
+        }
+
         recommendations.push({
-          id: `price-upgrade-${customer.id}`,
+          id: `price-tier-${customer.id}`,
           type: 'price_suggestion',
-          label: `價格區間建議：約 HK$ ${suggestedUpgrade}`,
-          sublabel: `根據您平時消費習慣`,
-          suggestedReason: `根據此客戶歷史平均消費約 HK$ ${Math.round(avgSpend)}，建議可考慮約 HK$ ${suggestedUpgrade} 的升級搭配`,
-          keywords: '價格 升級 消費',
-          icon: '💰',
+          label: tierLabel,
+          sublabel: `貼合您消費水平`,
+          suggestedReason: tierReason,
+          keywords: '價格 升級 消費 等級',
+          icon: '💎',
           action: 'quick-add-recommendation',
-          priority: 11
+          priority: 12
         });
       }
 
@@ -1527,22 +1544,22 @@
       }
     }
 
-    // 自動產生簡單銷售話術（根據推薦類型，包含價格話術 + 複合建議）
+    // 自動產生更完整、自然的銷售話術（包含開場、理由、價格、行動呼籲）
     let script = '';
     const reason = recommendation.suggestedReason || '';
 
     if (recommendation.type === 'compound_recommendation') {
-      script = `可以跟客人說：「根據您的購買記錄，這個項目已經到補充的時候了，同時很多客人會一起加購這個搭配，兩者一起效果更好，也更划算。」`;
+      script = `可以跟客人說：「根據您的購買記錄，這個項目已經到補充的時候了。同時很多客人會一起加購這個搭配，兩者一起使用效果會更好，而且整體性價比也很高。您看要一起試試嗎？」`;
     } else if (recommendation.isGap) {
-      script = `可以跟客人說：「上次您購買這個已經有一段時間了，我們建議您補充，現在有搭配優惠，CP值很高。」`;
+      script = `可以跟客人說：「上次您購買這個已經有一段時間了，我們建議您補充。這個搭配現在有優惠，CP值很高，很多客人用完都說效果明顯。您要不要順便補充呢？」`;
     } else if (recommendation.isPair || recommendation.type === 'frequent_pair' || recommendation.type === 'smart_bundle') {
-      script = `可以跟客人說：「很多客人買這個之後都會一起加購這個，效果會更好哦～ 只多一點點錢。」`;
+      script = `可以跟客人說：「很多客人買這個之後都會再加購這個，效果會更好哦～ 只多一點點錢，整體感覺會升級不少。您覺得如何？」`;
     } else if (recommendation.type === 'price_suggestion') {
-      script = `可以跟客人說：「根據您平時的消費習慣，我們推薦這個價位區間的搭配，感覺很適合您。」`;
+      script = `可以跟客人說：「根據您平時的消費習慣，我們推薦這個價位區間的搭配，感覺很適合您。效果和體驗都會更好一點。」`;
     } else if (recommendation.isFrequent) {
-      script = `可以跟客人說：「這個是您之前很喜歡的項目，這次要不要再來一組？價格也很親民。」`;
+      script = `可以跟客人說：「這個是您之前很喜歡的項目，這次要不要再來一組？價格也很親民，效果也很穩定。」`;
     } else {
-      script = `可以跟客人說：「根據您的購買習慣，我們推薦搭配這個。」`;
+      script = `可以跟客人說：「根據您的購買習慣，我們推薦搭配這個。很多客人用完都覺得值得。」`;
     }
 
     hide();
