@@ -71,6 +71,19 @@ $monthlyLoyalty = [
     'redeemed' => (int)($monthlyRedeemed['total'] ?? 0),
     'active'   => (int)($activePointsCustomers['cnt'] ?? 0)
 ];
+
+// A54：Phase 3 - 本月熱門服務 Top 3（簡單數據洞察）
+$thisMonthStart = date('Y-m-01');
+$topServices = db_query("
+    SELECT s.name, COUNT(*) as cnt
+    FROM sale_items si
+    JOIN services s ON si.service_id = s.id
+    JOIN sales sa ON si.sale_id = sa.id
+    WHERE sa.sale_date >= ? AND s.is_active = 1
+    GROUP BY s.id
+    ORDER BY cnt DESC
+    LIMIT 3
+", [$thisMonthStart]);
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -161,6 +174,27 @@ $monthlyLoyalty = [
                 <a href="/loyalty.php" class="small text-info text-decoration-none d-inline-block mt-2">查看忠誠度 →</a>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- A54：Phase 3 - 本月熱門服務 Top 3（數據洞察） -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fw-semibold small">本月熱門服務 Top 3</div>
+            <a href="/reports.php" class="small text-muted text-decoration-none">查看完整報表 →</a>
+        </div>
+        <?php if (!empty($topServices)): ?>
+            <div class="d-flex flex-wrap gap-2">
+                <?php foreach ($topServices as $svc): ?>
+                    <span class="badge bg-light text-dark border px-2 py-1 small">
+                        <?= e($svc['name']) ?> <span class="text-muted">(<?= (int)$svc['cnt'] ?>)</span>
+                    </span>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="small text-muted">本月暫無服務銷售記錄</div>
+        <?php endif; ?>
     </div>
 </div>
 
