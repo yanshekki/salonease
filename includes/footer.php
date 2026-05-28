@@ -52,6 +52,8 @@
 
     <!-- 共用 JS -->
     <script src="/assets/js/app.js"></script>
+    <!-- 命令面板（Ctrl+K 生產力神器，必須在 hotkeys 之前載入） -->
+    <script src="/assets/js/command-palette.js"></script>
     <?php if (isset($extraJs) && $extraJs): ?>
         <script src="/assets/js/<?= e($extraJs) ?>"></script>
     <?php endif; ?>

@@ -21,34 +21,14 @@
         page: []
     };
 
+    // 命令面板已移至獨立 assets/js/command-palette.js（v2 強化版）
+    // 這裡只保留薄 wrapper，確保熱鍵系統相容
     function showCommandPalette() {
-        const palette = document.createElement('div');
-        palette.className = 'fixed inset-0 bg-black/30 z-[80] flex items-start justify-center pt-[12vh]';
-        palette.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-                <div class="p-3 border-b">
-                    <input type="text" id="cmd-input" placeholder="輸入頁面名稱或功能..." 
-                           class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#8FA68F]">
-                </div>
-                <div class="p-2 text-sm max-h-[260px] overflow-auto" id="cmd-results">
-                    <div class="px-3 py-2 text-[#8A8A8C]">快速跳轉</div>
-                    <div onclick="location.href='/pos.php'" class="px-3 py-2 hover:bg-gray-50 rounded-xl cursor-pointer flex justify-between"><span>POS 銷售</span><span class="text-xs text-gray-400">Alt+P</span></div>
-                    <div onclick="location.href='/appointments.php'" class="px-3 py-2 hover:bg-gray-50 rounded-xl cursor-pointer flex justify-between"><span>預約管理</span><span class="text-xs text-gray-400">Alt+A</span></div>
-                    <div onclick="location.href='/customers.php'" class="px-3 py-2 hover:bg-gray-50 rounded-xl cursor-pointer flex justify-between"><span>客戶管理</span><span class="text-xs text-gray-400">Alt+C</span></div>
-                    <div onclick="location.href='/dashboard.php'" class="px-3 py-2 hover:bg-gray-50 rounded-xl cursor-pointer flex justify-between"><span>概覽首頁</span><span class="text-xs text-gray-400">Alt+H</span></div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(palette);
-
-        const input = palette.querySelector('#cmd-input');
-        setTimeout(() => input.focus(), 30);
-
-        function close() { palette.remove(); }
-        palette.addEventListener('click', (e) => { if (e.target === palette) close(); });
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') close();
-        });
+        if (window.showCommandPalette) {
+            window.showCommandPalette();
+        } else {
+            console.warn('[SalonEase] command-palette.js 未載入');
+        }
     }
 
     // 公開 API
