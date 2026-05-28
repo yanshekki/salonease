@@ -281,7 +281,7 @@ async function editCustomer(id) {
 
             const history = c.recent_points_history || [];
             if (history.length === 0) {
-                historyList.innerHTML = '<div class="text-muted">尚無積分異動記錄</div>';
+                historyList.innerHTML = '<div class="text-muted small">尚無積分異動記錄<br>可點擊下方「查看完整歷史 →」手動調整積分</div>';
             } else {
                 let html = '<table class="table table-sm mb-0" style="font-size:0.7rem;"><tbody>';
                 history.forEach(item => {
