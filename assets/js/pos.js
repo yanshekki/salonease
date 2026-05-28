@@ -661,6 +661,24 @@ async function setCurrentCustomer(customer) {
     const infoEl = document.getElementById('pos-customer-info');
     if (infoEl) infoEl.innerHTML = infoHtml;
 
+    // Phase 2 A8：簡單積分兌換 UI（當客戶有積分時顯示）
+    const redeemContainer = document.getElementById('points-redeem-container');
+    if (redeemContainer) redeemContainer.remove();
+
+    if (customer.points > 0) {
+        const container = document.createElement('div');
+        container.id = 'points-redeem-container';
+        container.className = 'mt-1 text-xs flex items-center gap-2';
+        container.innerHTML = `
+            <span class="text-amber-600">使用積分：</span>
+            <input type="number" id="points-used" class="form-control form-control-sm" style="width:70px" min="0" max="${customer.points}" value="0">
+            <span class="text-muted">(剩餘 ${customer.points} 點)</span>
+        `;
+        if (infoEl && infoEl.parentNode) {
+            infoEl.parentNode.insertBefore(container, infoEl.nextSibling);
+        }
+    }
+
     // 如果客戶有可用套票，自動切換到套票分類
     if (customerPackages.length > 0) {
         const packageBtn = document.getElementById('filter-package');
@@ -802,6 +820,10 @@ async function checkout() {
         }
     }
 
+    // Phase 2 A8：支援積分兌換
+    const pointsUsedInput = document.getElementById('points-used');
+    const pointsUsed = pointsUsedInput ? (parseInt(pointsUsedInput.value) || 0) : 0;
+
     const payload = {
         customer_id: currentCustomer ? currentCustomer.id : '',
         items: cart.map(item => ({
@@ -813,6 +835,7 @@ async function checkout() {
             staff_id: item.assigned_staff_id || null   // 指派員工
         })),
         discount: parseFloat(document.getElementById('cart-discount').value) || 0,
+        points_used: pointsUsed,
         payment_method: method,
         amount_received: received,
         notes: notes,
