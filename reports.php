@@ -532,6 +532,16 @@ function reportsApp() {
                 'other': '其他'
             };
             return map[method] || method;
+        },
+
+        // 載入員工清單（供篩選使用）
+        async loadStaffList() {
+            try {
+                const res = await SalonEase.fetch('/api/staff.php?action=list&is_active=1');
+                this.staffList = res.data || [];
+            } catch (e) {
+                console.warn('載入員工清單失敗', e);
+            }
         }
     }
 }
@@ -592,16 +602,6 @@ document.addEventListener('keydown', function(e) {
                 this.to = this.formatDate(new Date());
             }
             this.loadAll();
-        },
-
-        // 載入員工清單（供篩選使用）
-        async loadStaffList() {
-            try {
-                const res = await SalonEase.fetch('/api/staff.php?action=list&is_active=1');
-                this.staffList = res.data || [];
-            } catch (e) {
-                console.warn('載入員工清單失敗', e);
-            }
         },
 
         // 匯出員工排行 CSV
