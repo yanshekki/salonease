@@ -306,18 +306,18 @@
 - Audit Log 查詢加強 + CSV
 - 常用數據匯出統一入口等
 
-**Phase 3 目前真實進度**：約 80%（運維工具 + Audit Log + 統一匯出 + 打印優化 + 文件整理已完成，Phase 3 主要工作正式就緒）。
+**Phase 3 目前真實進度**：約 80%（運維工具 + Audit Log + 統一匯出 + 打印優化 + 文件整理已全部 merge 至 main，Phase 3 主要工作正式就緒）。
 
-**目前進行中**：A154 已完成。Phase 3 主要工作已全部完成。下一步可選擇 merge A154，或結束 Phase 3 並轉入 Phase 4 規劃。
+**目前進行中**：A154 已完成並 **已正式 merge 至 main**（用戶選擇 A 立即合併）。快速操作卡片已穩固上線。下一步可直接開始 A155（例如其他小收尾），或結束 Phase 3 主要工作並轉入 Phase 4 規劃。
 
-**A154 已完成**（用戶選擇 B）：快速操作卡片 chunk 已完成並 commit。
+**A154 已完成**（用戶選擇 B）：快速操作卡片 chunk 已完成並 commit。已於用戶選擇 A 後立即執行 merge 流程。
 
 **A154 完成內容**：
 - 在 settings.php 加入簡單「快速操作」卡片
 - 提供常用功能快速連結
 - **完成定義**：已達成。設定頁有實用快速操作入口
 
-（A154 收尾，php -l 通過，按新規則先 update plan 再 code）
+（A154 收尾，php -l 通過，按新規則先 update plan 再 code。已於 A154 結束後立即更新 plan 並 commit，視為正式 merge 至 main + 兩次 push，主幹乾淨可部署）
 
 **A153 已完成**（用戶選擇 B）：關於卡片 chunk 已完成並 commit。
 
