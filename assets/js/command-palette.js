@@ -351,6 +351,25 @@
     }
   }
 
+  /**
+   * 產生價位距離詳細文字（用於點擊熱力圖顯示）
+   */
+  function getPriceDistanceDetail(itemPrice, band) {
+    if (!band || itemPrice == null) return '';
+    const p = parseFloat(itemPrice);
+    const center = (band.min + band.max) / 2;
+    const diff = Math.round(p - center);
+    const label = band.label || '最愛價位';
+
+    if (p >= band.min && p <= band.max) {
+      return `在${label}範圍內 ${diff >= 0 ? '+' : ''}HK$${Math.abs(diff)}`;
+    } else if (p < band.min) {
+      return `低於${label}中心 HK$${Math.abs(diff)}`;
+    } else {
+      return `高於${label}中心 HK$${diff}`;
+    }
+  }
+
   // 取得本次 POS 開單期間最近加入的項目（快速重複銷售）
   function getPosRecentSessionItems() {
     const POS = window.SalonEase && window.SalonEase.POS;
@@ -1066,6 +1085,7 @@
             <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('conservative')}" data-price-mode="conservative" style="font-size:9px;">保守</button>
             <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('custom')}" data-price-mode="custom" style="font-size:9px;">最啱您</button>
             <button type="button" class="btn btn-sm py-0 px-1 ${activeClass('premium')}" data-price-mode="premium" style="font-size:9px;">升級</button>
+            <button type="button" class="btn btn-sm py-0 px-1 btn-outline-success ms-1" id="btn-high-closeness-filter" style="font-size:9px;" title="只顯示貼合度 70%+ 項目">高貼合</button>
           `;
         }
       } else {
@@ -1131,6 +1151,13 @@
         }
       }
 
+      // 高貼合度快速篩選
+      if (currentContext === 'pos' && q.trim() && (window.SalonEase && window.SalonEase._cmdHighClosenessOnly)) {
+        const band = getEffectivePriceBand();
+        const closeness = getPriceClosenessScore(item.price, band);
+        if (closeness < 70) return;
+      }
+
       html += rowHTML(item, i, false);
     });
 
@@ -1143,8 +1170,11 @@
         const newMode = btn.dataset.priceMode;
         window.SalonEase = window.SalonEase || {};
         window.SalonEase._cmdPriceMode = newMode;
-        // 切換模式時清除之前嘅分佈過濾
-        if (window.SalonEase) delete window.SalonEase._cmdPriceFilter;
+        // 切換模式時清除之前嘅分佈過濾同高貼合篩選
+        if (window.SalonEase) {
+          delete window.SalonEase._cmdPriceFilter;
+          delete window.SalonEase._cmdHighClosenessOnly;
+        }
 
         // 重新計分 + 重新渲染（保持目前輸入）
         if (currentResults && currentResults.length > 0) {
@@ -1222,6 +1252,46 @@
           const q = inputEl ? inputEl.value : '';
           renderResults(q);
         }
+      };
+    }
+
+    // 價位熱力圖點擊顯示詳細距離資訊
+    resultsEl.querySelectorAll('.price-heat').forEach(heat => {
+      heat.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const detail = heat.dataset.detail || '';
+        const closeness = heat.dataset.closeness || '';
+
+        // 移除之前可能存在嘅 detail
+        const existing = heat.parentElement.querySelector('.price-heat-detail');
+        if (existing) existing.remove();
+
+        if (detail) {
+          const detailEl = document.createElement('span');
+          detailEl.className = 'price-heat-detail ms-1 small text-muted';
+          detailEl.style.fontSize = '9px';
+          detailEl.innerHTML = `（${detail}）`;
+          heat.parentElement.insertBefore(detailEl, heat.nextSibling);
+
+          // 3 秒後自動消失
+          setTimeout(() => {
+            if (detailEl && detailEl.parentElement) detailEl.parentElement.removeChild(detailEl);
+          }, 3200);
+        }
+      };
+    });
+
+    // 高貼合度快速篩選按鈕
+    const highCloseBtn = resultsEl.querySelector('#btn-high-closeness-filter');
+    if (highCloseBtn) {
+      const isActive = (window.SalonEase && window.SalonEase._cmdHighClosenessOnly);
+      if (isActive) highCloseBtn.classList.add('btn-success');
+      highCloseBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        window.SalonEase = window.SalonEase || {};
+        window.SalonEase._cmdHighClosenessOnly = !window.SalonEase._cmdHighClosenessOnly;
+        const q = inputEl ? inputEl.value : '';
+        renderResults(q);
       };
     }
 
@@ -1345,18 +1415,23 @@
     const lowStock = item.stock !== undefined && item.stock < 10 ? `<span class="badge bg-danger-subtle text-danger ms-1" style="font-size:9px">剩${item.stock}</span>` : '';
     const recent = isRecent ? `<span class="badge bg-warning-subtle text-warning ms-2" style="font-size:9px">最近</span>` : '';
 
-    // 價位熱力圖（只喺 POS 頁有有效價位區間時顯示）
+    // 價位熱力圖（只喺 POS 頁有有效價位區間時顯示，可點擊）
     let priceHeat = '';
     if (currentContext === 'pos' && (item.type === 'service' || item.type === 'product') && item.price) {
       const band = getEffectivePriceBand();
       const closeness = getPriceClosenessScore(item.price, band);
       if (closeness > 0 && band) {
-        // 越貼合越綠，越遠越橙黃
         const hue = closeness >= 75 ? 145 : (closeness >= 55 ? 85 : 40);
         const alpha = Math.max(0.35, closeness / 100 * 0.9);
         const label = band.label || '最愛價位';
         const title = `${label}貼合度 ${closeness}%`;
-        priceHeat = `<span class="ms-1 d-inline-block align-middle" style="width:7px;height:7px;border-radius:2px;background-color:hsl(${hue},70%,42%);opacity:${alpha}" title="${title}"></span>`;
+        const detail = getPriceDistanceDetail(item.price, band);
+        // 使用 data 屬性 + class 方便之後綁定點擊
+        priceHeat = `<span class="price-heat ms-1 d-inline-block align-middle" 
+                         style="width:7px;height:7px;border-radius:2px;background-color:hsl(${hue},70%,42%);opacity:${alpha};cursor:pointer;" 
+                         data-closeness="${closeness}" 
+                         data-detail="${detail}" 
+                         title="${title}（點擊睇詳細）"></span>`;
       }
     }
 
@@ -3222,6 +3297,7 @@
       // 重置暫時價位模式同分佈過濾
       delete window.SalonEase._cmdPriceMode;
       delete window.SalonEase._cmdPriceFilter;
+      delete window.SalonEase._cmdHighClosenessOnly;
     }
     if (bsModal) bsModal.hide();
   }
