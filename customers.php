@@ -310,7 +310,7 @@ async function editCustomer(id) {
                         </tr>`;
                 });
                 html += '</tbody></table>';
-                html += `<div class="small text-muted mt-1">...共 ${history.length} 筆</div>`;
+                html += `<div class="small text-muted mt-1">...共 ${history.length} 筆 <a href="/loyalty.php" class="text-muted text-decoration-none">查看完整 →</a></div>`;
                 historyList.innerHTML = html;
             }
         }
