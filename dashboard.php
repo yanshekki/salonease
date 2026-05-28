@@ -84,6 +84,18 @@ $topServices = db_query("
     ORDER BY cnt DESC
     LIMIT 3
 ", [$thisMonthStart]);
+
+// A55：Phase 3 - 本月熱門產品 Top 3（對稱 A54 的服務洞察）
+$topProducts = db_query("
+    SELECT p.name, COUNT(*) as cnt
+    FROM sale_items si
+    JOIN products p ON si.product_id = p.id
+    JOIN sales sa ON si.sale_id = sa.id
+    WHERE sa.sale_date >= ? AND p.is_active = 1
+    GROUP BY p.id
+    ORDER BY cnt DESC
+    LIMIT 3
+", [$thisMonthStart]);
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -194,6 +206,27 @@ $topServices = db_query("
             </div>
         <?php else: ?>
             <div class="small text-muted">本月暫無服務銷售記錄</div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- A55：Phase 3 - 本月熱門產品 Top 3（數據洞察） -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fw-semibold small">本月熱門產品 Top 3</div>
+            <a href="/reports.php" class="small text-muted text-decoration-none">查看完整報表 →</a>
+        </div>
+        <?php if (!empty($topProducts)): ?>
+            <div class="d-flex flex-wrap gap-2">
+                <?php foreach ($topProducts as $prod): ?>
+                    <span class="badge bg-light text-dark border px-2 py-1 small">
+                        <?= e($prod['name']) ?> <span class="text-muted">(<?= (int)$prod['cnt'] ?>)</span>
+                    </span>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="small text-muted">本月暫無產品銷售記錄</div>
         <?php endif; ?>
     </div>
 </div>
