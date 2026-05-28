@@ -20,6 +20,11 @@
     { id: 'nav-settings', label: '系統設定', url: '/settings.php', keywords: '設定 員工 房間 服務 產品', icon: '⚙️', contexts: ['*'] },
   ];
 
+  // POS 專屬靜態快速動作
+  const POS_QUICK_ACTIONS = [
+    { id: 'pos-quick-create-customer', label: '快速新增客戶', action: 'quick-create-customer', icon: '➕', keywords: '新增 建立 客戶 新客戶', contexts: ['pos'] },
+  ];
+
   // 動態 POS 項目快取（避免重複 fetch）
   let posDynamicCache = { query: '', items: [], ts: 0 };
 
@@ -30,6 +35,7 @@
   let activeIndex = 0;
   let currentResults = [];
   let currentContext = 'general';
+  let createCustomerMode = false;   // POS 快速新增客戶模式
 
   function loadRecent() {
     try {
@@ -92,6 +98,12 @@
     let score = fuzzyScore(q, `${item.label} ${item.keywords || ''} ${item.category || ''} ${item.sku || ''}`);
     if (item.contexts && (item.contexts.includes('*') || item.contexts.includes(ctx))) score += 16;
     if (ctx === 'pos' && (item.type === 'service' || item.type === 'product')) score += 28;
+
+    // POS 快速新增客戶永遠給較高分
+    if (ctx === 'pos' && item.id === 'pos-quick-create-customer') {
+      score += 35;
+    }
+
     const recent = loadRecent().usage;
     const pos = recent.indexOf(item.id);
     if (pos !== -1) score += Math.max(32 - pos * 3, 6);
@@ -100,6 +112,11 @@
 
   function getItems(ctx) {
     let arr = [...BASE_ACTIONS];
+
+    if (ctx === 'pos') {
+      arr = [...arr, ...POS_QUICK_ACTIONS];
+    }
+
     return arr;
   }
 
@@ -439,6 +456,11 @@
       return;
     }
 
+    if (item.action === 'quick-create-customer') {
+      enterQuickCreateCustomerMode();
+      return;
+    }
+
     if (item.url) location.href = item.url;
     else if (typeof item.fn === 'function') item.fn();
   }
@@ -515,6 +537,111 @@
     if (confirm(`已找到客戶「${customerData.name}」。\n請前往 POS 頁完成切換。`)) {
       location.href = '/pos.php';
     }
+  }
+
+  // 進入快速新增客戶模式（在命令面板內完成）
+  function enterQuickCreateCustomerMode() {
+    if (!resultsEl || !inputEl) return;
+
+    createCustomerMode = true;
+
+    const prefillName = inputEl.value.trim();
+
+    resultsEl.innerHTML = `
+      <div class="px-3 py-3">
+        <div class="small fw-medium mb-2 text-success">快速新增客戶</div>
+        
+        <div class="mb-2">
+          <label class="form-label small mb-1">姓名 <span class="text-danger">*</span></label>
+          <input type="text" id="cmd-create-name" class="form-control form-control-sm" value="${prefillName}" placeholder="例如：陳小美">
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label small mb-1">電話 <span class="text-danger">*</span></label>
+          <input type="tel" id="cmd-create-phone" class="form-control form-control-sm" placeholder="例如：91234567">
+        </div>
+
+        <div class="d-flex gap-2">
+          <button id="cmd-create-btn" class="btn btn-success btn-sm flex-fill">建立並切換到此客戶</button>
+          <button id="cmd-create-cancel" class="btn btn-outline-secondary btn-sm">取消</button>
+        </div>
+      </div>
+    `;
+
+    const nameInput = resultsEl.querySelector('#cmd-create-name');
+    const phoneInput = resultsEl.querySelector('#cmd-create-phone');
+    const createBtn = resultsEl.querySelector('#cmd-create-btn');
+    const cancelBtn = resultsEl.querySelector('#cmd-create-cancel');
+
+    // 焦點處理
+    setTimeout(() => {
+      if (prefillName && phoneInput) {
+        phoneInput.focus();
+      } else if (nameInput) {
+        nameInput.focus();
+        nameInput.select();
+      }
+    }, 50);
+
+    createBtn.onclick = async () => {
+      const name = nameInput.value.trim();
+      const phone = phoneInput.value.trim();
+
+      if (!name || !phone) {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('請填寫姓名與電話', 'error');
+        }
+        return;
+      }
+
+      createBtn.disabled = true;
+      createBtn.innerHTML = '建立中...';
+
+      try {
+        const res = await window.SalonEase.fetch('/api/customers.php?action=create', {
+          method: 'POST',
+          body: { name, phone }
+        });
+
+        const newCustomer = { id: res.data.id, name, phone };
+
+        // 建立成功後立即切換
+        const POS = window.SalonEase && window.SalonEase.POS;
+        if (POS && typeof POS.setCurrentCustomer === 'function') {
+          await POS.setCurrentCustomer(newCustomer);
+        }
+
+        hide();
+
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(`已建立並切換至 ${name}`, 'success', 2000);
+        }
+
+      } catch (err) {
+        createBtn.disabled = false;
+        createBtn.innerHTML = '建立並切換到此客戶';
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(err.message || '建立客戶失敗', 'error');
+        }
+      }
+    };
+
+    cancelBtn.onclick = () => {
+      createCustomerMode = false;
+      updateResults(inputEl.value); // 恢復正常搜尋
+    };
+
+    // 允許 Enter 送出
+    [nameInput, phoneInput].forEach(el => {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          createBtn.click();
+        }
+        if (e.key === 'Escape') {
+          cancelBtn.click();
+        }
+      });
+    });
   }
 
   function show() {
@@ -597,6 +724,7 @@
   }
 
   function hide() {
+    createCustomerMode = false;
     if (bsModal) bsModal.hide();
   }
 
