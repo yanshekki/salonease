@@ -65,3 +65,12 @@
 **✅ CSRF 回歸測試階段已正式啟動**
 
 建議依下方檢查清單，逐一驗證「正常流程」與「缺少 csrf_token 的攻擊流程」。
+
+**Audit Log 目前覆蓋範圍**：
+- 銷售結帳（sale.created）
+- 員工管理（staff.created / updated / toggled）
+- 套票扣減（package.redeemed）
+- 系統設定修改（settings.updated）
+- 產品 / 服務 / 房間 / 套票 的主要操作
+
+測試時可一併觀察 audit_logs 表是否有正確記錄。

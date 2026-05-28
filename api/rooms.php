@@ -48,7 +48,13 @@ switch ($action) {
             [$name, $capacity]
         );
 
-        json_success(['id' => (int)db_last_id()], '房間新增成功');
+        $newId = db_last_id();
+        log_activity('room.created', $newId, 'room', [
+            'name' => $name,
+            'capacity' => $capacity
+        ]);
+
+        json_success(['id' => (int)$newId], '房間新增成功');
         break;
 
     case 'update':
@@ -67,6 +73,11 @@ switch ($action) {
             "UPDATE rooms SET name = ?, capacity = ? WHERE id = ?",
             [$name, $capacity, $id]
         );
+
+        log_activity('room.updated', $id, 'room', [
+            'name' => $name,
+            'capacity' => $capacity
+        ]);
 
         json_success(null, '房間資料已更新');
         break;
