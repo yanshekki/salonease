@@ -138,6 +138,9 @@ $extraJs = 'hotkeys.js';
                     <div id="points-history-list" class="small border rounded p-2 bg-light" style="max-height: 110px; overflow-y: auto; font-size: 0.75rem;">
                         <!-- JS 動態填入 -->
                     </div>
+                    <div class="small mt-1">
+                        <a href="/loyalty.php" class="text-muted text-decoration-none">查看完整歷史 →</a>
+                    </div>
                 </div>
             </div>
 
