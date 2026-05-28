@@ -8,6 +8,8 @@ require_login();
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/csrf.php';
 
+$canAdjustStock = in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager']);
+
 $pageTitle = '零售產品管理';
 $pageSubtitle = '管理美容院零售產品及庫存';
 $extraJs = 'hotkeys.js';
@@ -147,6 +149,37 @@ $extraJs = 'hotkeys.js';
     </div>
 </div>
 
+<!-- 庫存調整 Modal（A19） -->
+<div class="modal fade" id="stockAdjustModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">調整庫存 <span id="stock-product-name" class="text-muted small"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="stock-product-id">
+                <div class="mb-3">
+                    <label class="form-label small">目前庫存</label>
+                    <div id="stock-current" class="fs-5 fw-semibold"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">調整數量 <span class="text-muted">（正數入庫，負數出庫/損耗）</span></label>
+                    <input type="number" id="stock-adjustment" class="form-control" placeholder="例如 +10 或 -3" step="1">
+                </div>
+                <div>
+                    <label class="form-label small">原因 / 備註 <span class="text-danger">*</span></label>
+                    <textarea id="stock-reason" class="form-control" rows="2" placeholder="例如：供應商補貨 / 盤點調整 / 損壞報廢"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="submitStockAdjustment()" class="btn btn-dark">確認調整</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     loadProducts();
@@ -218,6 +251,9 @@ function renderProductsTable(list) {
                 <td>${statusBadge}</td>
                 <td class="text-right">
                     <button onclick="editProduct(${p.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
+                    <?php if ($canAdjustStock): ?>
+                    <button onclick="adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-primary p-0 me-2">調整庫存</button>
+                    <?php endif; ?>
                     <button onclick="toggleProduct(${p.id}, ${p.is_active})" class="btn btn-link btn-sm ${p.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${p.is_active == 1 ? '停用' : '啟用'}
                     </button>
@@ -342,6 +378,58 @@ document.addEventListener('keydown', function(e) {
         showAddModal();
     }
 });
+
+/* Phase 2 A19：產品庫存調整 UI */
+let stockAdjustModalInstance = null;
+
+function adjustProductStock(id, currentQty, name) {
+    document.getElementById('stock-product-id').value = id;
+    document.getElementById('stock-product-name').textContent = `— ${name}`;
+    document.getElementById('stock-current').textContent = currentQty;
+    document.getElementById('stock-adjustment').value = '';
+    document.getElementById('stock-reason').value = '';
+
+    const modalEl = document.getElementById('stockAdjustModal');
+    stockAdjustModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+    stockAdjustModalInstance.show();
+
+    setTimeout(() => {
+        document.getElementById('stock-adjustment').focus();
+    }, 350);
+}
+
+async function submitStockAdjustment() {
+    const id = parseInt(document.getElementById('stock-product-id').value);
+    const adjustment = parseInt(document.getElementById('stock-adjustment').value || '0');
+    const reason = document.getElementById('stock-reason').value.trim();
+
+    if (!adjustment || adjustment === 0) {
+        SalonEase.toast('調整數量不能為 0', 'error');
+        return;
+    }
+    if (!reason) {
+        SalonEase.toast('請填寫調整原因', 'error');
+        return;
+    }
+
+    try {
+        await SalonEase.fetch('/api/products.php?action=adjust_stock', {
+            method: 'POST',
+            body: {
+                id: id,
+                adjustment: adjustment,
+                reason: reason,
+                csrf_token: '<?= csrf_token() ?>'
+            }
+        });
+
+        if (stockAdjustModalInstance) stockAdjustModalInstance.hide();
+        SalonEase.toast('庫存已成功調整');
+        loadProducts();
+    } catch (err) {
+        SalonEase.toast(err.message || '調整失敗', 'error');
+    }
+}
 
 function e(str) {
     return str ? str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
