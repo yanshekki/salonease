@@ -445,6 +445,15 @@ function reportsApp() {
         getChangeClass(curr, prev) {
             if (!prev || prev === 0) return 'text-muted';
             return (curr - prev) >= 0 ? 'text-success' : 'text-danger';
+        },
+
+        async loadSummary() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=summary&from=${this.from}&to=${this.to}`);
+                this.summary = res.data;
+            } catch (e) {
+                console.error(e);
+            }
         }
     }
 }
@@ -484,15 +493,6 @@ document.addEventListener('keydown', function(e) {
 // 這是目前 reports.php 最大的結構問題，需逐步移返去正確位置。
 // 目前這些方法實際上不會被 Alpine component 正確呼叫。
 
-
-        async loadSummary() {
-            try {
-                const res = await SalonEase.fetch(`/api/reports.php?action=summary&from=${this.from}&to=${this.to}`);
-                this.summary = res.data;
-            } catch (e) {
-                console.error(e);
-            }
-        },
 
         // A62：載入上期數據以計算「較上期」百分比
         async loadPrevSummary() {
