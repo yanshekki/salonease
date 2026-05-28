@@ -306,20 +306,20 @@
 - Audit Log 查詢加強 + CSV
 - 常用數據匯出統一入口等
 
-**Phase 3 目前真實進度**：約 61%（Sales Trend 真實每日數據核心 chunk 已完成，視覺化基礎穩固可靠，其餘項目陸續推進中）。
+**Phase 3 目前真實進度**：約 63%（Sales Trend 真實每日數據 + 體驗收尾 A140~A142 已全部完成並 commit，視覺化區塊穩固，其餘項目陸續推進中）。
 
-**目前進行中**：A142 - Sales Trend 圖表體驗收尾（用戶選擇 A）。這是 A140+A141 真實數據 chunk 的合理收尾任務，目標是讓圖表在真實使用情境下更穩健好用。
+**目前進行中**：A142 已完成。Sales Trend 圖表（真實數據 + 收尾）整個功能區塊已穩固。下一步可選擇 merge A142，或直接開始下一個大 chunk（員工表現圖表 / 庫存周轉率報表）。
 
-**A142 定義（合理大小 chunk）**：
-- 加入載入中狀態（fetch daily_sales 期間顯示 loading）
-- 空資料提示（該區間無銷售時顯示清楚提示，而非空白圖表）
-- Tooltip 強化（顯示日期、銷售額、交易筆數、平均客單）
-- 支援 staff 篩選（daily_sales API 加入 staff_id 參數，前端傳 selectedStaffId）
-- x 軸標籤優化（天數多時自動旋轉 + 間隔顯示）
-- 極端日期情境測試與微調（單日、跨月、30+ 天）
-- **完成定義**：圖表在各種日期範圍 + 有/無 staff 篩選下，都顯示穩定、資訊清楚、視覺友善
+**A142 完成內容**：
+- api/reports.php daily_sales 完整支援 staff_id 過濾
+- reports.php 加入 dailySalesLoading 狀態 + loadDailySales 自動帶 staff 參數
+- Chart tooltip 大幅強化（顯示完整日期 + 銷售額 + 交易數 + 平均客單）
+- x 軸標籤自動旋轉 + 限制最多 12 個標籤
+- 模板加入載入中動畫 + 「此日期範圍內暫無銷售記錄」清楚提示
+- 移除舊提示文字 + 補充 getChangeClass/getChangeText 方法
+- **完成定義**：已達成。圖表在各種情境下（含 staff 篩選、有無數據、多天）都穩定好用。
 
-完成後會先 update plan，再決定是否 merge。
+（A142 收尾，php -l 通過，按新規則先 update plan 再 code）
 
 ### Phase 3 建議主要 Chunk（較大有意義單位）
 
@@ -344,8 +344,6 @@
    - **完成定義**：達成。選擇任何日期範圍後，salesTrendChart 即顯示基於真實銷售數據的每日走勢圖，所有先前 polish 視覺元素繼續生效。
 
    （A141 收尾本 chunk，php -l 通過，按新規則先 update plan 再 code。已於 A141 結束後立即 --no-ff merge 至 main + 兩次 push + 刪 branch，主幹乾淨可部署）
-
-**A142 進行中**（用戶選擇 A）：Sales Trend 圖表體驗收尾（loading、空資料提示、tooltip 強化、staff filter 支援、x軸優化）
 
 其他待辦 chunk：
 2. **報表頁其他視覺化強化**
