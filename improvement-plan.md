@@ -306,22 +306,19 @@
 - Audit Log 查詢加強 + CSV
 - 常用數據匯出統一入口等
 
-**Phase 3 目前真實進度**：約 69%（Sales Trend + 庫存報表已穩固，A144 開始處理員工表現視覺化，其餘項目陸續推進中）。
+**Phase 3 目前真實進度**：約 70%（Sales Trend + 庫存 + 員工表現圖表已完成，報表視覺化持續強化中）。
 
-**目前進行中**：A144 - 員工表現圖表（用戶選擇 A）。這是報表頁視覺化強化系列的下一個 chunk，讓管理層能更清楚看到每個員工的表現趨勢。
+**目前進行中**：A144 已完成。下一步可選擇 merge A144，或繼續下一個 chunk（運維工具或 Audit 加強）。
 
-**A144 定義（合理大小 chunk）**：
-- 後端：在 api/reports.php 新增 `staff_performance_trend` action
-  - 支援 from/to + 可選 staff_id
-  - 回傳每個員工（或指定員工）的每日銷售趨勢數據（日期、總銷售、交易數、平均客單）
-- 前端：在 reports.php 新增「員工表現趨勢」區塊
-  - 多員工比較線圖（或單一員工詳細趨勢）
-  - 支援日期範圍 + 員工篩選
-  - 加入 loading、空資料提示
-  - 簡單表格輔助
-- **完成定義**：報表頁可顯示員工表現的真實趨勢圖，數據來自 sales 表，操作流暢
+**A144 已完成**（用戶選擇 A）：員工表現圖表 chunk 已完成並 commit。
 
-完成後先 update plan，再決定是否 merge。
+**A144 完成內容**：
+- api/reports.php 新增 `staff_performance_trend` action
+- reports.php 新增 loadStaffPerformanceTrend + staffPerformanceChart（多員工線圖）
+- 模板新增「員工表現趨勢」區塊（支援日期範圍 + 員工篩選 + loading + 空資料提示）
+- **完成定義**：已達成。報表頁可清楚看到員工每日表現趨勢
+
+（A144 收尾，php -l 通過，按新規則先 update plan 再 code）
 
 **A143 已完成**（用戶選擇 B）：庫存周轉率 + 缺貨趨勢報表 chunk 已完成並 commit。已於用戶選擇 A 後立即執行 merge 流程。
 
@@ -374,7 +371,7 @@
 5. **Audit Log 查詢加強**
 6. **其他收尾項目**
 
-**A144 進行中**（用戶選擇 A）：報表頁增加員工表現圖表（後端趨勢 API + 前端多員工比較視覺化）
+
 
 2. **報表頁其他視覺化強化**  
    - 改善付款方式 / 服務分佈圖表  
