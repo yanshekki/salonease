@@ -604,6 +604,29 @@
         });
       }
 
+      // === 新：產生 Compound 推薦（缺口 + 搭配）===
+      // 找出一個 gap 項目，再找一個常與它搭配的項目，形成複合建議
+      const gapRecs = recommendations.filter(r => r.isGap);
+      const frequentPairs = recommendations.filter(r => r.isPair || r.type === 'smart_bundle');
+
+      if (gapRecs.length > 0 && frequentPairs.length > 0) {
+        const gap = gapRecs[0];
+        const pair = frequentPairs[0];
+
+        recommendations.push({
+          id: `compound-${gap.id}-${pair.id}`,
+          type: 'compound_recommendation',
+          label: `複合建議：${gap.label.split('：')[1] || gap.label} + ${pair.label.split('：')[1] || pair.label}`,
+          sublabel: `缺口補充 + 高頻搭配`,
+          suggestedReason: `根據此客戶購買間隔，建議先補充「${gap.label.split('：')[1] || ''}」，同時搭配常一起購買的「${pair.label.split('：')[1] || ''}」，效果與客單價都會更好`,
+          keywords: '複合 缺口 搭配 強力推薦',
+          icon: '💎',
+          action: 'quick-add-recommendation',
+          priority: 22,  // 最高權重
+          suggestedItems: [...(gap.suggestedItems || []), ...(pair.suggestedItems || [])]
+        });
+      }
+
     } catch (err) {
       console.warn('[CommandPalette] 進階智能推薦分析失敗', err);
     }
@@ -1504,11 +1527,13 @@
       }
     }
 
-    // 自動產生簡單銷售話術（根據推薦類型，包含價格話術）
+    // 自動產生簡單銷售話術（根據推薦類型，包含價格話術 + 複合建議）
     let script = '';
     const reason = recommendation.suggestedReason || '';
 
-    if (recommendation.isGap) {
+    if (recommendation.type === 'compound_recommendation') {
+      script = `可以跟客人說：「根據您的購買記錄，這個項目已經到補充的時候了，同時很多客人會一起加購這個搭配，兩者一起效果更好，也更划算。」`;
+    } else if (recommendation.isGap) {
       script = `可以跟客人說：「上次您購買這個已經有一段時間了，我們建議您補充，現在有搭配優惠，CP值很高。」`;
     } else if (recommendation.isPair || recommendation.type === 'frequent_pair' || recommendation.type === 'smart_bundle') {
       script = `可以跟客人說：「很多客人買這個之後都會一起加購這個，效果會更好哦～ 只多一點點錢。」`;
