@@ -187,11 +187,11 @@ $extraJs = 'hotkeys.js';
                 <div class="mb-3">
                     <label class="form-label small">調整數量 <span class="text-muted">（正數入庫，負數出庫/損耗）</span></label>
                     <input type="number" id="stock-adjustment" class="form-control" placeholder="例如 +10 或 -3" step="1">
-                    <!-- A23：快速入庫按鈕 -->
-                    <div class="mt-2 d-flex flex-wrap gap-1">
-                        <button type="button" onclick="setQuickAdjustment(5)" class="btn btn-sm btn-outline-success">+5 入庫</button>
-                        <button type="button" onclick="setQuickAdjustment(10)" class="btn btn-sm btn-outline-success">+10 入庫</button>
-                        <button type="button" onclick="setQuickAdjustment(20)" class="btn btn-sm btn-outline-success">+20 入庫</button>
+                    <!-- A23 / A39：快速入庫按鈕（值從設定讀取） -->
+                    <div class="mt-2 d-flex flex-wrap gap-1" id="quick-restock-buttons">
+                        <button type="button" onclick="setQuickAdjustment(5)" class="btn btn-sm btn-outline-success" id="btn-restock-5">+5 入庫</button>
+                        <button type="button" onclick="setQuickAdjustment(10)" class="btn btn-sm btn-outline-success" id="btn-restock-10">+10 入庫</button>
+                        <button type="button" onclick="setQuickAdjustment(20)" class="btn btn-sm btn-outline-success" id="btn-restock-20">+20 入庫</button>
                         <button type="button" onclick="setQuickAdjustment(-5)" class="btn btn-sm btn-outline-danger">-5 出庫</button>
                     </div>
                 </div>
@@ -479,6 +479,9 @@ function adjustProductStock(id, currentQty, name, lowStockThreshold = 5, initial
             input.dataset.previewBound = 'true';
         }
         updateStockPreview();
+
+        // A39：套用快速補貨預設值
+        loadAndApplyQuickRestockDefaults();
     }, 350);
 }
 
@@ -600,6 +603,29 @@ function exportStockMovements(id, name) {
     if (!confirm(`確定要匯出「${name}」的庫存異動記錄嗎？`)) return;
     const url = `/api/products.php?action=stock_history&id=${id}&format=csv`;
     window.open(url, '_blank');
+}
+
+/* A39：載入並套用快速補貨預設值到 Modal 按鈕 */
+async function loadAndApplyQuickRestockDefaults() {
+    try {
+        const res = await SalonEase.fetch('/api/settings.php?action=get');
+        if (res.data) {
+            const d = res.data;
+            const v5  = parseInt(d.quick_restock_5)  || 5;
+            const v10 = parseInt(d.quick_restock_10) || 10;
+            const v20 = parseInt(d.quick_restock_20) || 20;
+
+            const btn5  = document.getElementById('btn-restock-5');
+            const btn10 = document.getElementById('btn-restock-10');
+            const btn20 = document.getElementById('btn-restock-20');
+
+            if (btn5)  { btn5.textContent = `+${v5} 入庫`;  btn5.onclick = () => setQuickAdjustment(v5); }
+            if (btn10) { btn10.textContent = `+${v10} 入庫`; btn10.onclick = () => setQuickAdjustment(v10); }
+            if (btn20) { btn20.textContent = `+${v20} 入庫`; btn20.onclick = () => setQuickAdjustment(v20); }
+        }
+    } catch (e) {
+        // 失敗時保留原本硬編碼值
+    }
 }
 
 /* A24：列表快速 +10 入庫（不開 modal，直接呼叫 API） */
