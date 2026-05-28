@@ -138,6 +138,7 @@ $monthlyLoyalty = [
                 <div class="text-uppercase text-muted small">本月累積</div>
                 <div class="display-6 fw-semibold text-success"><?= number_format($monthlyLoyalty['earned']) ?></div>
                 <div class="small text-muted">點</div>
+                <a href="/loyalty.php" class="small text-success text-decoration-none d-inline-block mt-2">查看忠誠度 →</a>
             </div>
         </div>
     </div>
@@ -147,6 +148,7 @@ $monthlyLoyalty = [
                 <div class="text-uppercase text-muted small">本月兌換</div>
                 <div class="display-6 fw-semibold text-warning"><?= number_format($monthlyLoyalty['redeemed']) ?></div>
                 <div class="small text-muted">點</div>
+                <a href="/loyalty.php" class="small text-warning text-decoration-none d-inline-block mt-2">查看忠誠度 →</a>
             </div>
         </div>
     </div>
