@@ -134,6 +134,17 @@
     if (item.contexts && (item.contexts.includes('*') || item.contexts.includes(ctx))) score += 16;
     if (ctx === 'pos' && (item.type === 'service' || item.type === 'product')) score += 28;
 
+    // 全域自訂價位模式：如果客戶有儲存最愛價位，落喺範圍內嘅服務/產品大幅加分
+    if (ctx === 'pos' && (item.type === 'service' || item.type === 'product') && item.price) {
+      const pref = getCustomerPricePref();
+      if (pref && pref.min != null && pref.max != null) {
+        const p = parseFloat(item.price);
+        if (p >= pref.min && p <= pref.max) {
+          score += 22;   // 強力加權，讓最啱客戶預算嘅項目排得更高
+        }
+      }
+    }
+
     // POS 快速新增客戶永遠給較高分
     if (ctx === 'pos' && item.id === 'pos-quick-create-customer') {
       score += 35;
@@ -242,6 +253,18 @@
       expiry: p.expiry_date,
       action: 'add-package'
     }));
+  }
+
+  // 取得目前客戶儲存嘅自訂價位偏好（全域搜尋用）
+  function getCustomerPricePref() {
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+    if (!customer || !customer.id) return null;
+    try {
+      const saved = localStorage.getItem(`salonease_cust_price_pref_${customer.id}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
   }
 
   // 取得本次 POS 開單期間最近加入的項目（快速重複銷售）
@@ -948,6 +971,11 @@
     if (currentContext === 'pos') {
       if (q.trim()) {
         section = '服務 / 產品 / 客戶 / 套票';
+        // 全域自訂價位模式提示
+        const pref = getCustomerPricePref();
+        if (pref && pref.min != null && pref.max != null) {
+          section += ` <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:9px;">最愛價位 HK$${Math.round(pref.min)}–${Math.round(pref.max)}</span>`;
+        }
       } else {
         // 當有英雄卡片時，下面顯示「其餘智能推薦 + 最近項目」
         const hasHero = (window.SalonEase && window.SalonEase._cmdHeroRecs && window.SalonEase._cmdHeroRecs.length > 0);
