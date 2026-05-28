@@ -52,6 +52,12 @@ $extraJs = 'hotkeys.js';
                 <input type="text" x-model="search" @input="page=1" class="form-control form-control-sm" placeholder="搜尋操作、員工、細節...">
             </div>
             <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check">
+                    <input type="checkbox" x-model="myActionsOnly" @change="page=1" class="form-check-input" id="myActionsOnly">
+                    <label class="form-check-label small" for="myActionsOnly">只看我的操作</label>
+                </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
                 <button @click="loadLogs()" class="btn btn-outline-secondary btn-sm w-100">重新載入</button>
             </div>
         </div>
@@ -122,6 +128,7 @@ function auditLogs() {
         perPage: 20,
         logs: [],
         search: '',
+        myActionsOnly: false,
 
         init() {
             this.loadActions();
@@ -161,14 +168,23 @@ function auditLogs() {
         },
 
         get filteredLogs() {
-            if (!this.search) return this.logs;
-            const term = this.search.toLowerCase();
-            return this.logs.filter(log => 
-                (log.action && log.action.toLowerCase().includes(term)) ||
-                (log.staff_name && log.staff_name.toLowerCase().includes(term)) ||
-                (log.entity_type && log.entity_type.toLowerCase().includes(term)) ||
-                (log.details && JSON.stringify(log.details).toLowerCase().includes(term))
-            );
+            let result = this.logs;
+
+            if (this.myActionsOnly && window.CURRENT_STAFF_ID) {
+                result = result.filter(log => log.staff_id == window.CURRENT_STAFF_ID);
+            }
+
+            if (this.search) {
+                const term = this.search.toLowerCase();
+                result = result.filter(log => 
+                    (log.action && log.action.toLowerCase().includes(term)) ||
+                    (log.staff_name && log.staff_name.toLowerCase().includes(term)) ||
+                    (log.entity_type && log.entity_type.toLowerCase().includes(term)) ||
+                    (log.details && JSON.stringify(log.details).toLowerCase().includes(term))
+                );
+            }
+
+            return result;
         },
 
         get paginatedLogs() {
@@ -223,3 +239,7 @@ function auditLogs() {
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
+
+<script>
+window.CURRENT_STAFF_ID = <?= json_encode($_SESSION['staff_id'] ?? null) ?>;
+</script>
