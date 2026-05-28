@@ -94,6 +94,7 @@ $monthlySummary = [
                 <div class="text-uppercase text-muted small">本月有活動</div>
                 <div class="display-6 fw-semibold text-info"><?= number_format($monthlySummary['active']) ?></div>
                 <div class="small text-muted">位客戶</div>
+                <div class="small text-muted mt-1">完整歷史、CSV 及排行榜請向下查看</div>
             </div>
         </div>
     </div>
