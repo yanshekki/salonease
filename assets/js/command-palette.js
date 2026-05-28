@@ -562,28 +562,28 @@
         });
       });
 
-      // 根據客戶平均消費力，產生更精準的「價格等級 + 適合組合」推薦
+      // 根據客戶平均消費力，產生更精準的「價格等級 + 最適合的服務/產品組合」
       if (avgSpend > 0) {
-        const lowTier = Math.round(avgSpend * 0.75);
-        const midTier = Math.round(avgSpend * 1.15);
-        const highTier = Math.round(avgSpend * 1.5);
+        const lowTier = Math.round(avgSpend * 0.8);
+        const midTier = Math.round(avgSpend * 1.2);
+        const highTier = Math.round(avgSpend * 1.6);
 
         let tierLabel = '';
         let tierReason = '';
         let suggestedCombo = '';
 
-        if (avgSpend < 450) {
+        if (avgSpend < 500) {
           tierLabel = `高CP值組合（約 HK$ ${lowTier}–${midTier}）`;
           tierReason = `根據您平時消費習慣，建議選擇性價比高的搭配`;
-          suggestedCombo = '經典服務 + 基礎保養產品';
-        } else if (avgSpend < 850) {
+          suggestedCombo = '經典療程 + 基礎護膚產品';
+        } else if (avgSpend < 900) {
           tierLabel = `平衡升級組合（約 HK$ ${midTier}–${highTier}）`;
           tierReason = `根據您平時消費習慣，建議適度升級，感受更好效果`;
-          suggestedCombo = '熱門服務 + 熱賣護膚產品';
+          suggestedCombo = '熱門療程 + 熱賣護膚產品';
         } else {
           tierLabel = `高端體驗組合（約 HK$ ${highTier}+）`;
           tierReason = `根據您平時消費習慣，建議體驗更高階的服務與產品`;
-          suggestedCombo = '旗艦服務 + 頂級護理產品';
+          suggestedCombo = '旗艦療程 + 頂級護理產品';
         }
 
         recommendations.push({
@@ -595,7 +595,7 @@
           keywords: '價格 升級 消費 等級 適合',
           icon: '💎',
           action: 'quick-add-recommendation',
-          priority: 13
+          priority: 14
         });
       }
 
