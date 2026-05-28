@@ -279,6 +279,7 @@ function renderProductsTable(list) {
                     <button onclick="editProduct(${p.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
                     <?php if ($canAdjustStock): ?>
                     <button onclick="adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-primary p-0 me-2">調整庫存</button>
+                    <button onclick="quickStockPlus10(${p.id}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-success p-0 me-2" title="快速入庫 10 件">+10 入庫</button>
                     <?php endif; ?>
                     <button onclick="toggleProduct(${p.id}, ${p.is_active})" class="btn btn-link btn-sm ${p.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${p.is_active == 1 ? '停用' : '啟用'}
@@ -471,6 +472,27 @@ function setQuickAdjustment(qty) {
     if (input) {
         input.value = qty;
         input.focus();
+    }
+}
+
+/* A24：列表快速 +10 入庫（不開 modal，直接呼叫 API） */
+async function quickStockPlus10(id, name) {
+    if (!confirm(`確定要為「${name}」快速入庫 10 件嗎？`)) return;
+
+    try {
+        await SalonEase.fetch('/api/products.php?action=adjust_stock', {
+            method: 'POST',
+            body: {
+                id: id,
+                adjustment: 10,
+                reason: '快速補貨',
+                csrf_token: '<?= csrf_token() ?>'
+            }
+        });
+        SalonEase.toast('已快速入庫 10 件');
+        loadProducts();
+    } catch (err) {
+        SalonEase.toast(err.message || '快速入庫失敗', 'error');
     }
 }
 
