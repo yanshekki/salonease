@@ -201,6 +201,7 @@ include __DIR__ . '/includes/header.php';
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（圖表會隨上方日期與員工篩選即時更新）</div>
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（兩張圖表均會隨查詢條件即時更新）</div>
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（圖表會隨上方日期與員工篩選即時更新）</div>
+    <div class="small text-muted mb-3" style="font-size:0.65rem;">（兩張圖表均會隨查詢條件即時更新）</div>
 
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
