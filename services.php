@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $pageTitle = '服務項目管理';
 $pageSubtitle = '管理美容院提供的療程服務';
@@ -254,7 +255,10 @@ async function saveService() {
 
         await SalonEase.fetch(`/api/services.php?action=${action}`, {
             method: 'POST',
-            body: payload
+            body: {
+                ...payload,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
 
         hideServiceModal();
@@ -274,7 +278,11 @@ async function toggleService(id, currentStatus) {
     try {
         await SalonEase.fetch('/api/services.php?action=toggle', {
             method: 'POST',
-            body: { id, status: newStatus }
+            body: { 
+                id, 
+                status: newStatus,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
         SalonEase.toast(`服務已${actionText}`);
         loadServices();
