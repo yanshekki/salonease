@@ -237,6 +237,7 @@
 - A124 已完成：reports.php 移除過時 TODO comment（JS 結構清理收尾，階段正式完成）
 - A125 已完成：reports.php 加入銷售趨勢圖表基本框架 + canvas + 初始化（開始報表視覺化，第一小步）
 - A126 已完成：reports.php 改善銷售趨勢圖表使用 prevSummary + summary 更真實數據（視覺化第二小步）
+- A127 已完成：reports.php 改善銷售趨勢圖表標籤改用實際 from/mid/to 日期（視覺化第三小步）
 
 ---
 
