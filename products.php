@@ -246,7 +246,18 @@ function renderProductsTable(list) {
                 <td class="font-medium">${e(p.name)}</td>
                 <td class="text-sm text-[#5A5A5C]">${e(p.sku || '-')}</td>
                 <td class="font-medium">${parseFloat(p.price).toFixed(2)}</td>
-                <td class="${stockColor}">${p.stock_qty}${stockBadge}</td>
+                <td class="${stockColor}">
+                    <?php if ($canAdjustStock): ?>
+                    <span onclick="event.stopImmediatePropagation(); adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}')" 
+                          style="cursor: pointer; text-decoration: underline; text-decoration-style: dotted;" 
+                          title="點擊快速調整庫存">
+                        ${p.stock_qty}
+                    </span>
+                    <?php else: ?>
+                    ${p.stock_qty}
+                    <?php endif; ?>
+                    ${stockBadge}
+                </td>
                 <td><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">${e(p.category || '-')}</span></td>
                 <td>${statusBadge}</td>
                 <td class="text-right">
