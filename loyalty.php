@@ -19,6 +19,19 @@ $pageSubtitle = '查看客戶積分獲得與兌換歷史';
     </div>
 </div>
 
+<!-- Phase 2 A16：積分排行榜 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="fw-semibold">積分排行榜（前 10 名）</div>
+            <button onclick="loadLoyaltyRanking()" class="btn btn-sm btn-outline-secondary">重新載入</button>
+        </div>
+        <div id="ranking-container">
+            <div class="text-muted small">載入中...</div>
+        </div>
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-body">
         <div class="row g-3">
@@ -129,6 +142,38 @@ function exportLoyaltyCSV() {
     const params = new URLSearchParams({ from, to, search, action_type: type, format: 'csv' });
     window.location.href = `/api/reports.php?action=loyalty_log&${params}`;
 }
+
+async function loadLoyaltyRanking() {
+    const container = document.getElementById('ranking-container');
+    container.innerHTML = '<div class="text-muted small">載入中...</div>';
+
+    try {
+        const res = await SalonEase.fetch('/api/reports.php?action=loyalty_ranking&limit=10');
+        if (!res.data || res.data.length === 0) {
+            container.innerHTML = '<div class="text-muted small">暫無積分排行資料</div>';
+            return;
+        }
+
+        let html = '<table class="table table-sm mb-0"><thead><tr><th>#</th><th>客戶</th><th class="text-end">積分</th><th class="text-end">消費</th></tr></thead><tbody>';
+        res.data.forEach((row, index) => {
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${row.customer_name} <span class="text-muted small">(${row.customer_phone})</span></td>
+                    <td class="text-end fw-semibold text-amber-700">${row.points}</td>
+                    <td class="text-end small">HK$ ${parseFloat(row.total_spent).toFixed(0)}</td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `<div class="text-danger small">${err.message}</div>`;
+    }
+}
+
+// 自動載入排行榜
+loadLoyaltyRanking();
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
