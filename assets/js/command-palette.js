@@ -465,49 +465,57 @@
       });
 
       // 簡單交叉銷售
-      // 更聰明的交叉銷售：根據此客戶歷史，找出常與高頻項目一起出現的搭配
-      const topFrequentKeys = Object.keys(itemFrequency).sort((a,b) => itemFrequency[b]-itemFrequency[a]).slice(0,3);
+      // 更進階：自動產生「這個客戶最可能接受的 Top 3 搭配組合」
+      // 做法：找出此客戶最常買的前幾個項目，再為每個找出其最強搭配，形成 bundle
+      const top3Frequent = Object.entries(itemFrequency)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
 
-      topFrequentKeys.forEach(key => {
-        // 找出與這個 key 最常一起出現的其他項目
-        let bestPair = null;
-        let bestCount = 0;
+      top3Frequent.forEach(([mainKey, freq], idx) => {
+        let bestCompanion = null;
+        let bestCompanionCount = 0;
+        let companionName = '';
 
         Object.entries(pairFrequency).forEach(([pairKey, count]) => {
-          if (pairKey.includes(key) && count > bestCount) {
-            bestCount = count;
+          if (pairKey.includes(mainKey)) {
             const [k1, k2] = pairKey.split('|');
-            bestPair = k1 === key ? k2 : k1;
+            const companionKey = k1 === mainKey ? k2 : k1;
+            if (count > bestCompanionCount) {
+              bestCompanionCount = count;
+              bestCompanion = companionKey;
+            }
           }
         });
 
-        if (bestPair) {
+        if (bestCompanion) {
           let mainName = '項目';
-          let pairName = '搭配項目';
-
           for (const sale of recentSalesWithItems) {
-            const items = sale.items || [];
-            const foundMain = items.find(i => `${i.item_type}:${i.ref_id}` === key);
-            const foundPair = items.find(i => `${i.item_type}:${i.ref_id}` === bestPair);
-            if (foundMain) mainName = foundMain.name;
-            if (foundPair) pairName = foundPair.name;
+            const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === mainKey);
+            if (found) { mainName = found.name; break; }
+          }
+          for (const sale of recentSalesWithItems) {
+            const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === bestCompanion);
+            if (found) { companionName = found.name; break; }
           }
 
-          const percentage = recentSales.length > 0 
-            ? Math.round((bestCount / recentSales.length) * 100) 
+          const matchRate = recentSales.length > 0 
+            ? Math.round((bestCompanionCount / recentSales.length) * 100) 
             : 0;
 
           recommendations.push({
-            id: `cross-${key}-${bestPair}`,
-            type: 'cross_sell',
-            label: `搭配推薦：${pairName}`,
-            sublabel: `買過 ${mainName} 的客人，${percentage}% 會加購`,
-            suggestedReason: `根據此客戶歷史，購買「${mainName}」後有 ${percentage}% 機率會加購「${pairName}」`,
-            keywords: '搭配 推薦 交叉',
-            icon: '✨',
+            id: `bundle-${mainKey}-${bestCompanion}`,
+            type: 'smart_bundle',
+            label: `推薦組合：${mainName} + ${companionName}`,
+            sublabel: `此客戶歷史匹配度 ${matchRate}%`,
+            suggestedReason: `根據此客戶購買歷史，買「${mainName}」後有很高機率會一起加購「${companionName}」`,
+            keywords: '推薦組合 搭配 智能',
+            icon: '🎁',
             action: 'quick-add-recommendation',
-            priority: 12,
-            suggestedItems: [{ type: bestPair.split(':')[0], ref_id: parseInt(bestPair.split(':')[1]), name: pairName }]
+            priority: 16 + (3 - idx),
+            suggestedItems: [
+              { type: mainKey.split(':')[0], ref_id: parseInt(mainKey.split(':')[1]), name: mainName },
+              { type: bestCompanion.split(':')[0], ref_id: parseInt(bestCompanion.split(':')[1]), name: companionName }
+            ]
           });
         }
       });
@@ -1447,13 +1455,13 @@
       }
     }
 
-    // 自動將建議原因記錄到銷售備註（方便之後追蹤）
+    // 自動將建議原因結構化記錄到銷售備註（方便之後做報表追蹤轉換率）
     const notesEl = document.getElementById('sale-notes');
     if (notesEl) {
       const currentNotes = notesEl.value.trim();
-      const newNote = `[推薦] ${reason}`;
+      const structuredNote = `[推薦] 來源：智能推薦 | 原因：${reason} | 時間：${new Date().toISOString().slice(0,16)}`;
       if (!currentNotes.includes(reason)) {
-        notesEl.value = currentNotes ? `${currentNotes}\n${newNote}` : newNote;
+        notesEl.value = currentNotes ? `${currentNotes}\n${structuredNote}` : structuredNote;
       }
     }
 
