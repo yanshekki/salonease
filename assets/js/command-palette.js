@@ -2062,6 +2062,64 @@
   }
 
   /**
+   * 根據自訂價位區間（min–max），從 itemsCache 揀最貼嘅額外項目
+   */
+  function getExtraSuggestionsForCustomRange(minPrice, maxPrice, selectedRecs, allItems) {
+    if (!allItems || allItems.length === 0) return [];
+    const min = parseFloat(minPrice) || 0;
+    const max = parseFloat(maxPrice) || 99999;
+
+    const alreadyIn = new Set();
+    selectedRecs.forEach(rec => {
+      (rec.suggestedItems || []).forEach(it => alreadyIn.add(`${it.type}:${it.ref_id}`));
+    });
+
+    const candidates = allItems
+      .filter(i => i.price && i.price >= min && i.price <= max && !alreadyIn.has(`${i.type}:${i.id}`))
+      .sort((a, b) => Math.abs(a.price - (min + max) / 2) - Math.abs(b.price - (min + max) / 2))
+      .slice(0, 4);
+
+    const result = [];
+    const seenType = new Set();
+    for (const item of candidates) {
+      if (result.length >= 2) break;
+      if (!seenType.has(item.type)) {
+        seenType.add(item.type);
+        result.push({
+          type: item.type,
+          ref_id: item.id,
+          name: item.name,
+          unit_price: item.price
+        });
+      }
+    }
+    return result;
+  }
+
+  /**
+   * 根據自訂價位區間重寫銷售話術
+   */
+  function rewriteScriptForCustomBand(originalScript, minPrice, maxPrice, selectedRecs, customer) {
+    const name = customer && customer.name ? customer.name : '您';
+    const count = selectedRecs.length;
+    const min = Math.round(parseFloat(minPrice) || 0);
+    const max = Math.round(parseFloat(maxPrice) || 0);
+
+    const tone = `我為${name}度身訂造咗呢 ${count} 個組合，全部都係落喺您指定嘅 HK$ ${min}–${max} 呢個價位區間之內。`;
+    const priceNote = `呢個範圍係您而家最想要嘅預算，性價比同效果都控制得好好。`;
+    const cta = `您而家要唔要我一次過幫${name}加落去？`;
+
+    let newScript = `喂${name ? '，' + name : ''}，${tone}\n\n`;
+    selectedRecs.forEach((rec, i) => {
+      newScript += `${i + 1}. ${rec.label}\n`;
+      if (rec.suggestedReason) newScript += `   ${rec.suggestedReason}\n`;
+      newScript += `\n`;
+    });
+    newScript += `${priceNote} ${cta}`;
+    return newScript;
+  }
+
+  /**
    * 顯示英雄組合預覽面板（多選模式專用）
    * 支援即時價位調整 + 可編輯腳本 + 儲存常用組合 + 確認加入
    */
@@ -2099,18 +2157,30 @@
         </div>
 
         <!-- 即時價位調整工具列 -->
-        <div class="d-flex flex-wrap gap-1 mb-2">
+        <div class="d-flex flex-wrap gap-1 mb-2 align-items-center">
           <div class="small text-muted me-2 align-self-center">快速調整價位：</div>
           <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" data-tier="conservative" style="font-size:11px;">保守型（高CP）</button>
           <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" data-tier="optimal" style="font-size:11px;">最啱您（中位）</button>
           <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" data-tier="premium" style="font-size:11px;">升級體驗</button>
+
+          <!-- 自訂價位 -->
+          <div class="d-flex align-items-center gap-1 ms-2 border-start ps-2" style="font-size:11px;">
+            <span class="text-muted">自訂：</span>
+            <span>HK$</span>
+            <input type="number" id="custom-price-min" class="form-control form-control-sm" style="width:68px;font-size:11px;padding:1px 4px;" placeholder="450" min="0">
+            <span>–</span>
+            <input type="number" id="custom-price-max" class="form-control form-control-sm" style="width:68px;font-size:11px;padding:1px 4px;" placeholder="780" min="0">
+            <button type="button" class="btn btn-sm btn-success py-0 px-2" id="btn-apply-custom-price" style="font-size:10px;">應用</button>
+            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="btn-remember-price-pref" style="font-size:10px;" title="記住此客戶最愛用嘅價位">記住</button>
+          </div>
+
           <span id="tier-status-badge" class="badge bg-light text-muted ms-1 align-self-center" style="font-size:10px;display:none;"></span>
         </div>
 
         <textarea id="hero-script-text" class="form-control mb-2" rows="8" style="font-size:13.5px;line-height:1.45;">${script}</textarea>
 
         <div class="small text-muted mb-2">
-          💡 提示：點擊上面價位按鈕可即時改寫話術。您可以再手動微調。
+          💡 提示：用預設或自訂價位即時改寫話術 + 額外推薦。點「記住」可為此客戶儲存最愛價位，下次自動套用。
           ${totalPriceHint ? `原始參考：約 HK$ ${Math.round(totalPriceHint / selectedRecs.length)}` : ''}
         </div>
 
@@ -2153,19 +2223,156 @@
       };
     }
 
-    // === 即時價位調整按鈕（加強版：改寫腳本 + 顯示額外推薦） ===
+    // === 即時價位調整按鈕（加強版：支援預設 + 自訂價位 + 記住客戶偏好） ===
     const extraContainer = panel.querySelector('#hero-extra-suggestions');
+    const customMin = panel.querySelector('#custom-price-min');
+    const customMax = panel.querySelector('#custom-price-max');
+    const applyCustomBtn = panel.querySelector('#btn-apply-custom-price');
+    const rememberBtn = panel.querySelector('#btn-remember-price-pref');
 
+    // 自動套用此客戶之前儲存嘅自訂價位偏好（如果有）
+    let autoAppliedPref = false;
+    if (customer && customer.id) {
+      try {
+        const prefKey = `salonease_cust_price_pref_${customer.id}`;
+        const saved = localStorage.getItem(prefKey);
+        if (saved) {
+          const { min, max } = JSON.parse(saved);
+          if (min && max) {
+            customMin.value = min;
+            customMax.value = max;
+            // 延遲一點自動應用，確保 DOM 就緒
+            setTimeout(() => {
+              if (applyCustomBtn) applyCustomBtn.click();
+              autoAppliedPref = true;
+            }, 80);
+          }
+        }
+      } catch {}
+    }
+
+    function applyCustomPriceRange(minVal, maxVal) {
+      if (!minVal || !maxVal) return;
+
+      const newScript = rewriteScriptForCustomBand(ta.value, minVal, maxVal, selectedRecs, customer);
+      ta.value = newScript;
+
+      if (tierBadge) {
+        tierBadge.textContent = `自訂 HK$${Math.round(minVal)}–${Math.round(maxVal)}`;
+        tierBadge.style.display = 'inline-block';
+        tierBadge.className = 'badge bg-primary-subtle text-primary ms-1 align-self-center';
+      }
+
+      // 渲染額外推薦（自訂範圍版）
+      if (extraContainer) {
+        const POS = window.SalonEase && window.SalonEase.POS;
+        const cache = POS && POS.getItemsCache ? POS.getItemsCache() : [];
+        const extras = getExtraSuggestionsForCustomRange(minVal, maxVal, selectedRecs, cache);
+
+        if (extras.length > 0) {
+          let html = `
+            <div class="small fw-medium text-success mb-1 d-flex align-items-center justify-content-between">
+              <span>根據自訂價位 HK$${Math.round(minVal)}–${Math.round(maxVal)}，額外推薦：</span>
+              <span>
+                <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 me-1" style="font-size:10px;" id="btn-add-all-extras">全部加入</button>
+              </span>
+            </div>`;
+          html += '<div class="d-flex flex-wrap gap-2" id="extra-items-list">';
+          extras.forEach((item, idx) => {
+            const priceText = item.unit_price ? `HK$ ${Math.round(item.unit_price)}` : '';
+            html += `
+              <div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size:12px;" data-extra-item='${JSON.stringify(item)}'>
+                <span>${item.type === 'service' ? '💆' : '🧴'} ${item.name}</span>
+                <span class="text-muted">${priceText}</span>
+                <button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;" data-extra-idx="${idx}">加入</button>
+              </div>`;
+          });
+          html += '</div>';
+          extraContainer.innerHTML = html;
+          extraContainer.style.display = 'block';
+          extraContainer.dataset.currentTier = 'custom';
+          extraContainer.dataset.currentExtras = JSON.stringify(extras);
+
+          // 綁定加入按鈕
+          extraContainer.querySelectorAll('[data-extra-idx]').forEach(btn => {
+            btn.onclick = (e) => {
+              e.stopImmediatePropagation();
+              const card = btn.closest('[data-extra-item]');
+              try {
+                const item = JSON.parse(card.dataset.extraItem);
+                if (item && window.addToCart) window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+              } catch {}
+              card.remove();
+              if (extraContainer.querySelectorAll('[data-extra-item]').length === 0) extraContainer.style.display = 'none';
+            };
+          });
+
+          const addAll = extraContainer.querySelector('#btn-add-all-extras');
+          if (addAll) {
+            addAll.onclick = (e) => {
+              e.stopImmediatePropagation();
+              extraContainer.querySelectorAll('[data-extra-item]').forEach(c => {
+                try {
+                  const it = JSON.parse(c.dataset.extraItem);
+                  if (it && window.addToCart) window.addToCart(it.type, it.ref_id, it.name, it.unit_price || 0);
+                } catch {}
+                c.remove();
+              });
+              extraContainer.style.display = 'none';
+            };
+          }
+        } else {
+          extraContainer.style.display = 'none';
+        }
+      }
+
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('自訂價位已應用', 'info', 1200);
+      }
+    }
+
+    // 處理自訂價位「應用」按鈕
+    if (applyCustomBtn) {
+      applyCustomBtn.onclick = () => {
+        const minVal = customMin.value;
+        const maxVal = customMax.value;
+        if (!minVal || !maxVal) {
+          if (window.SalonEase && window.SalonEase.toast) window.SalonEase.toast('請輸入完整價位區間', 'error', 1200);
+          return;
+        }
+        applyCustomPriceRange(minVal, maxVal);
+      };
+    }
+
+    // 「記住此客戶預設價位」
+    if (rememberBtn && customer && customer.id) {
+      rememberBtn.onclick = () => {
+        const minVal = customMin.value;
+        const maxVal = customMax.value;
+        if (!minVal || !maxVal) {
+          if (window.SalonEase && window.SalonEase.toast) window.SalonEase.toast('請先輸入自訂價位先記住', 'info', 1200);
+          return;
+        }
+        const prefKey = `salonease_cust_price_pref_${customer.id}`;
+        localStorage.setItem(prefKey, JSON.stringify({ min: parseFloat(minVal), max: parseFloat(maxVal) }));
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('已記住此客戶最愛價位，下次會自動套用', 'success', 1800);
+        }
+      };
+    }
+
+    // 綁定原有三個預設 tier 按鈕（保留原有 renderExtraSuggestions 邏輯）
+    const extraContainerRef = extraContainer; // alias for the inner function
     function renderExtraSuggestions(tier, selectedRecsForSuggest) {
-      if (!extraContainer) return;
+      if (!extraContainerRef) return;
 
       const POS = window.SalonEase && window.SalonEase.POS;
       const cache = POS && POS.getItemsCache ? POS.getItemsCache() : [];
       const extras = getExtraSuggestionsForTier(tier, selectedRecsForSuggest, cache);
 
       if (extras.length === 0) {
-        extraContainer.style.display = 'none';
-        extraContainer.innerHTML = '';
+        extraContainerRef.style.display = 'none';
+        extraContainerRef.innerHTML = '';
         return;
       }
 
@@ -2191,108 +2398,65 @@
       });
       html += '</div>';
 
-      extraContainer.innerHTML = html;
-      extraContainer.style.display = 'block';
+      extraContainerRef.innerHTML = html;
+      extraContainerRef.style.display = 'block';
+      extraContainerRef.dataset.currentTier = tier;
+      extraContainerRef.dataset.currentExtras = JSON.stringify(extras);
 
-      // 儲存目前 tier 及 extras（供主確認流程使用）
-      extraContainer.dataset.currentTier = tier;
-      extraContainer.dataset.currentExtras = JSON.stringify(extras);
-
-      // 綁定即時加入按鈕
-      extraContainer.querySelectorAll('[data-extra-idx]').forEach(btn => {
+      // 重新綁定所有按鈕（省略重複代碼，保留原有邏輯）
+      extraContainerRef.querySelectorAll('[data-extra-idx]').forEach(btn => {
         btn.onclick = (e) => {
           e.stopImmediatePropagation();
-          const i = parseInt(btn.dataset.extraIdx);
-          const item = extras[i];
-          if (item && window.addToCart) {
-            window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
-            // 移除已加入的建議卡片
-            const card = btn.closest('[data-extra-item]');
-            if (card) card.remove();
-            if (extraContainer.querySelectorAll('[data-extra-idx]').length === 0) {
-              extraContainer.style.display = 'none';
-            }
-            if (window.SalonEase && window.SalonEase.toast) {
-              window.SalonEase.toast(`已加入額外推薦：${item.name}`, 'success', 1400);
-            }
-          }
+          const card = btn.closest('[data-extra-item]');
+          try {
+            const item = JSON.parse(card.dataset.extraItem);
+            if (item && window.addToCart) window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+          } catch {}
+          if (card) card.remove();
+          if (extraContainerRef.querySelectorAll('[data-extra-item]').length === 0) extraContainerRef.style.display = 'none';
         };
       });
 
-      // 「全部加入此價位建議」
-      const addAllBtn = extraContainer.querySelector('#btn-add-all-extras');
-      if (addAllBtn) {
-        addAllBtn.onclick = (e) => {
-          e.stopImmediatePropagation();
-          const remaining = extraContainer.querySelectorAll('[data-extra-item]');
-          let added = 0;
-          remaining.forEach(card => {
+      const addAll = extraContainerRef.querySelector('#btn-add-all-extras');
+      if (addAll) addAll.onclick = (e) => {
+        e.stopImmediatePropagation();
+        extraContainerRef.querySelectorAll('[data-extra-item]').forEach(c => {
+          try {
+            const it = JSON.parse(c.dataset.extraItem);
+            if (it && window.addToCart) window.addToCart(it.type, it.ref_id, it.name, it.unit_price || 0);
+          } catch {}
+          c.remove();
+        });
+        extraContainerRef.style.display = 'none';
+      };
+
+      const more = extraContainerRef.querySelector('#btn-more-extras');
+      if (more) more.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const cache = (window.SalonEase && window.SalonEase.POS && window.SalonEase.POS.getItemsCache) ? window.SalonEase.POS.getItemsCache() : [];
+        const current = JSON.parse(extraContainerRef.dataset.currentExtras || '[]');
+        const exclude = new Set(current.map(x => `${x.type}:${x.ref_id}`));
+        const moreExtras = getExtraSuggestionsForTier(tier, selectedRecsForSuggest, cache).filter(x => !exclude.has(`${x.type}:${x.ref_id}`)).slice(0, 2);
+        if (moreExtras.length === 0) return;
+        const list = extraContainerRef.querySelector('#extra-items-list');
+        moreExtras.forEach(item => {
+          const priceText = item.unit_price ? `HK$ ${Math.round(item.unit_price)}` : '';
+          const cardHtml = `<div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size:12px;" data-extra-item='${JSON.stringify(item)}'><span>${item.type === 'service' ? '💆' : '🧴'} ${item.name}</span><span class="text-muted">${priceText}</span><button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;">加入</button></div>`;
+          list.insertAdjacentHTML('beforeend', cardHtml);
+        });
+        // 簡單重新綁定
+        extraContainerRef.querySelectorAll('[data-extra-item] button').forEach(b => {
+          b.onclick = (ev) => {
+            ev.stopImmediatePropagation();
+            const c = b.closest('[data-extra-item]');
             try {
-              const item = JSON.parse(card.dataset.extraItem);
-              if (item && window.addToCart) {
-                window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
-                added++;
-              }
+              const it = JSON.parse(c.dataset.extraItem);
+              if (it && window.addToCart) window.addToCart(it.type, it.ref_id, it.name, it.unit_price || 0);
             } catch {}
-            card.remove();
-          });
-          if (added > 0 && window.SalonEase && window.SalonEase.toast) {
-            window.SalonEase.toast(`已全部加入 ${added} 個價位額外推薦`, 'success', 1600);
-          }
-          extraContainer.style.display = 'none';
-        };
-      }
-
-      // 「再搵多 2 個」
-      const moreBtn = extraContainer.querySelector('#btn-more-extras');
-      if (moreBtn) {
-        moreBtn.onclick = (e) => {
-          e.stopImmediatePropagation();
-          const POS = window.SalonEase && window.SalonEase.POS;
-          const cache = POS && POS.getItemsCache ? POS.getItemsCache() : [];
-          // 排除已顯示的項目
-          const currentShown = JSON.parse(extraContainer.dataset.currentExtras || '[]');
-          const excludeKeys = new Set(currentShown.map(x => `${x.type}:${x.ref_id}`));
-          const moreExtras = getExtraSuggestionsForTier(tier, selectedRecsForSuggest, cache)
-            .filter(x => !excludeKeys.has(`${x.type}:${x.ref_id}`))
-            .slice(0, 2);
-
-          if (moreExtras.length === 0) {
-            if (window.SalonEase && window.SalonEase.toast) window.SalonEase.toast('暫時搵唔到更多適合項目', 'info', 1200);
-            return;
-          }
-
-          const list = extraContainer.querySelector('#extra-items-list');
-          moreExtras.forEach((item, idx) => {
-            const priceText = item.unit_price ? `HK$ ${Math.round(item.unit_price)}` : '';
-            const newIdx = (extras.length + idx);
-            const cardHtml = `
-              <div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size:12px;" data-extra-item='${JSON.stringify(item)}'>
-                <span>${item.type === 'service' ? '💆' : '🧴'} ${item.name}</span>
-                <span class="text-muted">${priceText}</span>
-                <button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;" data-extra-idx="${newIdx}">加入</button>
-              </div>`;
-            list.insertAdjacentHTML('beforeend', cardHtml);
-          });
-
-          // 重新綁定新按鈕
-          extraContainer.querySelectorAll('[data-extra-idx]').forEach(btn => {
-            btn.onclick = (ev) => {
-              ev.stopImmediatePropagation();
-              const card = btn.closest('[data-extra-item]');
-              try {
-                const item = JSON.parse(card.dataset.extraItem);
-                if (item && window.addToCart) window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
-              } catch {}
-              card.remove();
-            };
-          });
-
-          // 更新 dataset
-          const updated = [...currentShown, ...moreExtras];
-          extraContainer.dataset.currentExtras = JSON.stringify(updated);
-        };
-      }
+            c.remove();
+          };
+        });
+      };
     }
 
     panel.querySelectorAll('[data-tier]').forEach(btn => {
@@ -2312,7 +2476,6 @@
           tierBadge.className = 'badge bg-success-subtle text-success ms-1 align-self-center';
         }
 
-        // 顯示/更新額外推薦項目
         renderExtraSuggestions(tier, selectedRecs);
 
         if (window.SalonEase && window.SalonEase.toast) {
