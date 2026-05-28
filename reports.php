@@ -85,6 +85,19 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A61：Phase 3 - 本月 Top 3 員工銷售（簡單摘要） -->
+    <div class="mb-3" x-show="staffRanking.length > 0">
+        <div class="small text-muted mb-1">本月 Top 3 員工</div>
+        <div class="d-flex gap-2 flex-wrap">
+            <template x-for="s in staffRanking.slice(0,3)" :key="s.staff_id">
+                <span class="badge bg-light border small px-2 py-1">
+                    <span x-text="s.staff_name"></span>
+                    <span class="text-muted ms-1" x-text="formatMoney(s.total_sales)"></span>
+                </span>
+            </template>
+        </div>
+    </div>
+
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
