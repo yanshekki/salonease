@@ -644,6 +644,14 @@ async function setCurrentCustomer(customer) {
 
     let infoHtml = `<span class="text-[#8FA68F]">✓ ${e(customer.name)} (${e(customer.phone)})</span>`;
 
+    // Phase 2 A7：在 POS 顯示客戶目前積分
+    if (customer.points !== undefined && customer.points !== null) {
+        const points = parseInt(customer.points) || 0;
+        if (points > 0) {
+            infoHtml += ` <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${points} 點</span>`;
+        }
+    }
+
     await loadCustomerPackages(customer.id);
 
     if (customerPackages.length > 0) {
