@@ -7,6 +7,7 @@
  * GET /api/reports.php?action=top_products&from=...&to=...&limit=5
  * GET /api/reports.php?action=package_redemptions&from=...&to=...
  * GET /api/reports.php?action=staff_sales_ranking&from=...&to=&staff_id= (optional)
+ * GET /api/reports.php?action=daily_sales&from=...&to=...   （A140 新增）
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -51,6 +52,38 @@ switch ($action) {
             'avg_ticket'         => (float)$row['avg_ticket'],
             'total_discount'     => (float)$row['total_discount'],
             'package_sessions'   => (int)$pkg['sessions_used'],
+            'from' => $from,
+            'to'   => $to
+        ]);
+        break;
+
+    case 'daily_sales':
+        // A140：提供每日銷售數據（用於真實趨勢圖表）
+        $sql = "
+            SELECT 
+                sale_date,
+                COALESCE(SUM(total), 0) AS total_sales,
+                COUNT(*) AS total_transactions,
+                COALESCE(AVG(total), 0) AS avg_ticket
+            FROM sales 
+            WHERE sale_date BETWEEN ? AND ?
+            GROUP BY sale_date
+            ORDER BY sale_date ASC
+        ";
+        $rows = db_query($sql, [$from, $to]);
+
+        $result = [];
+        foreach ($rows as $r) {
+            $result[] = [
+                'date'               => $r['sale_date'],
+                'total_sales'        => (float)$r['total_sales'],
+                'total_transactions' => (int)$r['total_transactions'],
+                'avg_ticket'         => (float)$r['avg_ticket'],
+            ];
+        }
+
+        json_success([
+            'data' => $result,
             'from' => $from,
             'to'   => $to
         ]);

@@ -415,6 +415,7 @@ function reportsApp() {
         paymentChart: null,
         servicesChart: null,
         salesTrendChart: null,   // A125 新增：銷售趨勢圖表
+        dailySalesData: [],      // A141 新增：真實每日銷售數據
 
         summary: {
             total_sales: 0,
@@ -450,7 +451,8 @@ function reportsApp() {
                     this.loadTopServices(),
                     this.loadTopProducts(),
                     this.loadPackageRedemptions(),
-                    this.loadStaffRanking()
+                    this.loadStaffRanking(),
+                    this.loadDailySales()   // A141
                 ]);
             } finally {
                 this.loading = false;
@@ -538,6 +540,16 @@ function reportsApp() {
                 this.staffRanking = res.data || [];
             } catch (e) {
                 this.staffRanking = [];
+            }
+        },
+
+        // A141：載入真實每日銷售數據
+        async loadDailySales() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=daily_sales&from=${this.from}&to=${this.to}`);
+                this.dailySalesData = res.data || [];
+            } catch (e) {
+                this.dailySalesData = [];
             }
         },
 
@@ -636,49 +648,70 @@ function reportsApp() {
                 });
             }
 
-            // 銷售趨勢圖表（A127 改善：使用實際日期標籤）
+            // 銷售趨勢圖表（A141：真實每日數據 + 完整保留 A125-A139 所有視覺元素）
             const trendCtx = document.getElementById('salesTrendChart');
             if (trendCtx) {
                 if (this.salesTrendChart) this.salesTrendChart.destroy();
-                const prev = this.prevSummary.total_sales || 0;
-                const curr = this.summary.total_sales || 0;
-                const fromDate = this.from;
-                const toDate = this.to;
-                const days = Math.max(1, Math.ceil( (new Date(toDate) - new Date(fromDate)) / (1000*60*60*24) ));
-                const dailyAvg = curr / days;
-                // 5 點數據（A136 改善：更平滑）
-                const trendLabels = [];
-                const trendData = [];
-                for (let i = 0; i < 5; i++) {
-                    const ratio = i / 4;
-                    const labelDate = new Date( new Date(fromDate).getTime() + (new Date(toDate).getTime() - new Date(fromDate).getTime()) * ratio ).toISOString().slice(0,10);
-                    trendLabels.push(labelDate);
-                    trendData.push( prev + (curr - prev) * ratio );
+
+                let labels = [];
+                let salesData = [];
+                let dailyAvg = 0;
+                let prevDaily = 0;
+
+                if (this.dailySalesData && this.dailySalesData.length > 0) {
+                    // 真實路徑（A141 核心）
+                    labels = this.dailySalesData.map(d => d.date.substring(5)); // MM-DD 簡潔
+                    salesData = this.dailySalesData.map(d => d.total_sales);
+                    const sum = salesData.reduce((a, b) => a + b, 0);
+                    dailyAvg = salesData.length > 0 ? (sum / salesData.length) : 0;
+                    // 上期水平參考值（用 prevSummary 總額 / 當前點數 作為每日平均 proxy，保留對比意義）
+                    const days = Math.max(1, salesData.length);
+                    prevDaily = (this.prevSummary.total_sales || 0) / days;
+                } else {
+                    // 無資料 fallback（保留原有行為）
+                    const prev = this.prevSummary.total_sales || 0;
+                    const curr = this.summary.total_sales || 0;
+                    const fromDate = this.from;
+                    const toDate = this.to;
+                    const days = Math.max(1, Math.ceil( (new Date(toDate) - new Date(fromDate)) / (1000*60*60*24) ));
+                    dailyAvg = curr / days;
+                    prevDaily = prev / days;
+                    for (let i = 0; i < 5; i++) {
+                        const ratio = i / 4;
+                        const labelDate = new Date( new Date(fromDate).getTime() + (new Date(toDate).getTime() - new Date(fromDate).getTime()) * ratio ).toISOString().slice(5,10);
+                        labels.push(labelDate);
+                        salesData.push( prev + (curr - prev) * ratio );
+                    }
                 }
+
+                const avgLine = new Array(labels.length).fill(dailyAvg);
+                const prevLine = new Array(labels.length).fill(prevDaily);
+
                 this.salesTrendChart = new Chart(trendCtx, {
                     type: 'line',
                     data: {
-                        labels: trendLabels,
+                        labels: labels,
                         datasets: [{
-                            label: '銷售額',
-                            data: trendData,
+                            label: '每日銷售',
+                            data: salesData,
                             borderColor: '#8FA68F',
-                            backgroundColor: 'rgba(143, 166, 143, 0.1)',
-                            tension: 0.3
+                            backgroundColor: 'rgba(143, 166, 143, 0.15)',
+                            tension: 0.25,
+                            fill: true
                         }, {
                             label: '上期水平',
-                            data: [prev, prev, prev],
+                            data: prevLine,
                             borderColor: '#C97C7C',
                             borderDash: [5, 5],
-                            borderWidth: 1,
+                            borderWidth: 1.5,
                             pointRadius: 0,
                             fill: false
                         }, {
                             label: '每日平均',
-                            data: [dailyAvg, dailyAvg, dailyAvg],
+                            data: avgLine,
                             borderColor: '#6B7280',
                             borderDash: [2, 2],
-                            borderWidth: 1,
+                            borderWidth: 1.5,
                             pointRadius: 0,
                             fill: false
                         }]
@@ -742,9 +775,6 @@ document.addEventListener('keydown', function(e) {
     if (e.key.toUpperCase() === 'R') { e.preventDefault(); data.loadAll(); }
     if (e.key === 'F5') { e.preventDefault(); data.loadAll(); }
 });
-
-    }
-}
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
