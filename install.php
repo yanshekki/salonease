@@ -633,8 +633,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'insta
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
         body { font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif; }
-        .salon-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .salon-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05); }
+        /* Install page cards use Bootstrap + custom hover */
         .mode-selected { border-color: #2C2C2E; background: #F8F5F0; }
         .log-line { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     </style>
@@ -705,8 +704,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'insta
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <!-- 乾淨版 -->
                     <div @click="mode = 'clean'" 
-                         class="salon-card border-2 rounded-3xl p-6 cursor-pointer"
-                         :class="mode === 'clean' ? 'mode-selected border-[#2C2C2E]' : 'border-[#EDE5DC] hover:border-[#C9BBA8]'">
+                         class="card border border-2 p-4 p-md-5 cursor-pointer transition"
+                         :class="mode === 'clean' ? 'border-dark bg-light' : 'border-light quick-action-card'">
                         <div class="flex items-start justify-between">
                             <div>
                                 <div class="font-semibold text-xl">乾淨安裝</div>
@@ -724,8 +723,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'insta
 
                     <!-- 十年 Demo -->
                     <div @click="mode = 'demo'" 
-                         class="salon-card border-2 rounded-3xl p-6 cursor-pointer"
-                         :class="mode === 'demo' ? 'mode-selected border-[#2C2C2E]' : 'border-[#EDE5DC] hover:border-[#C9BBA8]'">
+                         class="card border border-2 p-4 p-md-5 cursor-pointer transition"
+                         :class="mode === 'demo' ? 'border-dark bg-light' : 'border-light quick-action-card'">
                         <div class="flex items-start justify-between">
                             <div>
                                 <div class="font-semibold text-xl">完整十年模擬數據</div>
