@@ -107,10 +107,31 @@ function get(string $key, mixed $default = null): mixed
 }
 
 /**
- * 簡單記錄操作日誌（後續可擴充）
+ * 記錄操作日誌（Audit Log）
+ * Phase 1 實作：寫入 audit_logs 表
  */
 function log_activity(string $action, ?int $entityId = null, ?string $entityType = null, ?array $details = null): void
 {
-    // Phase 0 先留空，後續實作 activity_logs 寫入
-    // 可在這裡寫入檔案或 DB
+    try {
+        $staffId = $_SESSION['staff_id'] ?? null;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+        db_exec(
+            "INSERT INTO audit_logs (staff_id, action, entity_type, entity_id, details, ip_address, user_agent)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [
+                $staffId,
+                $action,
+                $entityType,
+                $entityId,
+                $details ? json_encode($details, JSON_UNESCAPED_UNICODE) : null,
+                $ip,
+                $userAgent
+            ]
+        );
+    } catch (Throwable $e) {
+        // 審計日誌失敗不應影響主要業務流程
+        error_log("Audit log failed: " . $e->getMessage());
+    }
 }
