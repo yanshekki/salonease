@@ -273,11 +273,13 @@ function renderProductsTable(list) {
         const isLowStock = p.stock_qty <= threshold;
         const stockColor = isLowStock ? 'text-red-600 font-medium' : '';
         const stockBadge = isLowStock 
-            ? `<span onclick="event.stopImmediatePropagation(); editProduct(${p.id});" class="badge bg-danger-subtle text-danger ms-1 small" style="cursor:pointer;" title="點擊快速編輯低庫存門檻">低庫存</span>` 
+            ? `<span onclick="event.stopImmediatePropagation(); editProduct(${p.id});" class="badge bg-danger-subtle text-danger ms-1 small" style="cursor:pointer;" title="點擊快速編輯低庫存門檻">低庫存（缺 ${shortage} 件）</span>` 
             : '';
 
         // A29：計算補到門檻所需數量（與 quickRestockToThreshold 一致）
         const needed = isLowStock ? Math.max(0, threshold - p.stock_qty + 1) : 0;
+        // A33：低庫存缺貨數量
+        const shortage = isLowStock ? (threshold - p.stock_qty) : 0;
 
         html += `
             <tr>
