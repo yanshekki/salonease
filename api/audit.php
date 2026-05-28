@@ -65,9 +65,14 @@ switch ($action) {
         break;
 
     case 'actions':
-        // 取得所有出現過的 action 類型（用於篩選）
-        $actions = db_query("SELECT DISTINCT action FROM audit_logs ORDER BY action ASC");
-        json_success(array_column($actions, 'action'));
+        // 取得所有 action 類型 + 真實總數量（用於篩選下拉顯示完整歷史計數，不受 limit 200 影響）
+        $actions = db_query("
+            SELECT action, COUNT(*) as cnt 
+            FROM audit_logs 
+            GROUP BY action 
+            ORDER BY action ASC
+        ");
+        json_success($actions);
         break;
 
     default:

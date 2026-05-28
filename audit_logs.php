@@ -35,7 +35,7 @@ $extraJs = 'hotkeys.js';
                     <select x-model="selectedAction" @change="loadLogs()" class="form-select form-select-sm flex-grow-1">
                         <option value="">全部</option>
                         <template x-for="act in actions" :key="act">
-                            <option :value="act" x-text="`${act} (${actionCounts[act] || 0})`"></option>
+                            <option :value="act" x-text="`${act} (${serverActionCounts[act] || 0})`"></option>
                         </template>
                     </select>
                     <button @click="selectedAction=''; loadLogs()" class="btn btn-sm btn-outline-secondary" x-show="selectedAction">清除</button>
@@ -149,6 +149,7 @@ function auditLogs() {
         search: '',
         myActionsOnly: false,
         perPageOptions: [10, 20, 50, 100],
+        serverActionCounts: {},
 
         init() {
             this.loadActions();
@@ -159,7 +160,14 @@ function auditLogs() {
         async loadActions() {
             try {
                 const res = await SalonEase.fetch('/api/audit.php?action=actions');
-                this.actions = res.data || [];
+                const items = res.data || [];
+                // 支援新格式（{action, cnt}）與舊格式（純字串），確保相容
+                this.actions = items.map(item => item.action || item);
+                this.serverActionCounts = {};
+                items.forEach(item => {
+                    const act = item.action || item;
+                    this.serverActionCounts[act] = (item.cnt !== undefined ? item.cnt : 0);
+                });
             } catch (e) {}
         },
 
@@ -222,6 +230,13 @@ function auditLogs() {
                 counts[log.action] = (counts[log.action] || 0) + 1;
             });
             return counts;
+        },
+
+        get topActions() {
+            return Object.entries(this.actionCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([action]) => action);
         },
 
         prevPage() {
