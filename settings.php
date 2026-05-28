@@ -309,6 +309,47 @@ include __DIR__ . '/includes/header.php';
             </button>
         </div>
     </div>
+
+    <!-- A146：系統健康檢查 -->
+    <div class="card mb-4 border-info">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold text-info">系統健康檢查</div>
+                    <div class="small text-muted">快速查看核心服務狀態</div>
+                </div>
+                <div class="badge bg-info text-dark small">運維工具</div>
+            </div>
+
+            <div x-show="healthLoading" class="text-center py-3 text-muted small">
+                <span class="spinner-border spinner-border-sm me-2"></span> 檢查中...
+            </div>
+
+            <div x-show="!healthLoading && health" class="row g-2">
+                <template x-for="(item, key) in (health.checks || {})" :key="key">
+                    <div class="col-6">
+                        <div class="border rounded p-2 small d-flex align-items-center gap-2" 
+                             :class="{
+                                 'border-success bg-success-subtle': item.status === 'ok',
+                                 'border-warning bg-warning-subtle': item.status === 'warning',
+                                 'border-danger bg-danger-subtle': item.status === 'error'
+                             }">
+                            <span x-text="item.label"></span>
+                            <span class="ms-auto" x-text="item.status === 'ok' ? '✅' : (item.status === 'warning' ? '⚠️' : '❌')"></span>
+                        </div>
+                        <div class="small text-muted mt-1" x-text="item.detail"></div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="mt-3 d-flex gap-2">
+                <button @click="loadHealth()" class="btn btn-sm btn-outline-info">
+                    🔄 刷新健康狀態
+                </button>
+                <span class="small text-muted align-self-center" x-show="health" x-text="'最後檢查：' + (health.checked_at || '')"></span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -334,6 +375,7 @@ function shopSettings() {
 
         init() {
             this.loadShop();
+            this.loadHealth();   // A146 自動載入健康狀態
         },
 
         async loadShop() {
@@ -405,6 +447,23 @@ function shopSettings() {
                 SalonEase.toast('備份已開始下載');
             } catch (err) {
                 SalonEase.toast('備份失敗', 'error');
+            }
+        },
+
+        // A146：系統健康檢查
+        health: null,
+        healthLoading: false,
+
+        async loadHealth() {
+            this.healthLoading = true;
+            try {
+                const res = await SalonEase.fetch('/api/health.php');
+                this.health = res;
+            } catch (e) {
+                console.warn('健康檢查失敗', e);
+                this.health = { overall: 'error', checks: {} };
+            } finally {
+                this.healthLoading = false;
             }
         }
     }
