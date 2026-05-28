@@ -184,6 +184,13 @@ $extraJs = 'hotkeys.js';
                 </div>
                 <div>
                     <label class="form-label small">原因 / 備註 <span class="text-danger">*</span></label>
+                    <!-- A27：快速原因選擇 -->
+                    <div class="mb-1 d-flex flex-wrap gap-1">
+                        <button type="button" onclick="setQuickReason('供應商補貨')" class="btn btn-sm btn-outline-secondary">供應商補貨</button>
+                        <button type="button" onclick="setQuickReason('盤點調整')" class="btn btn-sm btn-outline-secondary">盤點調整</button>
+                        <button type="button" onclick="setQuickReason('損壞報廢')" class="btn btn-sm btn-outline-secondary">損壞報廢</button>
+                        <button type="button" onclick="setQuickReason('快速補貨')" class="btn btn-sm btn-outline-secondary">快速補貨</button>
+                    </div>
                     <textarea id="stock-reason" class="form-control" rows="2" placeholder="例如：供應商補貨 / 盤點調整 / 損壞報廢"></textarea>
                 </div>
             </div>
@@ -473,6 +480,15 @@ function setQuickAdjustment(qty) {
     if (input) {
         input.value = qty;
         input.focus();
+    }
+}
+
+/* A27：快速填入原因 */
+function setQuickReason(reason) {
+    const textarea = document.getElementById('stock-reason');
+    if (textarea) {
+        textarea.value = reason;
+        textarea.focus();
     }
 }
 
