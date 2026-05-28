@@ -422,6 +422,23 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
     </div>
+
+    <!-- A153：關於 SalonEase -->
+    <div class="card mb-4 border-light">
+        <div class="card-body text-center">
+            <div class="fw-semibold mb-2">關於 SalonEase</div>
+            <div class="small text-muted mb-3">
+                香港小型美容院管理系統<br>
+                v1.5+（Phase 3 完成）<br>
+                純 PHP + API-First
+            </div>
+            <div class="small">
+                <a href="https://github.com/yanshekki/salonease" target="_blank" class="text-decoration-none">GitHub</a>
+                <span class="mx-2">·</span>
+                <span class="text-muted">感謝您的使用</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
