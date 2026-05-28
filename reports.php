@@ -512,6 +512,10 @@ function reportsApp() {
             } catch (e) {
                 this.staffRanking = [];
             }
+        },
+
+        formatDate(d) {
+            return d.toISOString().split('T')[0];
         }
     }
 }
@@ -572,10 +576,6 @@ document.addEventListener('keydown', function(e) {
                 this.to = this.formatDate(new Date());
             }
             this.loadAll();
-        },
-
-        formatDate(d) {
-            return d.toISOString().split('T')[0];
         },
 
         formatMoney(amount) {
