@@ -229,6 +229,21 @@ switch ($action) {
                         WHERE id = ?
                     ");
                     $update_customer->execute([$total, $customer_id]);
+
+                    // Phase 2 A4：忠誠度積分累積（每 $10 = 1 點）
+                    $pointsEarned = (int) floor($total / 10);
+                    if ($pointsEarned > 0) {
+                        $updatePoints = $pdo->prepare("
+                            UPDATE customers SET points = points + ? WHERE id = ?
+                        ");
+                        $updatePoints->execute([$pointsEarned, $customer_id]);
+
+                        log_activity('customer.points_earned', $customer_id, 'customer', [
+                            'points' => $pointsEarned,
+                            'sale_id' => $sale_id,
+                            'spent' => $total
+                        ]);
+                    }
                 }
 
                 // 4. 產生佣金（使用設定頁的比率 + 按員工分拆）
