@@ -310,6 +310,46 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A148：資料匯出中心（統一入口） -->
+    <div class="card mb-4 border-secondary">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">資料匯出中心</div>
+                    <div class="small text-muted">快速找到所有匯出功能</div>
+                </div>
+                <div class="badge bg-secondary text-light small">收尾工具</div>
+            </div>
+
+            <div class="row g-2 small">
+                <div class="col-12 col-md-6">
+                    <a href="/loyalty.php" class="d-block border rounded p-2 text-decoration-none hover-bg-light">
+                        📋 忠誠度記錄 CSV <span class="text-muted">（loyalty.php）</span>
+                    </a>
+                </div>
+                <div class="col-12 col-md-6">
+                    <a href="/reports.php" class="d-block border rounded p-2 text-decoration-none hover-bg-light">
+                        📊 員工銷售排行 CSV <span class="text-muted">（reports.php）</span>
+                    </a>
+                </div>
+                <div class="col-12 col-md-6">
+                    <a href="/audit_logs.php" class="d-block border rounded p-2 text-decoration-none hover-bg-light">
+                        📝 操作審計日誌 CSV <span class="text-muted">（audit_logs.php）</span>
+                    </a>
+                </div>
+                <div class="col-12 col-md-6">
+                    <button @click="manualBackup()" class="d-block w-100 border rounded p-2 text-start btn btn-link text-decoration-none hover-bg-light">
+                        💾 完整資料庫備份 <span class="text-muted">（.sql.gz）</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="small text-muted mt-2">
+                更多報表數據可直接在報表頁使用日期篩選後匯出。
+            </div>
+        </div>
+    </div>
+
     <!-- A146：系統健康檢查 -->
     <div class="card mb-4 border-info">
         <div class="card-body">
