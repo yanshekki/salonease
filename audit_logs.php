@@ -31,12 +31,15 @@ $extraJs = 'hotkeys.js';
             </div>
             <div class="col-md-3">
                 <label class="form-label small">操作類型</label>
-                <select x-model="selectedAction" @change="loadLogs()" class="form-select form-select-sm">
-                    <option value="">全部</option>
-                    <template x-for="act in actions" :key="act">
-                        <option :value="act" x-text="act"></option>
-                    </template>
-                </select>
+                <div class="d-flex gap-1">
+                    <select x-model="selectedAction" @change="loadLogs()" class="form-select form-select-sm flex-grow-1">
+                        <option value="">全部</option>
+                        <template x-for="act in actions" :key="act">
+                            <option :value="act" x-text="act"></option>
+                        </template>
+                    </select>
+                    <button @click="selectedAction=''; loadLogs()" class="btn btn-sm btn-outline-secondary" x-show="selectedAction">清除</button>
+                </div>
             </div>
             <div class="col-md-3">
                 <label class="form-label small">員工</label>
