@@ -27,6 +27,10 @@
     const RECENT_KEY = 'salonease_cmd_recent';
     const MAX_RECENT = 6;
 
+    // 最近搜尋紀錄（使用者輸入過的關鍵字）
+    const RECENT_SEARCHES_KEY = 'salonease_cmd_recent_searches';
+    const MAX_RECENT_SEARCHES = 5;
+
     function getRecentCommands() {
         try {
             return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
@@ -43,6 +47,25 @@
             if (recent.length > MAX_RECENT) recent.length = MAX_RECENT;
             localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
         } catch {}
+    }
+
+    function saveRecentSearch(query) {
+        if (!query || query.trim().length < 2) return;
+        try {
+            let searches = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+            searches = searches.filter(s => s.toLowerCase() !== query.toLowerCase());
+            searches.unshift(query.trim());
+            if (searches.length > MAX_RECENT_SEARCHES) searches.length = MAX_RECENT_SEARCHES;
+            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches));
+        } catch {}
+    }
+
+    function getRecentSearches() {
+        try {
+            return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+        } catch {
+            return [];
+        }
     }
 
     function showCommandPalette() {
@@ -251,6 +274,33 @@
                     currentFiltered.push(...recent);
                 }
 
+                // 最近搜尋
+                const recentSearches = getRecentSearches();
+                if (recentSearches.length > 0) {
+                    toShow.push({ isSection: true, title: '最近搜尋' });
+                    recentSearches.forEach(term => {
+                        toShow.push({
+                            id: `search-${term}`,
+                            label: `搜尋「${term}」`,
+                            type: 'search',
+                            action: () => {
+                                modal.hide();
+                                setTimeout(() => {
+                                    showCommandPalette();
+                                    setTimeout(() => {
+                                        const newInputEl = document.getElementById('cmd-input');
+                                        if (newInputEl) {
+                                            newInputEl.value = term;
+                                            // 手動觸發 input 事件以更新結果
+                                            newInputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                        }
+                                    }, 180);
+                                }, 120);
+                            }
+                        });
+                    });
+                }
+
                 if (contextActions.length > 0) {
                     toShow.push({ isSection: true, title: '目前頁面推薦' });
                     toShow.push(...contextActions);
@@ -281,13 +331,47 @@
                                 label: '加入購物車',
                                 action: () => {
                                     modal.hide();
-                                    // 簡單做法：跳轉並帶參數（未來可改成直接呼叫 POS JS）
-                                    setTimeout(() => location.href = `/pos.php?add_customer=${c.id?.split('-')[1] || ''}`, 120);
+                                    setTimeout(() => {
+                                        if (window.addToCart) {
+                                            // 嘗試從 customer 資訊補 customer 資訊（簡化）
+                                            window.addToCart('customer', c.id?.split('-')[1] || '', c.label, 0);
+                                        } else {
+                                            location.href = `/pos.php?add_customer=${c.id?.split('-')[1] || ''}`;
+                                        }
+                                    }, 100);
                                 }
                             };
                         }
                         return c;
                     });
+
+                // 在 POS 頁時，動態加入服務/產品作為可直接加入購物車的項目（核心價值）
+                let posItems = [];
+                if (context === 'pos' && window.itemsCache && window.itemsCache.length > 0) {
+                    posItems = window.itemsCache
+                        .filter(item => item.name && item.name.toLowerCase().includes(q))
+                        .slice(0, 8)
+                        .map(item => ({
+                            id: `pos-item-${item.type}-${item.id}`,
+                            label: `加入 ${item.name}`,
+                            type: 'pos-item',
+                            action: () => {
+                                modal.hide();
+                                setTimeout(() => {
+                                    if (window.addToCart) {
+                                        const price = parseFloat(item.price || 0);
+                                        window.addToCart(item.type, item.id, item.name, price);
+                                    }
+                                }, 80);
+                            }
+                        }));
+                }
+
+                if (posItems.length > 0) {
+                    toShow.push({ isSection: true, title: '服務 / 產品（可直接加入）' });
+                    toShow.push(...posItems);
+                    currentFiltered.push(...posItems);
+                }
 
                 if (scoredStatic.length > 0) {
                     toShow.push({ isSection: true, title: '功能' });
@@ -398,6 +482,14 @@
             searchTimeout = setTimeout(async () => {
                 await handleSearch();
             }, 220);
+        });
+
+        // 關閉前記錄本次搜尋（如果有輸入）
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            const query = input.value.trim();
+            if (query.length >= 2) {
+                saveRecentSearch(query);
+            }
         });
 
         // Keyboard navigation
