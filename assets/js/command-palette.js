@@ -183,6 +183,13 @@
     }));
   }
 
+  // 取得本次 POS 開單期間最近加入的項目（快速重複銷售）
+  function getPosRecentSessionItems() {
+    const POS = window.SalonEase && window.SalonEase.POS;
+    if (!POS || !POS.getRecentSessionItems) return [];
+    return POS.getRecentSessionItems();
+  }
+
   async function updateResults(q = '') {
     if (!resultsEl) return;
     const ctx = getContext();
@@ -208,16 +215,40 @@
         dynamicItems = [...dynamicItems, ...matchedPkgs];
       }
     } else if (ctx === 'pos' && q.trim().length === 0) {
-      // POS 頁空白查詢時，也顯示目前客戶可用的套票（方便快速扣減）
+      // POS 頁空白查詢時，優先顯示：
+      // 1. 本單最近加入的項目（最強大快速重複功能）
+      // 2. 目前客戶可用的套票
+      const recent = getPosRecentSessionItems();
       const customerPkgs = getCurrentPosCustomerPackages();
-      if (customerPkgs.length > 0) {
-        dynamicItems = customerPkgs;
-      } else {
-        dynamicItems = [];
-      }
+
+      dynamicItems = [...recent];
+      // 套票放在最近之後（如果有重疊就讓最近優先）
+      customerPkgs.forEach(pkg => {
+        if (!dynamicItems.some(x => x.ref_id == pkg.ref_id && x.type === 'package_redemption')) {
+          dynamicItems.push(pkg);
+        }
+      });
     }
 
     let allItems = [...baseItems, ...dynamicItems];
+
+    // POS 頁空白查詢時，把「本單最近加入」排在最前面（高分加權）
+    if (ctx === 'pos' && !q.trim()) {
+      const posRecent = getPosRecentSessionItems();
+      if (posRecent.length) {
+        const recentBoosted = posRecent.map(r => ({
+          ...r,
+          id: `recent-${r.type}-${r.ref_id}`,
+          label: r.name,
+          price: r.unit_price,
+          action: 'add-to-cart',
+          keywords: r.name || '',
+          _isRecentSession: true
+        }));
+        // 放在最前面
+        allItems = [...recentBoosted, ...allItems];
+      }
+    }
 
     let scored = allItems.map(it => ({ ...it, score: calculateScore(q, it, ctx) }));
     scored.sort((a, b) => {
@@ -279,7 +310,10 @@
       if (q.trim()) {
         section = '服務 / 產品 / 套票搜尋結果';
       } else {
-        section = '快速功能 + 客戶可用套票（可直接扣減）';
+        const hasRecent = getPosRecentSessionItems().length > 0;
+        section = hasRecent 
+          ? '本單最近加入（點擊快速重複） + 客戶可用套票'
+          : '快速功能 + 客戶可用套票（可直接扣減）';
       }
     }
     html += `<div class="px-3 pt-2 pb-1 small text-muted fw-medium">${section}</div>`;

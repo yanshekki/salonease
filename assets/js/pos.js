@@ -9,6 +9,7 @@ let customerPackages = [];   // 客戶持有的有效套票
 let staffList = [];          // 員工清單（供指派使用）
 let currentStaffId = null;   // 目前登入員工 ID
 let lastAssignedStaffId = null;  // 記住上次指派的員工（方便連續指派）
+let recentSessionItems = [];     // 本次 POS 開單期間最近加入的項目（供命令面板快速重複）
 
 // 載入所有可銷售項目
 async function loadItems() {
@@ -252,6 +253,9 @@ function addToCart(type, id, name, price) {
         assigned_staff_id: defaultStaff
     });
 
+    // 記錄到「本單最近加入」（供 Ctrl+K 快速重複銷售）
+    recordRecentSessionItem({ type, ref_id: id, name, unit_price: parseFloat(price) });
+
     // 低庫存警示（僅產品）
     if (type === 'product') {
         const product = itemsCache.find(p => p.id == id && p.type === 'product');
@@ -488,6 +492,7 @@ function clearCart() {
 
     cart = [];
     currentCustomer = null;
+    clearRecentSessionItems();
     renderCart();
     updateCartTotals();
     document.getElementById('pos-customer-info').innerHTML = '';
@@ -788,9 +793,10 @@ async function checkout() {
 
         SalonEase.toast('結帳成功！');
 
-        // 清空購物車
+        // 清空購物車 + 本單最近記錄
         cart = [];
         currentCustomer = null;
+        clearRecentSessionItems();
         renderCart();
         updateCartTotals();
         document.getElementById('amount-received').value = '';
@@ -961,6 +967,31 @@ async function loadStaffForAssignment() {
     }
 }
 
+// 記錄本單最近加入的項目（供命令面板「快速重複」使用）
+function recordRecentSessionItem(item) {
+    if (!item || !item.ref_id) return;
+
+    // 去重：同類型 + 同 ref_id 只保留最新一筆
+    recentSessionItems = recentSessionItems.filter(x => !(x.type === item.type && x.ref_id == item.ref_id));
+
+    recentSessionItems.unshift({
+        type: item.type,
+        ref_id: item.ref_id,
+        name: item.name,
+        unit_price: item.unit_price
+    });
+
+    // 限制長度
+    if (recentSessionItems.length > 8) {
+        recentSessionItems.length = 8;
+    }
+}
+
+// 清空最近記錄（清空購物車或結帳後呼叫）
+function clearRecentSessionItems() {
+    recentSessionItems = [];
+}
+
 // 暴露給全域（給 pos.php 內聯 script 呼叫）
 window.loadItems = loadItems;
 window.filterItems = filterItems;
@@ -1016,7 +1047,10 @@ window.SalonEase.POS = {
 
         window.addPackageRedemption(customerPackageId, name, remaining);
         return true;
-    }
+    },
+
+    // 本單最近加入的項目（命令面板快速重複銷售用）
+    getRecentSessionItems: () => Array.isArray(recentSessionItems) ? [...recentSessionItems] : []
 };
 
-console.log('%c[SalonEase] POS 命名空間已暴露（含套票扣減支援）', 'color:#8FA68F;font-size:9px');
+console.log('%c[SalonEase] POS 命名空間已暴露（含套票扣減 + 本單最近項目）', 'color:#8FA68F;font-size:9px');
