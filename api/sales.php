@@ -146,6 +146,11 @@ switch ($action) {
                             $sessions_used,
                             $item_staff_id
                         ]);
+
+                        log_activity('package.redeemed', $ref_id, 'customer_package', [
+                            'sessions_used' => $sessions_used,
+                            'sale_id' => $sale_id
+                        ]);
                     }
 
                     // 按員工分拆佣金計算（使用設定頁的比率）
