@@ -3,7 +3,7 @@
  * 完整功能：情境感知、搜尋評分 + 最近使用加權、鍵盤導航、POS 直接「加入購物車」
  * 完全使用原生 Bootstrap 5 Modal + bootstrap.Modal API
  */
-(function() {
+(async function() {
   'use strict';
 
   const RECENT_USAGE_KEY = 'salonease_cmd_recent_usage_v3';
