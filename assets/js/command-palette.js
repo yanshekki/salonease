@@ -1345,7 +1345,50 @@
           detailEl.style.fontSize = '9px';
           detailEl.innerHTML = `（${detail}）`;
 
-          // 加上可點擊的儲存圖示
+          // 直接「一鍵加入呢批高貼合項目」按鈕（唔使再去分佈條）
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'btn btn-sm btn-success py-0 px-1 ms-1';
+          addBtn.style.fontSize = '9px';
+          addBtn.innerHTML = '加入';
+          addBtn.title = '一鍵加入呢批高貼合度項目';
+
+          addBtn.onclick = (ev) => {
+            ev.stopImmediatePropagation();
+
+            const bandNow = getEffectivePriceBand();
+            if (!bandNow) return;
+
+            let added = 0;
+            currentResults.forEach(item => {
+              if (!item.price || item.type === 'package_redemption') return;
+              const c = getPriceClosenessScore(item.price, bandNow);
+              // 尊重目前任何活躍嘅價位過濾
+              const activeFilter = (window.SalonEase && window.SalonEase._cmdPriceFilter) || null;
+              let matchFilter = true;
+              if (activeFilter) {
+                const p = parseFloat(item.price);
+                if (activeFilter === 'below' && p >= bandNow.min) matchFilter = false;
+                if (activeFilter === 'within' && (p < bandNow.min || p > bandNow.max)) matchFilter = false;
+                if (activeFilter === 'above' && p <= bandNow.max) matchFilter = false;
+              }
+              if (c >= 70 && matchFilter && window.addToCart) {
+                window.addToCart(item.type, item.ref_id, item.label || item.name, item.price);
+                added++;
+              }
+            });
+
+            if (added > 0) {
+              if (window.SalonEase && window.SalonEase.toast) {
+                window.SalonEase.toast(`✅ 已加入 ${added} 項高貼合項目`, 'success', 1600);
+              }
+              // 清除 detail
+              const w = addBtn.parentElement;
+              if (w && w.parentElement) w.parentElement.removeChild(w);
+            }
+          };
+
+          // 加上儲存為常用組合圖示（保留原有功能）
           const saveIcon = document.createElement('span');
           saveIcon.className = 'ms-1';
           saveIcon.style.cursor = 'pointer';
@@ -1356,20 +1399,21 @@
           saveIcon.onclick = async (ev) => {
             ev.stopImmediatePropagation();
             await saveCurrentHighClosenessItemsAsTemplate(band);
-            // 儲存後清除 detail
-            if (detailEl && detailEl.parentElement) detailEl.parentElement.removeChild(detailEl);
+            const w = saveIcon.parentElement;
+            if (w && w.parentElement) w.parentElement.removeChild(w);
           };
 
           const wrapper = document.createElement('span');
           wrapper.appendChild(detailEl);
+          wrapper.appendChild(addBtn);
           wrapper.appendChild(saveIcon);
 
           heat.parentElement.insertBefore(wrapper, heat.nextSibling);
 
-          // 4 秒後自動消失
+          // 5 秒後自動消失
           setTimeout(() => {
             if (wrapper && wrapper.parentElement) wrapper.parentElement.removeChild(wrapper);
-          }, 4200);
+          }, 5200);
         }
       };
     });
