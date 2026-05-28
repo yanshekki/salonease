@@ -118,8 +118,8 @@ function renderRoomsTable(list) {
                 <td>${r.capacity} 人</td>
                 <td>${statusBadge}</td>
                 <td class="text-right">
-                    <button onclick="editRoom(${r.id})" class="text-[#8FA68F] hover:underline text-sm mr-3">編輯</button>
-                    <button onclick="toggleRoom(${r.id}, ${r.is_active})" class="text-sm ${r.is_active == 1 ? 'text-red-500' : 'text-green-600'} hover:underline">
+                    <button onclick="editRoom(${r.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
+                    <button onclick="toggleRoom(${r.id}, ${r.is_active})" class="btn btn-link btn-sm ${r.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${r.is_active == 1 ? '停用' : '啟用'}
                     </button>
                 </td>

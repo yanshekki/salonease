@@ -132,8 +132,8 @@ function renderPackagesTable(list) {
                 <td class="text-center">${p.validity_days} 天</td>
                 <td>${statusBadge}</td>
                 <td class="text-right">
-                    <button onclick="editPackage(${p.id})" class="text-[#8FA68F] hover:underline text-sm mr-3">編輯</button>
-                    <button onclick="togglePackage(${p.id}, ${p.is_active})" class="text-sm ${p.is_active == 1 ? 'text-red-500' : 'text-green-600'} hover:underline">
+                    <button onclick="editPackage(${p.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
+                    <button onclick="togglePackage(${p.id}, ${p.is_active})" class="btn btn-link btn-sm ${p.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${p.is_active == 1 ? '停用' : '啟用'}
                     </button>
                 </td>

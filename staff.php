@@ -215,8 +215,8 @@ function renderStaffTable(list) {
                 <td><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">${roleName}</span></td>
                 <td>${statusBadge}</td>
                 <td class="text-right">
-                    <button onclick="editStaff(${s.id})" class="text-[#8FA68F] hover:underline text-sm mr-3">編輯</button>
-                    <button onclick="toggleStatus(${s.id}, ${s.is_active})" class="text-sm ${s.is_active == 1 ? 'text-red-500' : 'text-green-600'} hover:underline mr-3">
+                    <button onclick="editStaff(${s.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
+                    <button onclick="toggleStatus(${s.id}, ${s.is_active})" class="btn btn-link btn-sm ${s.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${s.is_active == 1 ? '停用' : '啟用'}
                     </button>
                 </td>

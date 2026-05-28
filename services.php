@@ -180,8 +180,8 @@ function renderServicesTable(list) {
                 <td><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">${e(s.category || '-')}</span></td>
                 <td>${statusBadge}</td>
                 <td class="text-right">
-                    <button onclick="editService(${s.id})" class="text-[#8FA68F] hover:underline text-sm mr-3">編輯</button>
-                    <button onclick="toggleService(${s.id}, ${s.is_active})" class="text-sm ${s.is_active == 1 ? 'text-red-500' : 'text-green-600'} hover:underline">
+                    <button onclick="editService(${s.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
+                    <button onclick="toggleService(${s.id}, ${s.is_active})" class="btn btn-link btn-sm ${s.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${s.is_active == 1 ? '停用' : '啟用'}
                     </button>
                 </td>

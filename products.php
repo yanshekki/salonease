@@ -204,7 +204,7 @@ function renderProductsTable(list) {
         const isLowStock = p.stock_qty <= threshold;
         const stockColor = isLowStock ? 'text-red-600 font-medium' : '';
         const stockBadge = isLowStock 
-            ? `<span onclick="event.stopImmediatePropagation(); editProduct(${p.id});" class="ml-1 text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded cursor-pointer hover:bg-red-200" title="點擊快速編輯低庫存門檻">低庫存</span>` 
+            ? `<span onclick="event.stopImmediatePropagation(); editProduct(${p.id});" class="badge bg-danger-subtle text-danger ms-1 small" style="cursor:pointer;" title="點擊快速編輯低庫存門檻">低庫存</span>` 
             : '';
 
         html += `
@@ -216,8 +216,8 @@ function renderProductsTable(list) {
                 <td><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">${e(p.category || '-')}</span></td>
                 <td>${statusBadge}</td>
                 <td class="text-right">
-                    <button onclick="editProduct(${p.id})" class="text-[#8FA68F] hover:underline text-sm mr-3">編輯</button>
-                    <button onclick="toggleProduct(${p.id}, ${p.is_active})" class="text-sm ${p.is_active == 1 ? 'text-red-500' : 'text-green-600'} hover:underline">
+                    <button onclick="editProduct(${p.id})" class="btn btn-link btn-sm text-success p-0 me-2">編輯</button>
+                    <button onclick="toggleProduct(${p.id}, ${p.is_active})" class="btn btn-link btn-sm ${p.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${p.is_active == 1 ? '停用' : '啟用'}
                     </button>
                 </td>
