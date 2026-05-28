@@ -145,7 +145,7 @@ function debounceLoadServices() {
 
 async function loadServices() {
     const tbody = document.getElementById('services-list');
-    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">載入中...</td></tr>`;
 
     const search = document.getElementById('search').value;
     const category = document.getElementById('category-filter').value;
@@ -162,7 +162,7 @@ async function loadServices() {
 function renderServicesTable(list) {
     const tbody = document.getElementById('services-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">沒有符合的服務項目</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">沒有符合的服務項目</td></tr>`;
         return;
     }
 

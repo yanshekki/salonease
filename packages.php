@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadPackages() {
     const tbody = document.getElementById('packages-list');
-    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">載入中...</td></tr>`;
 
     try {
         const res = await SalonEase.fetch('/api/packages.php?action=list');
@@ -114,7 +114,7 @@ async function loadPackages() {
 function renderPackagesTable(list) {
     const tbody = document.getElementById('packages-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">尚未新增任何套票</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">尚未新增任何套票</td></tr>`;
         return;
     }
 

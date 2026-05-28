@@ -368,7 +368,7 @@ function searchCustomers() {
             const container = document.getElementById('customer-results');
             let html = '';
             if (res.data.length === 0) {
-                html = '<div class="p-2 text-[#8A8A8C]">找不到客戶</div>';
+                html = '<div class="p-2 text-muted">找不到客戶</div>';
             } else {
                 res.data.slice(0,8).forEach(c => {
                     html += `<div class="p-2 hover:bg-gray-100 cursor-pointer" onclick="selectCustomer(${c.id}, '${e(c.name)}', '${e(c.phone)}')">
@@ -390,7 +390,7 @@ function selectCustomer(id, name, phone) {
 
 async function loadAppointments() {
     const tbody = document.getElementById('appointments-list');
-    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">載入中...</td></tr>`;
 
     const from = document.getElementById('date-from').value;
     const to = document.getElementById('date-to').value;
@@ -408,7 +408,7 @@ async function loadAppointments() {
 function renderAppointments(list) {
     const tbody = document.getElementById('appointments-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">此區間沒有預約</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">此區間沒有預約</td></tr>`;
         return;
     }
 
@@ -426,7 +426,7 @@ function renderAppointments(list) {
         html += `
             <tr class="hover:bg-[#F8F5F0] cursor-pointer" onclick="showDetailModal(${a.id})">
                 <td>${time}</td>
-                <td>${e(a.customer_name || '-')} <span class="text-xs text-[#8A8A8C]">(${e(a.customer_phone || '')})</span></td>
+                <td>${e(a.customer_name || '-')} <span class="text-xs text-muted">(${e(a.customer_phone || '')})</span></td>
                 <td>${e(a.staff_name || '-')}</td>
                 <td>${e(a.room_name || '不指定')}</td>
                 <td><span class="badge bg-secondary-subtle text-dark small">${statusMap[a.status] || a.status}</span></td>
@@ -625,7 +625,7 @@ let currentAppointmentData = null; // 用於編輯時的資料
 async function showDetailModal(id) {
     currentDetailId = id;
     const container = document.getElementById('detail-content');
-    container.innerHTML = `<div class="py-6 text-center text-[#8A8A8C]">載入中...</div>`;
+    container.innerHTML = `<div class="py-6 text-center text-muted">載入中...</div>`;
 
     const modalEl = document.getElementById('detailModal');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -644,7 +644,7 @@ async function showDetailModal(id) {
             'no_show': '未到'
         };
 
-        let servicesHtml = '<div class="text-sm text-[#8A8A8C]">無服務項目</div>';
+        let servicesHtml = '<div class="text-sm text-muted">無服務項目</div>';
         if (a.items && a.items.length > 0) {
             servicesHtml = '<ul class="text-sm space-y-1">';
             a.items.forEach(item => {

@@ -173,7 +173,7 @@ function debounceLoadStaff() {
 // 載入員工列表
 async function loadStaff() {
     const tbody = document.getElementById('staff-list');
-    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">載入中...</td></tr>`;
 
     const search = document.getElementById('search').value;
     const role = document.getElementById('role-filter').value;
@@ -190,7 +190,7 @@ async function loadStaff() {
 function renderStaffTable(list) {
     const tbody = document.getElementById('staff-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">沒有符合的員工</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-muted">沒有符合的員工</td></tr>`;
         return;
     }
 

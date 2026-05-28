@@ -166,7 +166,7 @@ function debounceLoadProducts() {
 
 async function loadProducts() {
     const tbody = document.getElementById('products-list');
-    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-muted">載入中...</td></tr>`;
 
     const search = document.getElementById('search').value;
     const category = document.getElementById('category-filter').value;
@@ -190,7 +190,7 @@ async function loadProducts() {
 function renderProductsTable(list) {
     const tbody = document.getElementById('products-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-[#8A8A8C]">沒有符合的產品</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-muted">沒有符合的產品</td></tr>`;
         return;
     }
 
