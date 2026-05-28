@@ -59,6 +59,16 @@ switch ($action) {
 
     case 'daily_sales':
         // A140：提供每日銷售數據（用於真實趨勢圖表）
+        // A142 加強：支援 staff_id 篩選
+        $staffId = (int)($_GET['staff_id'] ?? 0);
+        $where = "sale_date BETWEEN ? AND ?";
+        $params = [$from, $to];
+
+        if ($staffId > 0) {
+            $where .= " AND staff_id = ?";
+            $params[] = $staffId;
+        }
+
         $sql = "
             SELECT 
                 sale_date,
@@ -66,11 +76,11 @@ switch ($action) {
                 COUNT(*) AS total_transactions,
                 COALESCE(AVG(total), 0) AS avg_ticket
             FROM sales 
-            WHERE sale_date BETWEEN ? AND ?
+            WHERE $where
             GROUP BY sale_date
             ORDER BY sale_date ASC
         ";
-        $rows = db_query($sql, [$from, $to]);
+        $rows = db_query($sql, $params);
 
         $result = [];
         foreach ($rows as $r) {
@@ -85,7 +95,8 @@ switch ($action) {
         json_success([
             'data' => $result,
             'from' => $from,
-            'to'   => $to
+            'to'   => $to,
+            'staff_id' => $staffId
         ]);
         break;
 

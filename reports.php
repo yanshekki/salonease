@@ -228,7 +228,16 @@ include __DIR__ . '/includes/header.php';
                 <span class="ms-2 small text-muted">日均 {{ formatMoney(summary.total_sales / Math.max(1, Math.ceil( (new Date(to) - new Date(from)) / (1000*60*60*24) )) ) }}</span>
                 <span class="ms-2 small text-muted">上期 {{ formatMoney(prevSummary.total_sales) }}</span>
             </div>
-            <canvas id="salesTrendChart" height="80"></canvas>
+
+            <!-- A142：loading 與空資料提示 -->
+            <div v-if="dailySalesLoading" class="text-center py-4 text-muted small">
+                <span class="spinner-border spinner-border-sm me-2"></span> 載入每日銷售數據中...
+            </div>
+            <div v-else-if="dailySalesData.length === 0" class="text-center py-4 text-muted small border rounded bg-light">
+                此日期範圍內暫無銷售記錄
+            </div>
+            <canvas v-show="!dailySalesLoading && dailySalesData.length > 0" id="salesTrendChart" height="80"></canvas>
+
             <div class="small text-muted mt-1" style="font-size:0.7rem;">
                 每日平均 ({{ Math.max(1, Math.ceil( (new Date(to) - new Date(from)) / (1000*60*60*24) )) }} 日)：{{ formatMoney( summary.total_sales / Math.max(1, Math.ceil( (new Date(to) - new Date(from)) / (1000*60*60*24) )) ) }}
             </div>
@@ -238,7 +247,6 @@ include __DIR__ . '/includes/header.php';
             <div class="small text-muted mt-1" style="font-size:0.7rem;">
                 總銷售：{{ formatMoney(summary.total_sales) }}
             </div>
-            <div class="small text-muted mt-2" style="font-size:0.65rem;">（隨日期範圍即時更新，後續版本將接入真實每日數據）</div>
         </div>
     </div>
 
@@ -416,6 +424,7 @@ function reportsApp() {
         servicesChart: null,
         salesTrendChart: null,   // A125 新增：銷售趨勢圖表
         dailySalesData: [],      // A141 新增：真實每日銷售數據
+        dailySalesLoading: false, // A142 新增：每日銷售數據載入中狀態
 
         summary: {
             total_sales: 0,
@@ -543,13 +552,21 @@ function reportsApp() {
             }
         },
 
-        // A141：載入真實每日銷售數據
+        // A141/A142：載入真實每日銷售數據（支援 staff 篩選 + loading 狀態）
         async loadDailySales() {
+            this.dailySalesLoading = true;
             try {
-                const res = await SalonEase.fetch(`/api/reports.php?action=daily_sales&from=${this.from}&to=${this.to}`);
+                let url = `/api/reports.php?action=daily_sales&from=${this.from}&to=${this.to}`;
+                if (this.selectedStaffId) {
+                    url += `&staff_id=${this.selectedStaffId}`;
+                }
+                const res = await SalonEase.fetch(url);
                 this.dailySalesData = res.data || [];
             } catch (e) {
+                console.warn('載入每日銷售數據失敗', e);
                 this.dailySalesData = [];
+            } finally {
+                this.dailySalesLoading = false;
             }
         },
 
@@ -559,6 +576,20 @@ function reportsApp() {
 
         formatMoney(amount) {
             return 'HK$ ' + parseFloat(amount || 0).toLocaleString('zh-HK', { minimumFractionDigits: 0 });
+        },
+
+        // A142 補充：報表頁 badge 變化文字與顏色（與 dashboard 一致）
+        getChangeText(curr, prev) {
+            const c = parseFloat(curr || 0);
+            const p = parseFloat(prev || 0);
+            const diff = c - p;
+            const pct = p > 0 ? ((diff / p) * 100) : (c > 0 ? 100 : 0);
+            const sign = diff >= 0 ? '+' : '';
+            return `${sign}${pct.toFixed(1)}%`;
+        },
+        getChangeClass(curr, prev) {
+            const diff = parseFloat(curr || 0) - parseFloat(prev || 0);
+            return diff > 0 ? 'text-success' : (diff < 0 ? 'text-danger' : 'text-muted');
         },
 
         getPaymentLabel(method) {
@@ -717,8 +748,38 @@ function reportsApp() {
                         }]
                     },
                     options: {
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true } }
+                        plugins: {
+                            legend: { display: false },
+                            // A142：強化 tooltip，清楚顯示每日數據
+                            tooltip: {
+                                callbacks: {
+                                    title: (ctx) => {
+                                        const idx = ctx[0].dataIndex;
+                                        const d = this.dailySalesData[idx];
+                                        return d ? d.date : labels[idx];
+                                    },
+                                    label: (ctx) => {
+                                        const idx = ctx.dataIndex;
+                                        const d = this.dailySalesData[idx];
+                                        if (d) {
+                                            return `銷售：${this.formatMoney(d.total_sales)} ｜ ${d.total_transactions} 單 ｜ 均 ${this.formatMoney(d.avg_ticket)}`;
+                                        }
+                                        return `銷售：${this.formatMoney(ctx.raw)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true },
+                            x: {
+                                // A142：天數多時自動旋轉標籤，避免重疊
+                                ticks: {
+                                    maxRotation: 45,
+                                    autoSkip: true,
+                                    maxTicksLimit: 12
+                                }
+                            }
+                        }
                     }
                 });
             }
