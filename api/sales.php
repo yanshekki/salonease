@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../db.php';
 
 require_login();
@@ -15,6 +16,7 @@ switch ($action) {
 
     case 'checkout':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $customer_id = (int)post('customer_id');
         $items = $_POST['items'] ?? [];
