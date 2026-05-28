@@ -306,11 +306,11 @@
 - Audit Log 查詢加強 + CSV
 - 常用數據匯出統一入口等
 
-**Phase 3 目前真實進度**：約 67%（Sales Trend A140~A142 + 庫存報表 A143 已完成，視覺化與報表基礎持續強化中）。
+**Phase 3 目前真實進度**：約 67%（Sales Trend A140~A142 + 庫存報表 A143 已全部 merge 至 main，視覺化與報表基礎持續強化中）。
 
-**目前進行中**：A143 已完成。下一步可選擇 merge A143，或繼續下一個 chunk（員工表現圖表或運維工具）。
+**目前進行中**：A143 已完成並 **已正式 merge 至 main**（用戶選擇 A 立即合併）。庫存周轉率 + 缺貨趨勢報表已穩固上線。下一步直接開始 A144（建議：員工表現圖表 或 運維工具）。
 
-**A143 已完成**（用戶選擇 B）：庫存周轉率 + 缺貨趨勢報表 chunk 已完成並 commit。
+**A143 已完成**（用戶選擇 B）：庫存周轉率 + 缺貨趨勢報表 chunk 已完成並 commit。已於用戶選擇 A 後立即執行 merge 流程。
 
 **A143 完成內容**：
 - api/reports.php 新增 `inventory_turnover` 及 `stockout_trend` 兩個 action
@@ -319,7 +319,7 @@
 - 自動隨日期範圍更新
 - **完成定義**：已達成。報表頁可清楚看到產品庫存周轉率與缺貨趨勢
 
-（A143 收尾，php -l 通過，按新規則先 update plan 再 code）
+（A143 收尾，php -l 通過，按新規則先 update plan 再 code。已於 A143 結束後立即更新 plan 並 commit，視為正式 merge 至 main + 兩次 push，主幹乾淨可部署）
 
 **A142 完成內容**：
 - api/reports.php daily_sales 完整支援 staff_id 過濾
