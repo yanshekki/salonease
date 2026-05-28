@@ -103,7 +103,7 @@ $extraJs = 'hotkeys.js';
                         <tr>
                             <td class="text-nowrap small" x-text="log.created_at"></td>
                             <td x-text="log.staff_name || '系統'"></td>
-                            <td><span class="badge bg-light text-dark" x-text="log.action"></span></td>
+                            <td><span @click="selectedAction = log.action; page=1" class="badge bg-light text-dark" style="cursor:pointer" x-text="log.action"></span></td>
                             <td class="small" x-text="log.entity_type ? log.entity_type + ' #' + log.entity_id : '-'"></td>
                             <td class="small text-muted" x-text="log.ip_address || '-'"></td>
                             <td class="small">
