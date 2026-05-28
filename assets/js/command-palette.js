@@ -319,6 +319,13 @@
       const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=15`);
       const recentSales = salesRes.data || [];
 
+      // 計算客戶最近一次購買距今天數，用來調整推薦積極程度
+      let daysSinceLastVisit = 999;
+      if (recentSales.length > 0) {
+        const lastVisit = new Date(recentSales[0].sale_date);
+        daysSinceLastVisit = Math.floor((new Date() - lastVisit) / (1000 * 60 * 60 * 24));
+      }
+
       const recentSalesWithItems = await Promise.all(
         recentSales.slice(0, 8).map(async (sale) => {
           try {
@@ -579,6 +586,18 @@
 
     } catch (err) {
       console.warn('[CommandPalette] 進階智能推薦分析失敗', err);
+    }
+
+    // 根據客戶最近回來時間調整推薦積極程度（久未回來的客人給更多「價值型 / 搭配型」推薦）
+    if (typeof daysSinceLastVisit !== 'undefined' && daysSinceLastVisit > 90) {
+      recommendations.forEach(rec => {
+        if (rec.type === 'frequent_pair' || rec.type === 'smart_bundle' || rec.type === 'cross_sell') {
+          rec.priority = (rec.priority || 0) + 5;
+        }
+        if (rec.isGap) {
+          rec.label = rec.label.replace('建議', '超值建議');
+        }
+      });
     }
 
     // 最終排序
@@ -1436,7 +1455,7 @@
     }
   }
 
-  // 從智能推薦直接一鍵加入（帶建議原因，並自動記錄到銷售備註）
+  // 從智能推薦直接一鍵加入（帶建議原因 + 自動產生銷售話術 + 記錄到備註）
   async function quickAddRecommendedItems(recommendation) {
     const items = recommendation.suggestedItems || [];
     if (items.length === 0) {
@@ -1455,7 +1474,7 @@
       }
     }
 
-    // 自動將建議原因結構化記錄到銷售備註（方便之後做報表追蹤轉換率）
+    // 自動將建議原因結構化記錄到銷售備註
     const notesEl = document.getElementById('sale-notes');
     if (notesEl) {
       const currentNotes = notesEl.value.trim();
@@ -1465,9 +1484,28 @@
       }
     }
 
+    // 自動產生簡單銷售話術（根據推薦類型）
+    let script = '';
+    if (recommendation.isGap) {
+      script = `可以跟客人說：「上次您購買這個已經有一段時間了，我們建議您補充，現在有搭配優惠。」`;
+    } else if (recommendation.isPair || recommendation.type === 'frequent_pair' || recommendation.type === 'smart_bundle') {
+      script = `可以跟客人說：「很多客人買這個之後都會一起加購這個，效果會更好哦～」`;
+    } else if (recommendation.isFrequent) {
+      script = `可以跟客人說：「這個是您之前很喜歡的項目，這次要不要再來一組？」`;
+    } else {
+      script = `可以跟客人說：「根據您的購買習慣，我們推薦搭配這個。」`;
+    }
+
     hide();
+
     if (window.SalonEase && window.SalonEase.toast) {
-      window.SalonEase.toast(`已加入推薦項目（${reason}）`, 'success', 2800);
+      window.SalonEase.toast(`已加入推薦項目`, 'success', 2200);
+      // 延遲顯示銷售話術，讓使用者有時間看到第一個 toast
+      setTimeout(() => {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(script, 'info', 3800);
+        }
+      }, 2300);
     }
   }
 
