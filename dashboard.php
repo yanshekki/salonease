@@ -96,6 +96,28 @@ $topProducts = db_query("
     ORDER BY cnt DESC
     LIMIT 3
 ", [$thisMonthStart]);
+
+// A56：Phase 3 - 本月營業額 vs 上月比較（數據洞察）
+$thisMonthStartForSales = date('Y-m-01');
+$lastMonthStart = date('Y-m-01', strtotime('first day of last month'));
+$lastMonthEnd   = date('Y-m-t', strtotime('first day of last month'));
+
+$thisMonthSales = db_query_one("
+    SELECT COALESCE(SUM(total), 0) AS total
+    FROM sales 
+    WHERE sale_date >= ?
+", [$thisMonthStartForSales]);
+
+$lastMonthSales = db_query_one("
+    SELECT COALESCE(SUM(total), 0) AS total
+    FROM sales 
+    WHERE sale_date >= ? AND sale_date <= ?
+", [$lastMonthStart, $lastMonthEnd]);
+
+$thisMonthTotal = (float)($thisMonthSales['total'] ?? 0);
+$lastMonthTotal = (float)($lastMonthSales['total'] ?? 0);
+$salesDiff = $thisMonthTotal - $lastMonthTotal;
+$salesDiffPercent = $lastMonthTotal > 0 ? round(($salesDiff / $lastMonthTotal) * 100, 1) : 0;
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -228,6 +250,25 @@ $topProducts = db_query("
         <?php else: ?>
             <div class="small text-muted">本月暫無產品銷售記錄</div>
         <?php endif; ?>
+    </div>
+</div>
+
+<!-- A56：Phase 3 - 本月營業額 vs 上月比較（數據洞察） -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="fw-semibold small mb-1">本月營業額 vs 上月</div>
+        <div class="d-flex align-items-baseline gap-2">
+            <div class="fs-5 fw-semibold"><?= format_money($thisMonthTotal) ?></div>
+            <?php if ($lastMonthTotal > 0): ?>
+                <div class="small <?= $salesDiff >= 0 ? 'text-success' : 'text-danger' ?>">
+                    <?= $salesDiff >= 0 ? '+' : '' ?><?= format_money($salesDiff) ?> 
+                    (<?= $salesDiffPercent >= 0 ? '+' : '' ?><?= $salesDiffPercent ?>%)
+                </div>
+            <?php else: ?>
+                <div class="small text-muted">上月無數據</div>
+            <?php endif; ?>
+        </div>
+        <div class="small text-muted mt-1">較上月</div>
     </div>
 </div>
 
