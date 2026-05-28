@@ -25,6 +25,7 @@
     { id: 'pos-quick-create-customer', label: '快速新增客戶', action: 'quick-create-customer', icon: '➕', keywords: '新增 建立 客戶 新客戶', contexts: ['pos'] },
     { id: 'pos-quick-checkout', label: '快速結帳', action: 'quick-checkout', icon: '💳', keywords: '結帳 付款 收銀 完成交易', contexts: ['pos'] },
     { id: 'pos-save-cart-template', label: '儲存目前購物車為常用組合', action: 'save-cart-template', icon: '💾', keywords: '儲存 常用組合 模板 套餐 療程組合', contexts: ['pos'] },
+    { id: 'pos-search-history', label: '搜尋歷史銷售 / 重複組合', action: 'search-sales-history', icon: '📜', keywords: '歷史 銷售 記錄 重複 再買 舊單', contexts: ['pos'] },
   ];
 
   // POS 快速折扣方案（動態產生，支援百分比與固定金額）
@@ -556,6 +557,11 @@
       return;
     }
 
+    if (item.action === 'search-sales-history') {
+      enterSalesHistorySearchMode();
+      return;
+    }
+
     if (item.url) location.href = item.url;
     else if (typeof item.fn === 'function') item.fn();
   }
@@ -888,6 +894,141 @@
 
     // 預設 focus 在金額欄
     setTimeout(() => receivedInput.focus(), 50);
+  }
+
+  // 進入歷史銷售搜尋模式
+  async function enterSalesHistorySearchMode() {
+    if (!resultsEl) return;
+
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const currentCustomer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+
+    resultsEl.innerHTML = `
+      <div class="px-3 py-3">
+        <div class="small fw-medium mb-2 text-primary">搜尋歷史銷售</div>
+        
+        ${currentCustomer ? `
+          <div class="small mb-2 text-muted">
+            目前客戶：<strong>${currentCustomer.name}</strong>（只顯示此客戶的歷史）
+          </div>
+        ` : `
+          <div class="small mb-2 text-muted">顯示最近銷售（可切換客戶後再搜）</div>
+        `}
+
+        <div id="history-results" class="border rounded" style="max-height: 320px; overflow: auto;">
+          <div class="p-3 text-center text-muted small">載入中...</div>
+        </div>
+
+        <div class="mt-2 d-flex gap-2">
+          <button id="history-refresh" class="btn btn-sm btn-outline-secondary">重新載入</button>
+          <button id="history-cancel" class="btn btn-sm btn-outline-secondary ms-auto">取消</button>
+        </div>
+      </div>
+    `;
+
+    const resultsContainer = resultsEl.querySelector('#history-results');
+    const refreshBtn = resultsEl.querySelector('#history-refresh');
+    const cancelBtn = resultsEl.querySelector('#history-cancel');
+
+    const loadHistory = async () => {
+      resultsContainer.innerHTML = `<div class="p-3 text-center text-muted small">載入中...</div>`;
+
+      try {
+        let url = '/api/sales.php?action=list&limit=15';
+        if (currentCustomer && currentCustomer.id) {
+          url += `&customer_id=${currentCustomer.id}`;
+        }
+
+        const res = await window.SalonEase.fetch(url);
+        const sales = res.data || [];
+
+        if (sales.length === 0) {
+          resultsContainer.innerHTML = `<div class="p-3 text-center text-muted small">沒有找到歷史銷售</div>`;
+          return;
+        }
+
+        let html = '';
+        sales.forEach(sale => {
+          const customerInfo = sale.customer_name ? `${sale.customer_name} (${sale.customer_phone || ''})` : '散客';
+          html += `
+            <div class="history-sale-item p-2 border-bottom cursor-pointer hover-bg" data-sale-id="${sale.id}" style="cursor:pointer;">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <div class="small fw-medium">#${sale.id} · ${sale.sale_date}</div>
+                  <div class="small text-muted">${customerInfo} · ${sale.staff_name || ''}</div>
+                </div>
+                <div class="text-end">
+                  <div class="fw-semibold text-success">HK$ ${parseFloat(sale.total).toFixed(0)}</div>
+                  <div class="small text-muted">${sale.item_count} 項</div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        resultsContainer.innerHTML = html;
+
+        // 綁定點擊載入
+        resultsContainer.querySelectorAll('.history-sale-item').forEach(el => {
+          el.addEventListener('click', async () => {
+            const saleId = el.dataset.saleId;
+            await loadItemsFromSale(saleId, resultsContainer);
+          });
+        });
+
+      } catch (err) {
+        resultsContainer.innerHTML = `<div class="p-3 text-center text-danger small">載入失敗</div>`;
+      }
+    };
+
+    await loadHistory();
+
+    refreshBtn.onclick = loadHistory;
+    cancelBtn.onclick = () => updateResults('');
+  }
+
+  async function loadItemsFromSale(saleId, container) {
+    container.innerHTML = `<div class="p-3 text-center text-muted small">正在載入銷售明細...</div>`;
+
+    try {
+      const res = await window.SalonEase.fetch(`/api/sales.php?action=get_items&sale_id=${saleId}`);
+      const items = res.data || [];
+
+      if (items.length === 0) {
+        container.innerHTML = `<div class="p-3 text-center text-muted small">此銷售單沒有項目</div>`;
+        return;
+      }
+
+      const cart = window.SalonEase.POS.getCart ? window.SalonEase.POS.getCart() : [];
+      let shouldClear = true;
+
+      if (cart.length > 0) {
+        const choice = confirm(`目前購物車有 ${cart.length} 項。\n\n[確定] 清空後載入歷史項目\n[取消] 保留現有 + 加入歷史項目`);
+        shouldClear = choice;
+      }
+
+      if (shouldClear && window.SalonEase.POS.clearCart) {
+        window.SalonEase.POS.clearCart();
+      }
+
+      for (const item of items) {
+        if (window.addToCart) {
+          window.addToCart(item.item_type, item.ref_id, item.name, item.unit_price);
+          // 如果有 qty > 1，補加
+          for (let i = 1; i < (item.qty || 1); i++) {
+            window.addToCart(item.item_type, item.ref_id, item.name, item.unit_price);
+          }
+        }
+      }
+
+      hide();
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast(`已載入歷史銷售 #${saleId} 的項目`, 'success');
+      }
+
+    } catch (err) {
+      container.innerHTML = `<div class="p-3 text-center text-danger small">載入失敗</div>`;
+    }
   }
 
   // 載入常用組合到購物車

@@ -477,6 +477,43 @@ switch ($action) {
         <?php
         break;
 
+    case 'list':
+        // 給命令面板用：列出最近銷售單（可按客戶過濾）
+        $limit = min(20, max(5, (int)get('limit', 10)));
+        $customer_id = (int)get('customer_id', 0);
+
+        $sql = "
+            SELECT s.id, s.sale_date, s.total, s.payment_method,
+                   c.name as customer_name, c.phone as customer_phone,
+                   st.name as staff_name,
+                   (SELECT COUNT(*) FROM sale_items WHERE sale_id = s.id) as item_count
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN staff st ON s.staff_id = st.id
+            WHERE 1=1
+        ";
+        $params = [];
+
+        if ($customer_id > 0) {
+            $sql .= " AND s.customer_id = ?";
+            $params[] = $customer_id;
+        }
+
+        $sql .= " ORDER BY s.sale_date DESC, s.id DESC LIMIT ?";
+        $params[] = $limit;
+
+        $sales = db_query($sql, $params);
+        json_success($sales);
+        break;
+
+    case 'get_items':
+        $sale_id = (int)get('sale_id', 0);
+        if (!$sale_id) json_error('缺少 sale_id');
+
+        $items = db_query("SELECT * FROM sale_items WHERE sale_id = ? ORDER BY id", [$sale_id]);
+        json_success($items);
+        break;
+
     default:
         json_error('未知的操作', 400);
 }
