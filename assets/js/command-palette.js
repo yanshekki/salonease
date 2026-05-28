@@ -314,6 +314,8 @@
     const itemFrequency = {};
     const lastPurchaseDate = {};
     const purchaseIntervals = {}; // 記錄每次購買的間隔天數，用來算平均
+    const allItemPrices = [];      // 用來計算「客戶個人最常接受的價格區間」
+    const freqItemPrice = {};      // 記錄每個高頻項目的平均價格
 
     try {
       const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=15`);
@@ -344,7 +346,7 @@
       // 排序銷售由舊到新，方便計算購買間隔
       const sortedSales = [...recentSalesWithItems].sort((a, b) => a.sale_date.localeCompare(b.sale_date));
 
-      // 分析頻率 + 購買間隔 + 關聯
+      // 分析頻率 + 購買間隔 + 關聯 + 個人價格偏好
       const pairFrequency = {};
 
       sortedSales.forEach((sale, index) => {
@@ -354,6 +356,13 @@
         itemsInSale.forEach(item => {
           const key = `${item.item_type}:${item.ref_id}`;
           itemFrequency[key] = (itemFrequency[key] || 0) + 1;
+
+          const itemPrice = parseFloat(item.unit_price || item.price || 0);
+          if (itemPrice > 0) {
+            allItemPrices.push(itemPrice);
+            if (!freqItemPrice[key]) freqItemPrice[key] = [];
+            freqItemPrice[key].push(itemPrice);
+          }
 
           // 記錄購買日期歷史
           if (!lastPurchaseDate[key]) lastPurchaseDate[key] = [];
@@ -381,6 +390,44 @@
           }
         }
       });
+
+      // === 根據客戶歷史計算「個人最可能接受的價格區間」+ 最適合的組合核心 ===
+      let personalPriceBand = null;
+      let optimalComboCore = [];
+      if (allItemPrices.length > 0) {
+        const sortedPrices = [...allItemPrices].sort((a, b) => a - b);
+        const p25 = sortedPrices[Math.floor(sortedPrices.length * 0.25)] || sortedPrices[0];
+        const p75 = sortedPrices[Math.floor(sortedPrices.length * 0.75)] || sortedPrices[sortedPrices.length - 1];
+        const median = sortedPrices[Math.floor(sortedPrices.length * 0.5)] || sortedPrices[0];
+
+        personalPriceBand = {
+          min: Math.round(p25 * 0.9),
+          max: Math.round(p75 * 1.15),
+          median: Math.round(median),
+          avgItem: Math.round(allItemPrices.reduce((a, b) => a + b, 0) / allItemPrices.length)
+        };
+
+        // 從高頻項目中挑選落在「個人舒適價格區間」內的 1~2 個，作為「最適合此客戶的組合核心」
+        const freqKeys = Object.entries(itemFrequency)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([k]) => k);
+
+        for (const key of freqKeys) {
+          const prices = freqItemPrice[key] || [];
+          if (prices.length === 0) continue;
+          const avgP = prices.reduce((a, b) => a + b, 0) / prices.length;
+          if (avgP >= personalPriceBand.min * 0.85 && avgP <= personalPriceBand.max * 1.05) {
+            let name = '項目';
+            for (const sale of recentSalesWithItems) {
+              const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === key);
+              if (found) { name = found.name; break; }
+            }
+            optimalComboCore.push({ key, name, avgPrice: Math.round(avgP) });
+            if (optimalComboCore.length >= 2) break;
+          }
+        }
+      }
 
       const today = new Date();
 
@@ -562,40 +609,55 @@
         });
       });
 
-      // 根據客戶平均消費力，產生更精準的「價格等級 + 最適合的服務/產品組合」
-      if (avgSpend > 0) {
-        const lowTier = Math.round(avgSpend * 0.8);
-        const midTier = Math.round(avgSpend * 1.2);
-        const highTier = Math.round(avgSpend * 1.6);
+      // === 根據客戶真實歷史產生「個人最可能接受的價格區間 + 最適合的服務/產品組合」===
+      if (personalPriceBand && personalPriceBand.median > 0) {
+        const band = personalPriceBand;
+        const bandLabel = `客製價位（HK$ ${band.min}–${band.max}）`;
+        let comboText = '您最常接受的價位組合';
+        let reasonText = `根據您過去 ${recentSales.length} 次消費，個人舒適價位大約落在 HK$ ${band.median} 左右，我們為您精選最匹配的項目。`;
 
-        let tierLabel = '';
-        let tierReason = '';
-        let suggestedCombo = '';
-
-        if (avgSpend < 500) {
-          tierLabel = `高CP值組合（約 HK$ ${lowTier}–${midTier}）`;
-          tierReason = `根據您平時消費習慣，建議選擇性價比高的搭配`;
-          suggestedCombo = '經典療程 + 基礎護膚產品';
-        } else if (avgSpend < 900) {
-          tierLabel = `平衡升級組合（約 HK$ ${midTier}–${highTier}）`;
-          tierReason = `根據您平時消費習慣，建議適度升級，感受更好效果`;
-          suggestedCombo = '熱門療程 + 熱賣護膚產品';
-        } else {
-          tierLabel = `高端體驗組合（約 HK$ ${highTier}+）`;
-          tierReason = `根據您平時消費習慣，建議體驗更高階的服務與產品`;
-          suggestedCombo = '旗艦療程 + 頂級護理產品';
+        const suggestedItemsForTier = [];
+        if (optimalComboCore.length > 0) {
+          comboText = optimalComboCore.map(c => c.name).join(' + ');
+          // 盡量把真實歷史高頻項目帶到 suggestedItems，讓一鍵加入真正有效
+          optimalComboCore.forEach(c => {
+            const [t, rid] = c.key.split(':');
+            suggestedItemsForTier.push({
+              type: t,
+              ref_id: parseInt(rid),
+              name: c.name,
+              unit_price: c.avgPrice
+            });
+          });
+          reasonText = `根據您的歷史，這個價位區間（中位 ${band.median}）的 ${comboText} 是您最常購買且最滿意的搭配，CP 值最高。`;
         }
 
         recommendations.push({
           id: `price-tier-${customer.id}`,
           type: 'price_suggestion',
-          label: tierLabel,
-          sublabel: `${suggestedCombo}`,
-          suggestedReason: tierReason,
-          keywords: '價格 升級 消費 等級 適合',
+          label: bandLabel,
+          sublabel: comboText,
+          suggestedReason: reasonText,
+          keywords: '價格 升級 消費 客製 最適合',
           icon: '💎',
           action: 'quick-add-recommendation',
-          priority: 14
+          priority: 18,
+          suggestedItems: suggestedItemsForTier,   // 現在有真實項目了！
+          priceBand: band
+        });
+      } else if (avgSpend > 0) {
+        // 後備：如果歷史項目太少，用總消費簡單估計（保留相容）
+        const low = Math.round(avgSpend * 0.75);
+        recommendations.push({
+          id: `price-tier-${customer.id}`,
+          type: 'price_suggestion',
+          label: `參考價位（約 HK$ ${low}–${Math.round(avgSpend * 1.4)}）`,
+          sublabel: '根據您平均消費',
+          suggestedReason: '根據您過往消費金額，我們建議這個區間的搭配最合您心水',
+          keywords: '價格 升級',
+          icon: '💎',
+          action: 'quick-add-recommendation',
+          priority: 12
         });
       }
 
@@ -868,22 +930,34 @@
       sec = `<span class="ms-auto text-muted">${item.icon || ''}</span>`;
     }
 
-    // 智能推薦標籤
+    // 智能推薦標籤（加強價格區間 + 複合建議視覺）
     let smartBadge = '';
-    if (item.isFrequent) {
+    if (item.type === 'price_suggestion' || item.priceBand) {
+      const b = item.priceBand;
+      const bandTxt = b ? `HK$${b.min}–${b.max}` : '客製價位';
+      smartBadge = `<span class="badge bg-success-subtle text-success ms-2" style="font-size:9px">💎 ${bandTxt}</span>`;
+    } else if (item.type === 'compound_recommendation') {
+      smartBadge = `<span class="badge bg-primary-subtle text-primary ms-2" style="font-size:9px">複合強推</span>`;
+    } else if (item.isFrequent) {
       smartBadge = `<span class="badge bg-warning-subtle text-warning ms-2" style="font-size:10px">最常用</span>`;
-    } else if (item.isReplenish) {
+    } else if (item.isGap || item.type === 'gap_suggestion') {
       smartBadge = `<span class="badge bg-info-subtle text-info ms-2" style="font-size:10px">該補貨</span>`;
+    } else if (item.isPair || item.type === 'smart_bundle') {
+      smartBadge = `<span class="badge bg-secondary-subtle text-secondary ms-2" style="font-size:9px">高匹配</span>`;
     }
+
+    // 有建議原因的推薦，顯示小提示圖示
+    const hasReason = item.suggestedReason ? `<span class="ms-1 text-muted" style="font-size:10px" title="有專業銷售話術">💬</span>` : '';
 
     return `<div class="cmd-row d-flex align-items-center gap-2 px-3 py-2 rounded-2 cursor-pointer ${idx === activeIndex ? 'bg-light' : ''}" data-idx="${idx}" style="cursor:pointer">
       <div style="width:28px" class="text-center fs-5">${item.icon || '🔗'}</div>
       <div class="flex-grow-1 min-w-0">
         <div class="d-flex align-items-center">
           <span class="fw-medium text-dark">${item.label}</span>
-          ${smartBadge}${recent}${sku}${lowStock}
+          ${smartBadge}${hasReason}${recent}${sku}${lowStock}
         </div>
         ${item.category ? `<div class="text-muted" style="font-size:11px;line-height:1">${item.category}</div>` : ''}
+        ${item.sublabel && (item.type && item.type.includes('suggestion') || item.isGap || item.isPair) ? `<div class="text-success" style="font-size:10px;line-height:1.1">${item.sublabel}</div>` : ''}
       </div>
       <div class="d-flex align-items-center small">${price}${sec}</div>
     </div>`;
@@ -1519,6 +1593,45 @@
     }
   }
 
+  /**
+   * 產生極致專業、自然的銷售話術（香港粵語風格）
+   * 包含：開場白（個人化）+ 歷史原因 + 價格定位 + 效益/社群證明 + 軟性行動呼籲
+   */
+  function generateProfessionalSalesScript(recommendation, extra = {}) {
+    const rec = recommendation || {};
+    const reason = rec.suggestedReason || '';
+    const days = extra.daysSinceLastVisit || 999;
+    const band = rec.priceBand;
+    const isLongAbsent = days > 90;
+    const isPrice = rec.type === 'price_suggestion';
+    const isGap = rec.isGap || rec.type === 'gap_suggestion';
+    const isBundle = rec.isPair || rec.type === 'smart_bundle' || rec.type === 'frequent_pair';
+    const isCompound = rec.type === 'compound_recommendation';
+
+    let script = '';
+
+    if (isCompound) {
+      script = `「喂，${isLongAbsent ? '好耐冇見，您最近都冇嚟做嘢呀～' : '又見到您啦！'} 根據您之前的記錄，呢個項目已經到補充的時候啦。同時好多客人買完之後都會一齊加呢個搭配，兩樣一齊用效果真係正好多，而且客單價都高咗少少。您覺得呢個組合點呀？只係多咗唔多錢，感覺就完全唔同。」`;
+    } else if (isGap) {
+      script = `「上次您買呢個已經有 ${extra.daysSince || '一段'} 日啦！好多客人平均 ${Math.round((extra.avgInterval || 35))} 日就會補返一次。您而家補返，效果會即刻返到最佳狀態，而且而家做呢個價位都幾抵。您要唔要一齊補呢個？CP值真係高。」`;
+    } else if (isBundle) {
+      script = `「呢個係您之前好鍾意嘅項目，好多客人買完 ${rec.label ? rec.label.split('：')[1] || '呢樣' : '呢樣'} 之後，都會順便加呢個搭配。兩樣一齊用，效果同感覺都會明顯升級，只係多咗少少錢。您覺得點呀？試下啦！」`;
+    } else if (isPrice) {
+      const bandText = band ? `（您最舒服嘅價位大約 HK$ ${band.median} 左右）` : '';
+      script = `「根據您過去幾次消費習慣，我們為您度身訂造咗呢個價位區間 ${bandText}。呢個組合既唔會太貴，又可以感受到明顯嘅效果同體驗，好多同您消費水平差唔多嘅客人，都覺得呢個最啱自己。您睇下喜唔喜歡？」`;
+    } else if (rec.isFrequent) {
+      script = `「呢個係您之前返購好多次嘅王牌項目！效果穩定，價錢都幾親民，好多客人係固定每隔幾個星期就買一次。您而家要唔要再嚟一組？絕對抵。」`;
+    } else {
+      script = `「根據您嘅購買習慣，我哋推介呢個搭配。效果同性價比都幾高，好多客人用完之後都話值得，而且整體感覺會更好。您有興趣試下嗎？」`;
+    }
+
+    // 統一加上溫柔 CTA
+    if (!script.includes('您覺得') && !script.includes('試下') && !script.includes('點呀')) {
+      script += ` 您覺得呢個建議如何呀？`;
+    }
+    return script;
+  }
+
   // 從智能推薦直接一鍵加入（帶建議原因 + 自動產生銷售話術 + 記錄到備註）
   async function quickAddRecommendedItems(recommendation) {
     const items = recommendation.suggestedItems || [];
@@ -1548,34 +1661,47 @@
       }
     }
 
-    // 自動產生更完整、自然、專業的銷售話術（開場 + 個人化理由 + 價格 + 行動呼籲）
-    let script = '';
-    const reason = recommendation.suggestedReason || '';
+    // 使用全新專業銷售話術生成器（更自然、更長、更香港粵語風）
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const ctxForScript = {
+      daysSinceLastVisit: (typeof daysSinceLastVisit !== 'undefined' ? daysSinceLastVisit : 30)
+    };
+    const richScript = generateProfessionalSalesScript(recommendation, ctxForScript);
 
-    if (recommendation.type === 'compound_recommendation') {
-      script = `可以跟客人說：「根據您的購買記錄，這個項目已經到補充的時候了。同時很多客人會一起加購這個搭配，兩者一起使用效果會更好，而且整體性價比也很高。您看要不要一起試試這個組合呢？」`;
-    } else if (recommendation.isGap) {
-      script = `可以跟客人說：「上次您購買這個已經有一段時間了，我們建議您補充。這個搭配現在有優惠，CP值很高，很多客人用完都說效果明顯，而且價格很划算。您要不要順便補充呢？」`;
-    } else if (recommendation.isPair || recommendation.type === 'frequent_pair' || recommendation.type === 'smart_bundle') {
-      script = `可以跟客人說：「很多客人買這個之後都會再加購這個，效果會更好哦～ 只多一點點錢，整體感覺就會明顯升級不少。您覺得如何呢？」`;
-    } else if (recommendation.type === 'price_suggestion') {
-      script = `可以跟客人說：「根據您平時的消費習慣，我們推薦這個價位區間的搭配，感覺很適合您。效果和體驗都會更好一點，性價比也很不錯。」`;
-    } else if (recommendation.isFrequent) {
-      script = `可以跟客人說：「這個是您之前很喜歡的項目，這次要不要再來一組？價格也很親民，效果也很穩定，很多客人都是固定回購的。」`;
-    } else {
-      script = `可以跟客人說：「根據您的購買習慣，我們推薦搭配這個。很多客人用完都覺得值得，而且整體感覺會更好。」`;
+    // 特別處理 price_suggestion：如果沒有 suggestedItems，嘗試從 POS itemsCache 揀最接近客戶中位價的 1-2 項自動加入
+    if (items.length === 0 && recommendation.type === 'price_suggestion' && POS && POS.getItemsCache) {
+      const cache = POS.getItemsCache();
+      const band = recommendation.priceBand;
+      if (cache && cache.length && band) {
+        const candidates = cache
+          .filter(i => i.price >= band.min * 0.7 && i.price <= band.max * 1.1)
+          .sort((a, b) => Math.abs(a.price - band.median) - Math.abs(b.price - band.median))
+          .slice(0, 2);
+        candidates.forEach(it => {
+          if (window.addToCart) {
+            window.addToCart(it.type || 'service', it.id, it.name, it.price);
+          }
+        });
+        if (candidates.length > 0) {
+          // 補充 notes
+          if (notesEl) {
+            const extraNote = `[智能推薦] 價格區間自動配對：${candidates.map(c => c.name).join(' + ')}`;
+            notesEl.value = notesEl.value ? `${notesEl.value}\n${extraNote}` : extraNote;
+          }
+        }
+      }
     }
 
     hide();
 
     if (window.SalonEase && window.SalonEase.toast) {
-      window.SalonEase.toast(`已加入推薦項目`, 'success', 2200);
-      // 延遲顯示銷售話術，讓使用者有時間看到第一個 toast
+      window.SalonEase.toast(`已加入推薦項目`, 'success', 1800);
       setTimeout(() => {
         if (window.SalonEase && window.SalonEase.toast) {
-          window.SalonEase.toast(script, 'info', 3800);
+          // 顯示完整專業銷售話術（更長時間）
+          window.SalonEase.toast(richScript, 'info', 5200);
         }
-      }, 2300);
+      }, 2100);
     }
   }
 
