@@ -1410,6 +1410,77 @@
 
           heat.parentElement.insertBefore(wrapper, heat.nextSibling);
 
+          // === 自動建議替代項目（當高貼合項目太少時）===
+          const bandNow = getEffectivePriceBand();
+          if (bandNow) {
+            const highCount = currentResults.filter(item => {
+              if (!item.price || item.type === 'package_redemption') return false;
+              const c = getPriceClosenessScore(item.price, bandNow);
+              const activeFilter = (window.SalonEase && window.SalonEase._cmdPriceFilter) || null;
+              let matchFilter = true;
+              if (activeFilter) {
+                const p = parseFloat(item.price);
+                if (activeFilter === 'below' && p >= bandNow.min) matchFilter = false;
+                if (activeFilter === 'within' && (p < bandNow.min || p > bandNow.max)) matchFilter = false;
+                if (activeFilter === 'above' && p <= bandNow.max) matchFilter = false;
+              }
+              return c >= 70 && matchFilter;
+            }).length;
+
+            if (highCount < 4) {
+              // 搵 2-3 個最接近嘅替代項目（未喺高貼合範圍，但最接近）
+              const alternatives = currentResults
+                .filter(item => {
+                  if (!item.price || item.type === 'package_redemption') return false;
+                  const c = getPriceClosenessScore(item.price, bandNow);
+                  const activeFilter = (window.SalonEase && window.SalonEase._cmdPriceFilter) || null;
+                  let matchFilter = true;
+                  if (activeFilter) {
+                    const p = parseFloat(item.price);
+                    if (activeFilter === 'below' && p >= bandNow.min) matchFilter = false;
+                    if (activeFilter === 'within' && (p < bandNow.min || p > bandNow.max)) matchFilter = false;
+                    if (activeFilter === 'above' && p <= bandNow.max) matchFilter = false;
+                  }
+                  return c < 70 && c > 40 && matchFilter;
+                })
+                .sort((a, b) => getPriceClosenessScore(b.price, bandNow) - getPriceClosenessScore(a.price, bandNow))
+                .slice(0, 3);
+
+              if (alternatives.length > 0) {
+                const suggestDiv = document.createElement('div');
+                suggestDiv.className = 'ms-2 mt-1';
+                suggestDiv.style.fontSize = '9px';
+
+                const label = document.createElement('span');
+                label.className = 'text-warning';
+                label.innerHTML = '自動建議替代：';
+                suggestDiv.appendChild(label);
+
+                alternatives.forEach(alt => {
+                  const altBtn = document.createElement('button');
+                  altBtn.type = 'button';
+                  altBtn.className = 'btn btn-sm btn-outline-warning py-0 px-1 ms-1';
+                  altBtn.style.fontSize = '8px';
+                  altBtn.innerHTML = `${alt.label} (${getPriceClosenessScore(alt.price, bandNow)}%)`;
+                  altBtn.title = '一鍵加入呢個最接近嘅替代項目';
+
+                  altBtn.onclick = (ev2) => {
+                    ev2.stopImmediatePropagation();
+                    if (window.addToCart) {
+                      window.addToCart(alt.type, alt.ref_id, alt.label || alt.name, alt.price);
+                      if (window.SalonEase && window.SalonEase.toast) {
+                        window.SalonEase.toast(`✅ 已加入替代項目：${alt.label}`, 'success', 1400);
+                      }
+                    }
+                  };
+                  suggestDiv.appendChild(altBtn);
+                });
+
+                wrapper.appendChild(suggestDiv);
+              }
+            }
+          }
+
           // 5 秒後自動消失
           setTimeout(() => {
             if (wrapper && wrapper.parentElement) wrapper.parentElement.removeChild(wrapper);
