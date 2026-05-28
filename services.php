@@ -13,105 +13,114 @@ $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
-        <p class="text-[#5A5A5C] text-sm mt-1"><?= e($pageSubtitle) ?></p>
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+    <div class="mb-3 mb-md-0">
+        <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+        <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
     </div>
-    <button onclick="showAddModal()"
-            class="salon-btn salon-btn-primary flex items-center gap-x-2">
+    <button onclick="showAddModal()" class="btn btn-primary d-flex align-items-center gap-2">
         <span>+ 新增服務</span>
-        <span class="text-xs opacity-75">[N]</span>
+        <span class="small opacity-75">[N]</span>
     </button>
 </div>
 
 <!-- 搜尋與過濾 -->
-<div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4 flex flex-wrap gap-3 items-end">
-    <div class="flex-1 min-w-[240px]">
-        <label class="block text-xs text-[#5A5A5C] mb-1">搜尋服務名稱</label>
-        <input type="text" id="search" class="salon-input" oninput="debounceLoadServices()">
-    </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">類別</label>
-        <select id="category-filter" class="salon-input" onchange="loadServices()">
-            <option value="">全部類別</option>
-            <option value="面部護理">面部護理</option>
-            <option value="身體護理">身體護理</option>
-            <option value="醫美">醫美</option>
-            <option value="其他">其他</option>
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs text-[#5A5A5C] mb-1">狀態</label>
-        <select id="status-filter" class="salon-input" onchange="loadServices()">
-            <option value="">全部</option>
-            <option value="1">已啟用</option>
-            <option value="0">已停用</option>
-        </select>
-    </div>
-    <button onclick="loadServices()" class="salon-btn salon-btn-secondary h-[42px]">重新載入</button>
-</div>
-
-<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <table class="salon-table w-full">
-        <thead>
-            <tr>
-                <th>服務名稱</th>
-                <th>時長</th>
-                <th>價格</th>
-                <th>類別</th>
-                <th>狀態</th>
-                <th class="text-right">操作</th>
-            </tr>
-        </thead>
-        <tbody id="services-list">
-            <tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
-        </tbody>
-    </table>
-</div>
-
-<!-- Modal -->
-<div id="service-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideServiceModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg" id="modal-title">新增服務</div>
-            <button onclick="hideServiceModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
-
-        <div class="p-5 space-y-4">
-            <input type="hidden" id="service-id">
-
-            <div>
-                <label class="block text-sm font-medium mb-1">服務名稱 <span class="text-red-500">*</span></label>
-                <input type="text" id="service-name" class="salon-input" placeholder="經典面部護理 60 分鐘">
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label small text-muted mb-1">搜尋服務名稱</label>
+                <input type="text" id="search" class="form-control" oninput="debounceLoadServices()">
             </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">時長（分鐘）</label>
-                    <input type="number" id="service-duration" class="salon-input" value="60">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">價格（HK$） <span class="text-red-500">*</span></label>
-                    <input type="number" step="0.01" id="service-price" class="salon-input" placeholder="680">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium mb-1">類別</label>
-                <select id="service-category" class="salon-input">
-                    <option value="">未分類</option>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">類別</label>
+                <select id="category-filter" class="form-select" onchange="loadServices()">
+                    <option value="">全部類別</option>
                     <option value="面部護理">面部護理</option>
                     <option value="身體護理">身體護理</option>
                     <option value="醫美">醫美</option>
                     <option value="其他">其他</option>
                 </select>
             </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small text-muted mb-1">狀態</label>
+                <select id="status-filter" class="form-select" onchange="loadServices()">
+                    <option value="">全部</option>
+                    <option value="1">已啟用</option>
+                    <option value="0">已停用</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-auto">
+                <button onclick="loadServices()" class="btn btn-outline-secondary w-100">重新載入</button>
+            </div>
         </div>
+    </div>
+</div>
 
-        <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-            <button onclick="hideServiceModal()" class="salon-btn salon-btn-secondary">取消</button>
-            <button onclick="saveService()" class="salon-btn salon-btn-primary" id="save-btn">新增服務</button>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>服務名稱</th>
+                    <th>時長</th>
+                    <th>價格</th>
+                    <th>類別</th>
+                    <th>狀態</th>
+                    <th class="text-end" style="width: 120px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="services-list">
+                <tr><td colspan="6" class="py-5 text-center text-muted">載入中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal (Bootstrap) -->
+<div class="modal fade" id="serviceModal" tabindex="-1" aria-labelledby="serviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">新增服務</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="service-id">
+
+                <div class="mb-3">
+                    <label class="form-label">服務名稱 <span class="text-danger">*</span></label>
+                    <input type="text" id="service-name" class="form-control" placeholder="經典面部護理 60 分鐘">
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">時長（分鐘）</label>
+                        <input type="number" id="service-duration" class="form-control" value="60">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">價格（HK$） <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" id="service-price" class="form-control" placeholder="680">
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">類別</label>
+                    <select id="service-category" class="form-select">
+                        <option value="">未分類</option>
+                        <option value="面部護理">面部護理</option>
+                        <option value="身體護理">身體護理</option>
+                        <option value="醫美">醫美</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="saveService()" class="btn btn-primary" id="save-btn">新增服務</button>
+            </div>
         </div>
     </div>
 </div>
@@ -192,9 +201,11 @@ function showAddModal() {
 
     document.getElementById('save-btn').textContent = '新增服務';
 
-    document.getElementById('service-modal').classList.remove('hidden');
-    document.getElementById('service-modal').classList.add('flex');
-    setTimeout(() => document.getElementById('service-name').focus(), 100);
+    const modalEl = document.getElementById('serviceModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    setTimeout(() => document.getElementById('service-name').focus(), 400);
 }
 
 async function editService(id) {
@@ -212,17 +223,18 @@ async function editService(id) {
 
         document.getElementById('save-btn').textContent = '儲存變更';
 
-        document.getElementById('service-modal').classList.remove('hidden');
-        document.getElementById('service-modal').classList.add('flex');
+        const modalEl = document.getElementById('serviceModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
     } catch (err) {
         SalonEase.toast(err.message, 'error');
     }
 }
 
 function hideServiceModal() {
-    const modal = document.getElementById('service-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalEl = document.getElementById('serviceModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 async function saveService() {
