@@ -2650,7 +2650,112 @@
   }
 
   /**
-   * 啟動完整對話模擬器（Phase 43 核心 + Phase 44 即時推薦）
+   * Phase 45：迷你價位熱力圖 + 智能缺口補位（教練實時分析）
+   * 在模擬器內顯示目前 gap 項目嘅貼合度，點擊即可一鍵加入 + 自動生成「貼合度 XX% 好啱您」銷售話
+   */
+  function renderMiniPriceHeatmapForGap(sim, gapAlternatives, mainTa, addToTranscriptFn, customerName) {
+    if (!sim || !gapAlternatives || gapAlternatives.length === 0) return;
+
+    const old = sim.querySelector('#convo-mini-heatmap');
+    if (old) old.remove();
+
+    const band = (typeof getEffectivePriceBand === 'function') ? getEffectivePriceBand() : null;
+    if (!band) return; // 冇價位數據就唔顯示
+
+    const container = document.createElement('div');
+    container.id = 'convo-mini-heatmap';
+    container.className = 'mt-2 p-2 rounded border bg-white';
+    container.style.borderColor = '#8FA68F';
+
+    let html = `
+      <div class="small fw-semibold text-success mb-1 d-flex align-items-center">
+        🔥 智能缺口補位熱力圖（根據您最愛價位）
+      </div>
+      <div class="d-flex flex-wrap gap-1">`;
+
+    // 只顯示前 4 個 gap 項目，計算真實貼合度
+    const scored = gapAlternatives
+      .filter(a => a.price && a.type !== 'package_redemption')
+      .map(a => ({
+        ...a,
+        closeness: (typeof getPriceClosenessScore === 'function') ? getPriceClosenessScore(a.price, band) : 60
+      }))
+      .sort((a, b) => b.closeness - a.closeness)
+      .slice(0, 4);
+
+    scored.forEach((item, idx) => {
+      const pct = item.closeness;
+      const color = pct >= 85 ? '#28a745' : pct >= 70 ? '#5cb85c' : '#ffc107';
+      const flash = pct >= 80 ? 'animate-pulse' : '';
+
+      html += `
+        <button type="button" class="btn btn-sm py-0 px-2 ${flash}" style="font-size:10px;border-color:${color};color:#222;background:#fff;" data-heat-idx="${idx}">
+          ${item.label || item.name}
+          <span class="badge ms-1" style="background:${color};color:white;font-size:9px;">${pct}%</span>
+        </button>`;
+    });
+
+    html += `</div><div class="small text-muted mt-1" style="font-size:9px;">高貼合項目會閃綠，點擊即加入 + 自動生成銷售話</div>`;
+    container.innerHTML = html;
+
+    // 插入到 transcript 之後或 recs 之後
+    const after = sim.querySelector('#convo-live-recs') || sim.querySelector('#convo-transcript');
+    if (after && after.parentNode) {
+      after.parentNode.insertBefore(container, after.nextSibling);
+    } else {
+      sim.appendChild(container);
+    }
+
+    // 綁定點擊
+    container.querySelectorAll('button[data-heat-idx]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const idx = parseInt(btn.dataset.heatIdx);
+        const chosen = scored[idx];
+        if (!chosen) return;
+
+        // 加入購物車
+        if (window.addToCart) {
+          window.addToCart(chosen.type, chosen.ref_id, chosen.label || chosen.name, chosen.price);
+        }
+
+        // 生成特別銷售話
+        const closenessLine = `呢個項目同您最愛價位貼合度 ${chosen.closeness}%，好啱您！`;
+        if (addToTranscriptFn) {
+          addToTranscriptFn('我（熱力圖推薦）', `即刻加「${chosen.label || chosen.name}」—— ${closenessLine}`);
+        }
+
+        // 微調主話術
+        let script = mainTa.value.trim();
+        if (!script.includes(closenessLine)) {
+          script = script.replace(/您而家要唔要我.*?$/u, '') + ` ${closenessLine}`;
+        }
+        mainTa.value = script;
+
+        // 記錄
+        const notesEl = document.getElementById('sale-notes');
+        if (notesEl) {
+          const note = `[智能缺口熱力圖] 已加入高貼合項目 ${chosen.label || chosen.name}（${chosen.closeness}%）`;
+          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+        }
+
+        // 視覺反饋 + 移除
+        btn.style.transition = 'all 0.2s';
+        btn.style.background = '#d4edda';
+        setTimeout(() => {
+          btn.remove();
+          if (container.querySelectorAll('button').length === 0) container.remove();
+        }, 280);
+
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(`✅ 已加高貼合項目（${chosen.closeness}%）`, 'success', 1100);
+        }
+      };
+    });
+  }
+
+  /**
+   * 啟動完整對話模擬器（Phase 43 核心 + Phase 44 即時推薦 + Phase 45 熱力圖）
    * 讓用戶像真正同客戶傾偈咁，一輪一輪即時優化話術，最後生成完整對話紀錄
    */
   function startConversationSimulator(panel, mainTa, alternatives, context) {
@@ -2744,6 +2849,11 @@
           // 4. Phase 44：第 3 輪之後即時顯示教練推薦
           if (turn >= 3) {
             renderLiveRecommendations(sim, turn, resp.type, mainTa, transcript, transcriptEl, addToTranscript, customerName);
+          }
+
+          // 5. Phase 45：同時顯示迷你價位熱力圖 + 智能缺口補位
+          if (turn >= 3) {
+            renderMiniPriceHeatmapForGap(sim, alternatives, mainTa, addToTranscript, customerName);
           }
 
           // 5. 重新渲染回應（下一輪）
