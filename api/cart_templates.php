@@ -9,6 +9,7 @@ require_login();
 
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $currentStaffId = $_SESSION['staff_id'] ?? 0;
@@ -39,6 +40,7 @@ switch ($action) {
 
     case 'create':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $name = trim(post('name', ''));
         $itemsJson = post('items', '');
@@ -80,8 +82,11 @@ switch ($action) {
             [$currentStaffId, $name, json_encode($cleanItems, JSON_UNESCAPED_UNICODE)]
         );
 
+        $newId = (int)db_last_id();
+        log_activity('cart_template.created', $newId, 'cart_template', ['name' => $name, 'item_count' => count($cleanItems)]);
+
         json_success([
-            'id' => (int)db_last_id(),
+            'id' => $newId,
             'name' => $name
         ], '常用組合已儲存');
         break;
@@ -113,6 +118,7 @@ switch ($action) {
 
     case 'delete':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id', 0);
 
@@ -120,10 +126,16 @@ switch ($action) {
             json_error('缺少模板 ID');
         }
 
+        // 取得名稱供審計記錄
+        $tpl = db_query_one("SELECT name FROM cart_templates WHERE id = ? AND staff_id = ?", [$id, $currentStaffId]);
+        $tplName = $tpl['name'] ?? '';
+
         db_exec(
             "UPDATE cart_templates SET is_active = 0 WHERE id = ? AND staff_id = ?",
             [$id, $currentStaffId]
         );
+
+        log_activity('cart_template.deleted', $id, 'cart_template', ['name' => $tplName]);
 
         json_success(null, '常用組合已刪除');
         break;

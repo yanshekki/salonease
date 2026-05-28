@@ -3,7 +3,7 @@
  * SalonEase - 員工佣金查詢
  */
 require_once __DIR__ . '/includes/auth.php';
-require_login();
+require_role(['admin', 'manager']);
 
 $pageTitle = '佣金查詢';
 $pageSubtitle = '按員工查看累計佣金';

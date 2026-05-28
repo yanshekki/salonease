@@ -17,9 +17,13 @@ $email = '';
 
 // 無論 GET 或 POST，都需要 functions.php（e() 函數）
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once __DIR__ . '/includes/auth.php';
+
+    // CSRF 保護（Phase 1）
+    require_csrf();
 
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -93,6 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="password" name="password" required
                                class="form-control" placeholder="••••••••" autocomplete="current-password">
                     </div>
+
+                    <?= csrf_field() ?>
 
                     <button type="submit" class="btn btn-dark w-100 py-2 fw-medium">
                         登入系統

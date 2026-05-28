@@ -76,14 +76,25 @@ switch ($action) {
         if (!is_post()) json_error('只接受 POST 請求', 405);
         require_csrf();
 
-        $name = trim(post('name'));
-        $email = trim(post('email'));
-        $phone = trim(post('phone'));
+        $name = sanitize_string(post('name', ''));
+        $email = trim(post('email', ''));
+        $phone = trim(post('phone', ''));
         $role = post('role', 'therapist');
-        $password = post('password');
+        $password = post('password', '');
 
-        if (!$name || !$email || !$password) {
-            json_error('姓名、電郵及密碼為必填');
+        // 使用集中驗證（Phase 1）
+        if ($err = validate_required($name, '姓名')) json_error($err);
+        if ($err = validate_required($email, '電郵')) json_error($err);
+        if ($err = validate_required($password, '密碼')) json_error($err);
+        if ($err = validate_length($name, '姓名', 50, 1)) json_error($err);
+        if ($err = validate_email($email)) json_error($err);
+        if ($err = validate_hk_phone($phone)) json_error($err);
+        if ($err = validate_length($password, '密碼', 100, 6)) json_error($err);
+
+        // 角色白名單
+        $allowedRoles = ['admin', 'manager', 'therapist', 'receptionist'];
+        if (!in_array($role, $allowedRoles, true)) {
+            json_error('角色無效');
         }
 
         // 檢查電郵是否已存在
@@ -115,12 +126,19 @@ switch ($action) {
         require_csrf();
 
         $id = (int)post('id');
-        $name = trim(post('name'));
-        $phone = trim(post('phone'));
-        $role = post('role');
+        $name = sanitize_string(post('name', ''));
+        $phone = trim(post('phone', ''));
+        $role = post('role', '');
 
-        if (!$id || !$name) {
-            json_error('缺少必要資料');
+        if ($err = validate_required($id, '員工 ID')) json_error($err);
+        if ($err = validate_required($name, '姓名')) json_error($err);
+        if ($err = validate_length($name, '姓名', 50, 1)) json_error($err);
+        if ($err = validate_hk_phone($phone)) json_error($err);
+
+        // 角色白名單
+        $allowedRoles = ['admin', 'manager', 'therapist', 'receptionist'];
+        if ($role && !in_array($role, $allowedRoles, true)) {
+            json_error('角色無效');
         }
 
         // 取得目前角色，用於權限檢查

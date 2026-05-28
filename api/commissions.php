@@ -10,7 +10,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../db.php';
 
-require_login();
+require_role(['admin', 'manager']);
 
 $action = $_GET['action'] ?? '';
 $from   = $_GET['from'] ?? date('Y-m-d');
