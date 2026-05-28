@@ -53,6 +53,22 @@ switch ($action) {
         );
         if (!$customer) json_error('找不到該客戶', 404);
 
+        // A36：加入最近積分異動（最多 6 筆）
+        $recentHistory = db_query(
+            "SELECT 
+                al.created_at,
+                al.action,
+                al.details
+             FROM audit_logs al
+             WHERE al.entity_type = 'customer' 
+               AND al.entity_id = ?
+               AND al.action IN ('customer.points_earned', 'customer.points_redeemed', 'customer.points_adjusted')
+             ORDER BY al.created_at DESC
+             LIMIT 6",
+            [$id]
+        );
+
+        $customer['recent_points_history'] = $recentHistory ?: [];
         json_success($customer);
         break;
 
