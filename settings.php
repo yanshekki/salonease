@@ -1,5 +1,6 @@
 <?php 
 require_once __DIR__ . '/includes/auth.php'; 
+require_once __DIR__ . '/includes/csrf.php';
 require_login(); 
 $pageTitle = '系統設定'; 
 $extraJs = 'settings.js';   // 稍後可獨立抽離，目前先用內聯 Alpine
@@ -259,6 +260,7 @@ function shopSettings() {
                 await SalonEase.fetch('/api/settings.php?action=save_shop', {
                     method: 'POST',
                     body: {
+                        csrf_token: '<?= csrf_token() ?>',
                         salon_name: this.form.salon_name,
                         address: this.form.address,
                         phone: this.form.phone,

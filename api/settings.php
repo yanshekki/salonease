@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../db.php';
 
 require_login();
@@ -38,6 +39,9 @@ switch ($action) {
 
     case 'save_shop':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+
+        // CSRF 保護
+        require_csrf();
 
         // 只有 admin / manager 可以改店舖資訊
         if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
