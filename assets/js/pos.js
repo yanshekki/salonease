@@ -972,3 +972,35 @@ window.checkout = checkout;
 window.printLastReceipt = printLastReceipt;
 window.showPrintFormatChoice = showPrintFormatChoice;
 window.bulkAssignStaff = bulkAssignStaff;
+
+// === A 選項：暴露 SalonEase.POS 命名空間給命令面板（Ctrl+K）直接使用 ===
+// 讓 command-palette.js 可以在 POS 頁一鍵「加入購物車」而無需知道內部 cart 實作
+window.SalonEase = window.SalonEase || {};
+window.SalonEase.POS = {
+    // 主要入口：命令面板呼叫此方法即可加入
+    addToCart: function(item) {
+        if (!item || !window.addToCart) return false;
+
+        const type = item.type || 'service';
+        const refId = item.ref_id || item.id;
+        const name = item.name || item.label;
+        const price = parseFloat(item.price || item.unit_price || 0);
+
+        // 呼叫真實的 addToCart（會自動 renderCart + updateCartTotals + 低庫存提示）
+        window.addToCart(type, refId, name, price);
+
+        // 額外 toast 提示（如果命令面板自己沒顯示）
+        if (window.SalonEase.toast) {
+            window.SalonEase.toast(`已加入：${name}`, 'success', 1600);
+        }
+        return true;
+    },
+
+    // 其他常用操作（命令面板或未來擴展可用）
+    renderCart: () => { if (window.renderCart) window.renderCart(); },
+    clearCart: () => { if (window.clearCart) window.clearCart(); },
+    getCart: () => Array.isArray(cart) ? [...cart] : [],
+    getItemsCache: () => Array.isArray(itemsCache) ? [...itemsCache] : []
+};
+
+console.log('%c[SalonEase] POS 命名空間已暴露（命令面板可直接加購物車）', 'color:#8FA68F;font-size:9px');

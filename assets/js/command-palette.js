@@ -230,15 +230,30 @@
     recordUsage(item.id);
     hide();
 
-    const POS = window.SalonEase && window.SalonEase.POS;
-    if (POS && typeof POS.addToCart === 'function') {
-      POS.addToCart({ id: item.id.replace(/^(svc|prod)-/, ''), name: item.label, price: item.price, type: item.type });
-      (window.SalonEase.toast || alert)(`已加入購物車：${item.label}`);
+    // 最高優先：直接呼叫 POS 頁已暴露的 window.addToCart（最可靠，即時生效）
+    if (window.addToCart) {
+      const type = item.type || 'service';
+      const refId = (item.id || '').replace(/^(svc|prod)-/, '');
+      const name = item.label || item.name;
+      const price = item.price || 0;
+
+      window.addToCart(type, refId, name, price);
+
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast(`已加入：${name}`, 'success', 1600);
+      }
       return;
     }
 
-    // POS 尚未完整實作時的友好提示
-    if (confirm(`「${item.label}」已記錄。\nPOS 完整購物車功能即將完成。\n\n立即前往 POS 頁？`)) {
+    // 備援：使用命名空間（pos.js 已暴露）
+    const POS = window.SalonEase && window.SalonEase.POS;
+    if (POS && typeof POS.addToCart === 'function') {
+      POS.addToCart({ id: item.id.replace(/^(svc|prod)-/, ''), name: item.label, price: item.price, type: item.type });
+      return;
+    }
+
+    // 最後 fallback
+    if (confirm(`「${item.label}」已記錄。\n請前往 POS 頁使用完整購物車。`)) {
       location.href = '/pos.php';
     }
   }
