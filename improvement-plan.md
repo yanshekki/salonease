@@ -246,7 +246,8 @@
 - A64：reports.php 加入「熱門產品 Top 3」簡單摘要，報表頁小強化延續
 - A65：reports.php 加入「套票扣減 Top 3」簡單摘要，報表頁小強化延續
 - A66：reports.php「套票扣減次數」卡片加入「較上期」百分比，完成四大卡片對比
-- A67+：繼續報表視覺化或 Dashboard 數據強化
+- A67：reports.php 加入「本月交易數 vs 上月」簡單摘要，報表頁數據對比延續
+- A68+：繼續報表視覺化或 Dashboard 數據強化
 
 **執行方式**：嚴格沿用 Phase 2 成功模式，每完成一個有意義小任務即 commit + --no-ff merge origin/main + push，main 永遠保持穩定。
 
