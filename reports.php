@@ -73,7 +73,8 @@ include __DIR__ . '/includes/header.php';
                 <div class="card-body">
                     <div class="text-uppercase text-muted small mb-1">套票扣減次數</div>
                     <div class="fs-4 fw-semibold text-purple" x-text="summary.package_sessions"></div>
-                    <div class="small text-muted mt-2">客戶使用療程卡</div>
+                    <div class="small" :class="getChangeClass(summary.package_sessions, prevSummary.package_sessions)" x-text="getChangeText(summary.package_sessions, prevSummary.package_sessions)"></div>
+                    <div class="small text-muted mt-1">客戶使用療程卡</div>
                 </div>
             </div>
         </div>
