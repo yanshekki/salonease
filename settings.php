@@ -154,6 +154,41 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- 忠誠度積分設定（Phase 2 A18 補完） -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">忠誠度積分設定</div>
+                    <div class="small text-muted">調整客戶積分累積與兌換規則，即時生效</div>
+                </div>
+                <div class="badge bg-light text-dark small">即時生效</div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small">累積率（每消費多少元 = 1 點）</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">$</span>
+                        <input type="number" x-model.number="form.points_earn_rate" 
+                               step="1" min="1" max="100" class="form-control">
+                        <span class="input-group-text">= 1 點</span>
+                    </div>
+                    <div class="small text-muted mt-1">例如：10 表示每 $10 消費累積 1 點</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">兌換率（多少點 = $1 折扣）</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" x-model.number="form.points_redemption_rate" 
+                               step="1" min="1" max="100" class="form-control">
+                        <span class="input-group-text">點 = $1</span>
+                    </div>
+                    <div class="small text-muted mt-1">例如：10 表示 10 點可兌 $1 折扣</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 管理功能快速入口 -->
     <div class="row g-3">
         <div class="col-md-6 col-lg-4">
@@ -224,7 +259,9 @@ function shopSettings() {
             default_commission_service: 40,
             default_commission_retail: 15,
             default_commission_open: 5,
-            default_low_stock_threshold: 5
+            default_low_stock_threshold: 5,
+            points_earn_rate: 10,
+            points_redemption_rate: 10
         },
         saving: false,
         saved: false,
@@ -246,6 +283,8 @@ function shopSettings() {
                     this.form.default_commission_retail  = parseFloat(d.default_commission_retail) || 15;
                     this.form.default_commission_open    = parseFloat(d.default_commission_open) || 5;
                     this.form.default_low_stock_threshold = parseInt(d.default_low_stock_threshold) || 5;
+                    this.form.points_earn_rate = parseInt(d.points_earn_rate) || 10;
+                    this.form.points_redemption_rate = parseInt(d.points_redemption_rate) || 10;
                 }
             } catch (e) {
                 console.warn('載入設定失敗', e);
@@ -268,7 +307,9 @@ function shopSettings() {
                         default_commission_service: this.form.default_commission_service,
                         default_commission_retail: this.form.default_commission_retail,
                         default_commission_open: this.form.default_commission_open,
-                        default_low_stock_threshold: this.form.default_low_stock_threshold
+                        default_low_stock_threshold: this.form.default_low_stock_threshold,
+                        points_earn_rate: this.form.points_earn_rate,
+                        points_redemption_rate: this.form.points_redemption_rate
                     }
                 });
 
