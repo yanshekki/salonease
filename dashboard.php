@@ -26,13 +26,19 @@ $globalLow = (int)($globalThreshold['default_low_stock_threshold'] ?? 5);
 $allActiveProducts = db_query("SELECT stock_qty, low_stock_threshold FROM products WHERE is_active = 1");
 
 $lowStockCount = 0;
+$totalShortage = 0;
 foreach ($allActiveProducts as $p) {
     $threshold = $p['low_stock_threshold'] !== null ? (int)$p['low_stock_threshold'] : $globalLow;
-    if ((int)$p['stock_qty'] <= $threshold) {
+    $stock = (int)$p['stock_qty'];
+    if ($stock <= $threshold) {
         $lowStockCount++;
+        $totalShortage += ($threshold - $stock);
     }
 }
-$lowStock = ['cnt' => $lowStockCount];
+$lowStock = [
+    'cnt' => $lowStockCount,
+    'total_shortage' => $totalShortage
+];
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -77,13 +83,16 @@ $lowStock = ['cnt' => $lowStockCount];
         </div>
     </div>
 
-    <!-- 低庫存警示 -->
+    <!-- 低庫存警示（A40 強化） -->
     <div class="col-12 col-md-6 col-lg-3">
         <div class="card h-100 border-danger-subtle">
             <div class="card-body">
                 <div class="text-uppercase text-muted small mb-1" style="letter-spacing: 0.5px;">低庫存警示</div>
                 <div class="display-6 fw-semibold text-danger"><?= (int)($lowStock['cnt'] ?? 0) ?> 項</div>
-                <div class="small text-muted mt-2">低於設定門檻的零售產品</div>
+                <div class="small text-muted mt-1">
+                    共缺 <span class="fw-semibold text-danger"><?= (int)($lowStock['total_shortage'] ?? 0) ?></span> 件
+                </div>
+                <a href="/products.php?low-stock-only=1" class="small text-danger text-decoration-none d-inline-block mt-2">查看需補貨產品 →</a>
             </div>
         </div>
     </div>
