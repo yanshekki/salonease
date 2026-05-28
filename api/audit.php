@@ -19,8 +19,37 @@ switch ($action) {
         $log_action = trim(get('action', ''));
         $from = get('from', '');
         $to = get('to', '');
-        $limit = min(100, max(10, (int)get('limit', 50)));
+        $limit = min(200, max(10, (int)get('limit', 50)));
 
+        // 共用 WHERE 條件
+        $where = "WHERE 1=1";
+        $params = [];
+
+        if ($staff_id > 0) {
+            $where .= " AND al.staff_id = ?";
+            $params[] = $staff_id;
+        }
+        if ($log_action !== '') {
+            $where .= " AND al.action = ?";
+            $params[] = $log_action;
+        }
+        if ($from !== '') {
+            $where .= " AND al.created_at >= ?";
+            $params[] = $from . ' 00:00:00';
+        }
+        if ($to !== '') {
+            $where .= " AND al.created_at <= ?";
+            $params[] = $to . ' 23:59:59';
+        }
+
+        // 先取總數（不受 LIMIT 影響）
+        $totalRow = db_query_one(
+            "SELECT COUNT(*) as cnt FROM audit_logs al $where",
+            $params
+        );
+        $total = (int)($totalRow['cnt'] ?? 0);
+
+        // 再取實際資料
         $sql = "
             SELECT 
                 al.id,
@@ -34,34 +63,13 @@ switch ($action) {
                 al.created_at
             FROM audit_logs al
             LEFT JOIN staff s ON al.staff_id = s.id
-            WHERE 1=1
+            $where
+            ORDER BY al.created_at DESC 
+            LIMIT $limit
         ";
-        $params = [];
-
-        if ($staff_id > 0) {
-            $sql .= " AND al.staff_id = ?";
-            $params[] = $staff_id;
-        }
-
-        if ($log_action !== '') {
-            $sql .= " AND al.action = ?";
-            $params[] = $log_action;
-        }
-
-        if ($from !== '') {
-            $sql .= " AND al.created_at >= ?";
-            $params[] = $from . ' 00:00:00';
-        }
-
-        if ($to !== '') {
-            $sql .= " AND al.created_at <= ?";
-            $params[] = $to . ' 23:59:59';
-        }
-
-        $sql .= " ORDER BY al.created_at DESC LIMIT $limit";
 
         $logs = db_query($sql, $params);
-        json_success($logs);
+        json_success(['data' => $logs, 'total' => $total]);
         break;
 
     case 'actions':
