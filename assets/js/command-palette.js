@@ -319,11 +319,15 @@
       const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=15`);
       const recentSales = salesRes.data || [];
 
-      // 計算客戶最近一次購買距今天數，用來調整推薦積極程度
+      // 計算客戶最近一次購買距今天數 + 平均消費金額（用來做價格區間建議）
       let daysSinceLastVisit = 999;
+      let avgSpend = 0;
       if (recentSales.length > 0) {
         const lastVisit = new Date(recentSales[0].sale_date);
         daysSinceLastVisit = Math.floor((new Date() - lastVisit) / (1000 * 60 * 60 * 24));
+
+        const totalSpend = recentSales.reduce((sum, s) => sum + parseFloat(s.total || 0), 0);
+        avgSpend = totalSpend / recentSales.length;
       }
 
       const recentSalesWithItems = await Promise.all(
@@ -557,6 +561,22 @@
           priority: 6
         });
       });
+
+      // 根據客戶平均消費力，產生價格區間 / 升級建議
+      if (avgSpend > 0) {
+        const suggestedUpgrade = Math.round(avgSpend * 1.25); // 建議比平均高 25% 的組合
+        recommendations.push({
+          id: `price-upgrade-${customer.id}`,
+          type: 'price_suggestion',
+          label: `價格區間建議：約 HK$ ${suggestedUpgrade}`,
+          sublabel: `根據您平時消費習慣`,
+          suggestedReason: `根據此客戶歷史平均消費約 HK$ ${Math.round(avgSpend)}，建議可考慮約 HK$ ${suggestedUpgrade} 的升級搭配`,
+          keywords: '價格 升級 消費',
+          icon: '💰',
+          action: 'quick-add-recommendation',
+          priority: 11
+        });
+      }
 
       // 季節性建議（獨立加入）
       const month = new Date().getMonth() + 1;
@@ -1484,14 +1504,18 @@
       }
     }
 
-    // 自動產生簡單銷售話術（根據推薦類型）
+    // 自動產生簡單銷售話術（根據推薦類型，包含價格話術）
     let script = '';
+    const reason = recommendation.suggestedReason || '';
+
     if (recommendation.isGap) {
-      script = `可以跟客人說：「上次您購買這個已經有一段時間了，我們建議您補充，現在有搭配優惠。」`;
+      script = `可以跟客人說：「上次您購買這個已經有一段時間了，我們建議您補充，現在有搭配優惠，CP值很高。」`;
     } else if (recommendation.isPair || recommendation.type === 'frequent_pair' || recommendation.type === 'smart_bundle') {
-      script = `可以跟客人說：「很多客人買這個之後都會一起加購這個，效果會更好哦～」`;
+      script = `可以跟客人說：「很多客人買這個之後都會一起加購這個，效果會更好哦～ 只多一點點錢。」`;
+    } else if (recommendation.type === 'price_suggestion') {
+      script = `可以跟客人說：「根據您平時的消費習慣，我們推薦這個價位區間的搭配，感覺很適合您。」`;
     } else if (recommendation.isFrequent) {
-      script = `可以跟客人說：「這個是您之前很喜歡的項目，這次要不要再來一組？」`;
+      script = `可以跟客人說：「這個是您之前很喜歡的項目，這次要不要再來一組？價格也很親民。」`;
     } else {
       script = `可以跟客人說：「根據您的購買習慣，我們推薦搭配這個。」`;
     }
