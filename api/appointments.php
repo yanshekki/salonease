@@ -89,13 +89,18 @@ switch ($action) {
         $customer_id = (int)post('customer_id');
         $staff_id    = (int)post('staff_id');
         $room_id     = (int)post('room_id') ?: null;
-        $start_time  = post('start_time');   // 格式: 2025-05-28 14:00:00
+        $start_time  = post('start_time');
         $end_time    = post('end_time');
-        $notes       = trim(post('notes'));
-        $services    = $_POST['services'] ?? []; // array of service_id
+        $notes       = sanitize_string(post('notes', ''));
+        $services    = $_POST['services'] ?? [];
 
-        if (!$customer_id || !$staff_id || !$start_time || !$end_time) {
-            json_error('客戶、美容師、開始時間及結束時間為必填');
+        if ($err = validate_required($customer_id, '客戶')) json_error($err);
+        if ($err = validate_required($staff_id, '美容師')) json_error($err);
+        if ($err = validate_required($start_time, '開始時間')) json_error($err);
+        if ($err = validate_required($end_time, '結束時間')) json_error($err);
+        if ($err = validate_length($notes, '備註', 500)) json_error($err);
+        if (!is_array($services) || count($services) === 0) {
+            json_error('至少需選擇一項服務');
         }
 
         // 衝突檢查

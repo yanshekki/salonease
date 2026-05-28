@@ -275,3 +275,19 @@ function sanitize_string(string $value, int $maxLen = 255): string
     }
     return $value;
 }
+
+/**
+ * Phase 1 簡單集中錯誤記錄（不影響主流程）
+ */
+function log_error(string $context, string $message, array $extra = []): void
+{
+    $log = sprintf(
+        "[%s] %s | extra: %s | ip: %s | staff: %s",
+        $context,
+        $message,
+        json_encode($extra, JSON_UNESCAPED_UNICODE),
+        $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        $_SESSION['staff_id'] ?? 'guest'
+    );
+    error_log($log);
+}
