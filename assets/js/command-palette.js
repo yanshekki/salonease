@@ -2552,7 +2552,105 @@
   ];
 
   /**
-   * 啟動完整對話模擬器（Phase 43 核心）
+   * Phase 44：根據目前對話輪數 + 客戶最新 objection，即時生成 2-3 個額外推薦項目
+   * 點擊後一鍵加入 + 更新 transcript + 微調主話術 + 記錄備註
+   */
+  function renderLiveRecommendations(sim, currentTurn, lastResponseType, mainTa, transcript, transcriptEl, addToTranscriptFn, customerName) {
+    // 只在第 3 輪之後出現
+    if (currentTurn < 3) return;
+
+    // 移除舊的推薦區（如果有）
+    const oldRec = sim.querySelector('#convo-live-recs');
+    if (oldRec) oldRec.remove();
+
+    const recContainer = document.createElement('div');
+    recContainer.id = 'convo-live-recs';
+    recContainer.className = 'mt-2 p-2 rounded border bg-light';
+    recContainer.style.borderColor = '#8FA68F';
+
+    let title = '💡 根據你而家嘅對話，教練即時推薦：';
+    if (lastResponseType === 'too_expensive') title = '💡 客戶話太貴，教練建議加性價比項目：';
+    else if (lastResponseType === 'want_more') title = '💡 客戶想更強效果，教練建議加強版加購：';
+    else if (lastResponseType === 'done_before') title = '💡 客戶之前失望過，教練建議高滿意度補充：';
+
+    let html = `<div class="small fw-semibold text-success mb-1">${title}</div><div class="d-flex flex-wrap gap-1">`;
+
+    // 根據 objection 類型給出 2-3 個情境化建議（輕量實現，實際項目可接真實 cache）
+    const suggestions = [];
+    if (lastResponseType === 'too_expensive') {
+      suggestions.push({ label: '經典護理套（高CP）', reason: '平價但效果穩陣' });
+      suggestions.push({ label: '會員優惠療程', reason: '長期回客最啱' });
+    } else if (lastResponseType === 'want_more') {
+      suggestions.push({ label: '加強版精華/儀器', reason: '即時提升效果' });
+      suggestions.push({ label: '療程組合升級', reason: '客單價 + 滿意度雙升' });
+    } else {
+      suggestions.push({ label: '即時修復精華', reason: '針對之前缺口' });
+      suggestions.push({ label: '居家護理套裝', reason: '延長效果' });
+    }
+
+    suggestions.forEach((sug, idx) => {
+      html += `<button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;" data-rec-idx="${idx}">
+        + ${sug.label}
+        <span class="text-white-50" style="font-size:9px;">（${sug.reason}）</span>
+      </button>`;
+    });
+
+    html += `</div><div class="small text-muted mt-1" style="font-size:9px;">點擊即加入購物車 + 自動更新話術</div>`;
+    recContainer.innerHTML = html;
+
+    // 插入到 transcript 之後
+    const transcriptDiv = sim.querySelector('#convo-transcript');
+    if (transcriptDiv && transcriptDiv.parentNode) {
+      transcriptDiv.parentNode.insertBefore(recContainer, transcriptDiv.nextSibling);
+    } else {
+      sim.appendChild(recContainer);
+    }
+
+    // 綁定點擊事件
+    recContainer.querySelectorAll('button[data-rec-idx]').forEach(btn => {
+      btn.onclick = (ev) => {
+        ev.stopImmediatePropagation();
+        const sug = suggestions[parseInt(btn.dataset.recIdx)];
+
+        // 1. 加入購物車（如果可用）
+        if (window.addToCart) {
+          // 因為呢度冇真實 ref_id，用一個通用標記，實際環境可改善
+          window.addToCart('service', 0, sug.label, 0); // 價錢 0 由 POS 自己處理或提示
+        }
+
+        // 2. 更新 transcript
+        const line = `我即刻加埋「${sug.label}」（${sug.reason}），效果會更好！`;
+        if (addToTranscriptFn) addToTranscriptFn('我（即時推薦）', line);
+
+        // 3. 微調主話術
+        let updated = mainTa.value.trim();
+        if (!updated.includes(sug.label)) {
+          updated = updated.replace(/您而家要唔要我.*?$/u, '') + ` 我同時建議一齊加「${sug.label}」，${sug.reason}。您覺得呢個組合如何？`;
+        }
+        mainTa.value = updated;
+
+        // 4. 記錄到 sale-notes
+        const notesEl = document.getElementById('sale-notes');
+        if (notesEl) {
+          const recNote = `[教練即時推薦] 第${currentTurn}輪 · 已加入「${sug.label}」`;
+          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${recNote}` : recNote;
+        }
+
+        // 5. 移除呢個建議（或整個區）
+        btn.remove();
+        if (recContainer.querySelectorAll('button').length === 0) {
+          recContainer.remove();
+        }
+
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(`✅ 已加入 ${sug.label}（教練實時建議）`, 'success', 1200);
+        }
+      };
+    });
+  }
+
+  /**
+   * 啟動完整對話模擬器（Phase 43 核心 + Phase 44 即時推薦）
    * 讓用戶像真正同客戶傾偈咁，一輪一輪即時優化話術，最後生成完整對話紀錄
    */
   function startConversationSimulator(panel, mainTa, alternatives, context) {
@@ -2643,7 +2741,12 @@
             notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
           }
 
-          // 4. 重新渲染回應（下一輪）
+          // 4. Phase 44：第 3 輪之後即時顯示教練推薦
+          if (turn >= 3) {
+            renderLiveRecommendations(sim, turn, resp.type, mainTa, transcript, transcriptEl, addToTranscript, customerName);
+          }
+
+          // 5. 重新渲染回應（下一輪）
           if (turn <= 5) {
             renderCustomerResponses();
           } else {
