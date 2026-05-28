@@ -243,7 +243,8 @@
 - A61：reports.php 加入「本月 Top 3 員工銷售」簡單摘要，開始報表頁小強化
 - A62：reports.php 四大統計卡片加入「較上期」百分比變化，報表頁數據對比強化
 - A63：reports.php 加入「熱門服務 Top 3」簡單摘要，報表頁小強化延續
-- A64+：繼續報表視覺化或 Dashboard 數據強化
+- A64：reports.php 加入「熱門產品 Top 3」簡單摘要，報表頁小強化延續
+- A65+：繼續報表視覺化或 Dashboard 數據強化
 
 **執行方式**：嚴格沿用 Phase 2 成功模式，每完成一個有意義小任務即 commit + --no-ff merge origin/main + push，main 永遠保持穩定。
 
