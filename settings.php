@@ -439,6 +439,20 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
     </div>
+
+    <!-- A154：快速操作 -->
+    <div class="card mb-4 border-light">
+        <div class="card-body">
+            <div class="fw-semibold mb-3">快速操作</div>
+            <div class="d-flex flex-wrap gap-2 small">
+                <a href="/pos.php" class="btn btn-sm btn-outline-primary">前往 POS</a>
+                <a href="/reports.php" class="btn btn-sm btn-outline-primary">查看報表</a>
+                <a href="/audit_logs.php" class="btn btn-sm btn-outline-primary">審計日誌</a>
+                <a href="/settings.php" class="btn btn-sm btn-outline-primary">系統設定</a>
+                <a href="/dashboard.php" class="btn btn-sm btn-outline-secondary">返回首頁</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
