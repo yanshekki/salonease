@@ -2169,13 +2169,21 @@
         return;
       }
 
-      let html = `<div class="small fw-medium text-success mb-1">根據「${tier === 'conservative' ? '保守型' : tier === 'optimal' ? '最啱您' : '升級體驗'}」價位，額外推薦：</div>`;
-      html += '<div class="d-flex flex-wrap gap-2">';
+      const tierLabel = tier === 'conservative' ? '保守型' : tier === 'optimal' ? '最啱您' : '升級體驗';
+      let html = `
+        <div class="small fw-medium text-success mb-1 d-flex align-items-center justify-content-between">
+          <span>根據「${tierLabel}」價位，額外推薦：</span>
+          <span>
+            <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 me-1" style="font-size:10px;" id="btn-add-all-extras">全部加入</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:10px;" id="btn-more-extras">再搵多 2 個</button>
+          </span>
+        </div>`;
+      html += '<div class="d-flex flex-wrap gap-2" id="extra-items-list">';
 
       extras.forEach((item, idx) => {
         const priceText = item.unit_price ? `HK$ ${Math.round(item.unit_price)}` : '';
         html += `
-          <div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size:12px;">
+          <div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size:12px;" data-extra-item='${JSON.stringify(item)}'>
             <span>${item.type === 'service' ? '💆' : '🧴'} ${item.name}</span>
             <span class="text-muted">${priceText}</span>
             <button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;" data-extra-idx="${idx}">加入</button>
@@ -2186,6 +2194,10 @@
       extraContainer.innerHTML = html;
       extraContainer.style.display = 'block';
 
+      // 儲存目前 tier 及 extras（供主確認流程使用）
+      extraContainer.dataset.currentTier = tier;
+      extraContainer.dataset.currentExtras = JSON.stringify(extras);
+
       // 綁定即時加入按鈕
       extraContainer.querySelectorAll('[data-extra-idx]').forEach(btn => {
         btn.onclick = (e) => {
@@ -2195,7 +2207,8 @@
           if (item && window.addToCart) {
             window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
             // 移除已加入的建議卡片
-            btn.closest('.d-flex.align-items-center').remove();
+            const card = btn.closest('[data-extra-item]');
+            if (card) card.remove();
             if (extraContainer.querySelectorAll('[data-extra-idx]').length === 0) {
               extraContainer.style.display = 'none';
             }
@@ -2205,6 +2218,81 @@
           }
         };
       });
+
+      // 「全部加入此價位建議」
+      const addAllBtn = extraContainer.querySelector('#btn-add-all-extras');
+      if (addAllBtn) {
+        addAllBtn.onclick = (e) => {
+          e.stopImmediatePropagation();
+          const remaining = extraContainer.querySelectorAll('[data-extra-item]');
+          let added = 0;
+          remaining.forEach(card => {
+            try {
+              const item = JSON.parse(card.dataset.extraItem);
+              if (item && window.addToCart) {
+                window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+                added++;
+              }
+            } catch {}
+            card.remove();
+          });
+          if (added > 0 && window.SalonEase && window.SalonEase.toast) {
+            window.SalonEase.toast(`已全部加入 ${added} 個價位額外推薦`, 'success', 1600);
+          }
+          extraContainer.style.display = 'none';
+        };
+      }
+
+      // 「再搵多 2 個」
+      const moreBtn = extraContainer.querySelector('#btn-more-extras');
+      if (moreBtn) {
+        moreBtn.onclick = (e) => {
+          e.stopImmediatePropagation();
+          const POS = window.SalonEase && window.SalonEase.POS;
+          const cache = POS && POS.getItemsCache ? POS.getItemsCache() : [];
+          // 排除已顯示的項目
+          const currentShown = JSON.parse(extraContainer.dataset.currentExtras || '[]');
+          const excludeKeys = new Set(currentShown.map(x => `${x.type}:${x.ref_id}`));
+          const moreExtras = getExtraSuggestionsForTier(tier, selectedRecsForSuggest, cache)
+            .filter(x => !excludeKeys.has(`${x.type}:${x.ref_id}`))
+            .slice(0, 2);
+
+          if (moreExtras.length === 0) {
+            if (window.SalonEase && window.SalonEase.toast) window.SalonEase.toast('暫時搵唔到更多適合項目', 'info', 1200);
+            return;
+          }
+
+          const list = extraContainer.querySelector('#extra-items-list');
+          moreExtras.forEach((item, idx) => {
+            const priceText = item.unit_price ? `HK$ ${Math.round(item.unit_price)}` : '';
+            const newIdx = (extras.length + idx);
+            const cardHtml = `
+              <div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size:12px;" data-extra-item='${JSON.stringify(item)}'>
+                <span>${item.type === 'service' ? '💆' : '🧴'} ${item.name}</span>
+                <span class="text-muted">${priceText}</span>
+                <button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;" data-extra-idx="${newIdx}">加入</button>
+              </div>`;
+            list.insertAdjacentHTML('beforeend', cardHtml);
+          });
+
+          // 重新綁定新按鈕
+          extraContainer.querySelectorAll('[data-extra-idx]').forEach(btn => {
+            btn.onclick = (ev) => {
+              ev.stopImmediatePropagation();
+              const card = btn.closest('[data-extra-item]');
+              try {
+                const item = JSON.parse(card.dataset.extraItem);
+                if (item && window.addToCart) window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+              } catch {}
+              card.remove();
+            };
+          });
+
+          // 更新 dataset
+          const updated = [...currentShown, ...moreExtras];
+          extraContainer.dataset.currentExtras = JSON.stringify(updated);
+        };
+      }
     }
 
     panel.querySelectorAll('[data-tier]').forEach(btn => {
@@ -2275,12 +2363,36 @@
     if (addBtn) {
       addBtn.onclick = async () => {
         const finalScript = ta.value.trim();
+
+        // 收集目前仍然顯示嘅額外推薦項目
+        const extraItemsToAdd = [];
+        if (extraContainer) {
+          extraContainer.querySelectorAll('[data-extra-item]').forEach(card => {
+            try {
+              const item = JSON.parse(card.dataset.extraItem);
+              if (item) extraItemsToAdd.push(item);
+            } catch {}
+          });
+        }
+
+        // 先加入主組合
         await quickAddMultipleHeroes(selectedRecs);
+
+        // 再加入剩餘嘅價位額外推薦
+        extraItemsToAdd.forEach(item => {
+          if (window.addToCart) {
+            window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+          }
+        });
 
         const notesEl = document.getElementById('sale-notes');
         if (notesEl) {
-          const tag = `\n[已編輯銷售話術 + 價位調整]\n${finalScript}`;
-          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}${tag}` : finalScript;
+          let tag = `\n[已編輯銷售話術 + 價位調整]\n${finalScript}`;
+          if (extraItemsToAdd.length > 0) {
+            const extraNames = extraItemsToAdd.map(x => x.name).join(' + ');
+            tag += `\n[價位調整額外推薦] ${extraNames}`;
+          }
+          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}${tag}` : tag;
         }
 
         panel.remove();
