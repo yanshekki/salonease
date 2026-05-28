@@ -13,61 +13,64 @@ $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
-        <p class="text-[#5A5A5C] text-sm mt-1"><?= e($pageSubtitle) ?></p>
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+    <div class="mb-3 mb-md-0">
+        <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+        <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
     </div>
-    <button onclick="showAddModal()"
-            class="salon-btn salon-btn-primary flex items-center gap-x-2">
+    <button onclick="showAddModal()" class="btn btn-primary d-flex align-items-center gap-2">
         <span>+ 新增房間</span>
-        <span class="text-xs opacity-75">[N]</span>
+        <span class="small opacity-75">[N]</span>
     </button>
 </div>
 
 <!-- 列表 -->
-<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <table class="salon-table w-full">
-        <thead>
-            <tr>
-                <th>房間名稱</th>
-                <th>容量</th>
-                <th>狀態</th>
-                <th class="text-right">操作</th>
-            </tr>
-        </thead>
-        <tbody id="rooms-list">
-            <tr><td colspan="4" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
-        </tbody>
-    </table>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>房間名稱</th>
+                    <th>容量</th>
+                    <th>狀態</th>
+                    <th class="text-end" style="width: 90px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="rooms-list">
+                <tr><td colspan="4" class="py-5 text-center text-muted">載入中...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<!-- 新增 / 編輯 Modal -->
-<div id="room-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hideRoomModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg" id="modal-title">新增房間</div>
-            <button onclick="hideRoomModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
-
-        <div class="p-5 space-y-4">
-            <input type="hidden" id="room-id">
-
-            <div>
-                <label class="block text-sm font-medium mb-1">房間名稱 <span class="text-red-500">*</span></label>
-                <input type="text" id="room-name" class="salon-input" placeholder="1 號房 / VIP 房">
+<!-- 新增 / 編輯 Modal (Bootstrap) -->
+<div class="modal fade" id="roomModal" tabindex="-1" aria-labelledby="roomModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">新增房間</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium mb-1">容量（人數）</label>
-                <input type="number" id="room-capacity" class="salon-input" value="1" min="1" max="10">
-                <p class="text-xs text-[#8A8A8C] mt-1">通常美容院單人房間填 1，雙人房填 2</p>
-            </div>
-        </div>
+            <div class="modal-body">
+                <input type="hidden" id="room-id">
 
-        <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-            <button onclick="hideRoomModal()" class="salon-btn salon-btn-secondary">取消</button>
-            <button onclick="saveRoom()" class="salon-btn salon-btn-primary" id="save-btn">新增房間</button>
+                <div class="mb-3">
+                    <label class="form-label">房間名稱 <span class="text-danger">*</span></label>
+                    <input type="text" id="room-name" class="form-control" placeholder="1 號房 / VIP 房">
+                </div>
+
+                <div>
+                    <label class="form-label">容量（人數）</label>
+                    <input type="number" id="room-capacity" class="form-control" value="1" min="1" max="10">
+                    <div class="form-text">通常美容院單人房間填 1，雙人房填 2</div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="saveRoom()" class="btn btn-primary" id="save-btn">新增房間</button>
+            </div>
         </div>
     </div>
 </div>
@@ -134,9 +137,11 @@ function showAddModal() {
 
     document.getElementById('save-btn').textContent = '新增房間';
 
-    document.getElementById('room-modal').classList.remove('hidden');
-    document.getElementById('room-modal').classList.add('flex');
-    setTimeout(() => document.getElementById('room-name').focus(), 100);
+    const modalEl = document.getElementById('roomModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    setTimeout(() => document.getElementById('room-name').focus(), 400);
 }
 
 async function editRoom(id) {
@@ -152,17 +157,18 @@ async function editRoom(id) {
 
         document.getElementById('save-btn').textContent = '儲存變更';
 
-        document.getElementById('room-modal').classList.remove('hidden');
-        document.getElementById('room-modal').classList.add('flex');
+        const modalEl = document.getElementById('roomModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
     } catch (err) {
         SalonEase.toast(err.message, 'error');
     }
 }
 
 function hideRoomModal() {
-    const modal = document.getElementById('room-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalEl = document.getElementById('roomModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 async function saveRoom() {
