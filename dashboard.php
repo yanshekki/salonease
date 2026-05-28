@@ -118,6 +118,17 @@ $thisMonthTotal = (float)($thisMonthSales['total'] ?? 0);
 $lastMonthTotal = (float)($lastMonthSales['total'] ?? 0);
 $salesDiff = $thisMonthTotal - $lastMonthTotal;
 $salesDiffPercent = $lastMonthTotal > 0 ? round(($salesDiff / $lastMonthTotal) * 100, 1) : 0;
+
+// A57：Phase 3 - 本月 Top 3 員工銷售（數據洞察）
+$topStaff = db_query("
+    SELECT st.name, COALESCE(SUM(sa.total), 0) as revenue
+    FROM sales sa
+    JOIN staff st ON sa.staff_id = st.id
+    WHERE sa.sale_date >= ? AND st.is_active = 1
+    GROUP BY st.id
+    ORDER BY revenue DESC
+    LIMIT 3
+", [$thisMonthStartForSales]);
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -269,6 +280,27 @@ $salesDiffPercent = $lastMonthTotal > 0 ? round(($salesDiff / $lastMonthTotal) *
             <?php endif; ?>
         </div>
         <div class="small text-muted mt-1">較上月</div>
+    </div>
+</div>
+
+<!-- A57：Phase 3 - 本月 Top 3 員工銷售（數據洞察） -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fw-semibold small">本月 Top 3 員工銷售</div>
+            <a href="/reports.php" class="small text-muted text-decoration-none">查看完整報表 →</a>
+        </div>
+        <?php if (!empty($topStaff)): ?>
+            <div class="d-flex flex-wrap gap-2">
+                <?php foreach ($topStaff as $staff): ?>
+                    <span class="badge bg-light text-dark border px-2 py-1 small">
+                        <?= e($staff['name']) ?> <span class="text-muted">(<?= format_money($staff['revenue']) ?>)</span>
+                    </span>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="small text-muted">本月暫無銷售記錄</div>
+        <?php endif; ?>
     </div>
 </div>
 
