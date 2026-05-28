@@ -26,6 +26,38 @@
     { id: 'pos-quick-checkout', label: '快速結帳', action: 'quick-checkout', icon: '💳', keywords: '結帳 付款 收銀 完成交易', contexts: ['pos'] },
   ];
 
+  // POS 快速折扣方案（動態產生，支援百分比與固定金額）
+  function getPosDiscountActions() {
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const subtotal = POS && POS.getCurrentSubtotal ? POS.getCurrentSubtotal() : 0;
+
+    const actions = [
+      { id: 'disc-9fold', label: '9 折優惠', discountType: 'percent', value: 0.1, keywords: '9折 九折 會員 優惠', icon: '🏷️' },
+      { id: 'disc-95fold', label: '95 折優惠', discountType: 'percent', value: 0.05, keywords: '95折 九五折 會員', icon: '🏷️' },
+      { id: 'disc-8fold', label: '員工 8 折', discountType: 'percent', value: 0.2, keywords: '員工 8折 八折 內部', icon: '👔' },
+      { id: 'disc-100', label: '減 $100', discountType: 'fixed', value: 100, keywords: '減100 扣100', icon: '💰' },
+      { id: 'disc-200', label: '減 $200', discountType: 'fixed', value: 200, keywords: '減200 扣200', icon: '💰' },
+      { id: 'disc-50', label: '減 $50', discountType: 'fixed', value: 50, keywords: '減50 扣50', icon: '💰' },
+    ];
+
+    return actions.map(a => {
+      let displayLabel = a.label;
+      if (a.discountType === 'percent' && subtotal > 0) {
+        const discountAmount = Math.round(subtotal * a.value);
+        displayLabel = `${a.label}（減 HK$ ${discountAmount}）`;
+      }
+      return {
+        ...a,
+        label: displayLabel,
+        action: 'apply-discount',
+        keywords: a.keywords,
+        icon: a.icon,
+        discountType: a.discountType,
+        value: a.value
+      };
+    });
+  }
+
   // 動態 POS 項目快取（避免重複 fetch）
   let posDynamicCache = { query: '', items: [], ts: 0 };
 
@@ -105,6 +137,15 @@
       score += 35;
     }
 
+    // 折扣相關動作在 POS 頁給額外加分，尤其是輸入「折」「折扣」時
+    if (ctx === 'pos' && item.action === 'apply-discount') {
+      score += 22;
+      const qLower = (q || '').toLowerCase();
+      if (qLower.includes('折') || qLower.includes('折扣') || qLower.includes('優惠') || qLower.includes('減')) {
+        score += 25;
+      }
+    }
+
     const recent = loadRecent().usage;
     const pos = recent.indexOf(item.id);
     if (pos !== -1) score += Math.max(32 - pos * 3, 6);
@@ -115,7 +156,7 @@
     let arr = [...BASE_ACTIONS];
 
     if (ctx === 'pos') {
-      arr = [...arr, ...POS_QUICK_ACTIONS];
+      arr = [...arr, ...POS_QUICK_ACTIONS, ...getPosDiscountActions()];
     }
 
     return arr;
@@ -467,6 +508,11 @@
       return;
     }
 
+    if (item.action === 'apply-discount') {
+      doApplyDiscount(item);
+      return;
+    }
+
     if (item.url) location.href = item.url;
     else if (typeof item.fn === 'function') item.fn();
   }
@@ -799,6 +845,46 @@
 
     // 預設 focus 在金額欄
     setTimeout(() => receivedInput.focus(), 50);
+  }
+
+  // 套用折扣（從命令面板觸發）
+  function doApplyDiscount(item) {
+    const POS = window.SalonEase && window.SalonEase.POS;
+    if (!POS || typeof POS.applyDiscount !== 'function') {
+      hide();
+      if (confirm('無法套用折扣，請前往 POS 頁操作。')) {
+        location.href = '/pos.php';
+      }
+      return;
+    }
+
+    const subtotal = POS.getCurrentSubtotal ? POS.getCurrentSubtotal() : 0;
+    let discountAmount = 0;
+    let label = item.label;
+
+    if (item.discountType === 'percent') {
+      discountAmount = Math.round(subtotal * (item.value || 0));
+      label = item.label.replace(/（.*）/, ''); // 清理顯示
+    } else {
+      discountAmount = item.value || 0;
+    }
+
+    if (discountAmount <= 0) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('折扣金額為 0，無需套用', 'info');
+      }
+      hide();
+      return;
+    }
+
+    const success = POS.applyDiscount(discountAmount, label);
+    hide();
+
+    if (!success) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('套用折扣失敗', 'error');
+      }
+    }
   }
 
   function show() {

@@ -1084,7 +1084,33 @@ window.SalonEase.POS = {
             return true;
         }
         return false;
+    },
+
+    // 供命令面板快速套用折扣
+    applyDiscount: (amount, label = '') => {
+        const discountInput = document.getElementById('cart-discount');
+        if (!discountInput) return false;
+
+        const safeAmount = Math.max(0, parseFloat(amount) || 0);
+        discountInput.value = safeAmount.toFixed(2);
+
+        if (typeof updateCartTotals === 'function') {
+            updateCartTotals();
+        }
+
+        if (window.SalonEase && window.SalonEase.toast && label) {
+            window.SalonEase.toast(`已套用${label}（減 HK$ ${safeAmount.toFixed(0)}）`, 'success', 2000);
+        }
+
+        return true;
+    },
+
+    // 取得目前小計（供百分比折扣計算）
+    getCurrentSubtotal: () => {
+        const subtotalEl = document.getElementById('cart-subtotal');
+        if (!subtotalEl) return 0;
+        return parseFloat(subtotalEl.textContent.replace('HK$', '').trim()) || 0;
     }
 };
 
-console.log('%c[SalonEase] POS 命名空間已暴露（含套票扣減 + 本單最近 + 客戶切換）', 'color:#8FA68F;font-size:9px');
+console.log('%c[SalonEase] POS 命名空間已暴露（含快速折扣套用）', 'color:#8FA68F;font-size:9px');
