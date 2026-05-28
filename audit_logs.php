@@ -35,7 +35,7 @@ $extraJs = 'hotkeys.js';
                     <select x-model="selectedAction" @change="loadLogs()" class="form-select form-select-sm flex-grow-1">
                         <option value="">全部</option>
                         <template x-for="act in actions" :key="act">
-                            <option :value="act" x-text="act"></option>
+                            <option :value="act" x-text="`${act} (${actionCounts[act] || 0})`"></option>
                         </template>
                     </select>
                     <button @click="selectedAction=''; loadLogs()" class="btn btn-sm btn-outline-secondary" x-show="selectedAction">清除</button>
@@ -214,6 +214,14 @@ function auditLogs() {
 
         get totalPages() {
             return Math.max(1, Math.ceil(this.filteredLogs.length / this.perPage));
+        },
+
+        get actionCounts() {
+            const counts = {};
+            this.logs.forEach(log => {
+                counts[log.action] = (counts[log.action] || 0) + 1;
+            });
+            return counts;
         },
 
         prevPage() {
