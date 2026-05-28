@@ -972,7 +972,7 @@ async function loadTodaySchedule() {
         let html = `
             <div class="grid" style="grid-template-columns: 60px 1fr; font-size: 13px;">
                 <!-- 時間軸 -->
-                <div class="border-r bg-[#F8F5F0]">
+                <div class="border-end bg-light">
         `;
 
         for (let i = 0; i <= totalSlots; i++) {
@@ -1232,7 +1232,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
 
         let html = `
             <div class="grid" style="grid-template-columns: 60px 1fr; font-size: 13px;">
-                <div class="border-r bg-[#F8F5F0]">
+                <div class="border-end bg-light">
         `;
 
         for (let i = 0; i <= totalSlots; i++) {

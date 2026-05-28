@@ -89,10 +89,7 @@ $lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <
 
         <div class="row g-3">
             <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/pos.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark transition" 
-                   style="hover-border-color: var(--salon-sage);"
-                   onmouseover="this.style.borderColor='var(--salon-sage)';this.style.backgroundColor='#F8F5F0';"
-                   onmouseout="this.style.borderColor='';this.style.backgroundColor='';">
+                <a href="/pos.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark quick-action-card">
                     <span class="fs-3">🛒</span>
                     <div>
                         <div class="fw-medium">POS 銷售</div>
@@ -102,9 +99,7 @@ $lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/appointments.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark transition"
-                   onmouseover="this.style.borderColor='var(--salon-sage)';this.style.backgroundColor='#F8F5F0';"
-                   onmouseout="this.style.borderColor='';this.style.backgroundColor='';">
+                <a href="/appointments.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark quick-action-card">
                     <span class="fs-3">📅</span>
                     <div>
                         <div class="fw-medium">新增預約</div>
@@ -114,9 +109,7 @@ $lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/customers.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark transition"
-                   onmouseover="this.style.borderColor='var(--salon-sage)';this.style.backgroundColor='#F8F5F0';"
-                   onmouseout="this.style.borderColor='';this.style.backgroundColor='';">
+                <a href="/customers.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark quick-action-card">
                     <span class="fs-3">👥</span>
                     <div>
                         <div class="fw-medium">客戶管理</div>
@@ -126,9 +119,7 @@ $lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/settings.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark transition"
-                   onmouseover="this.style.borderColor='var(--salon-sage)';this.style.backgroundColor='#F8F5F0';"
-                   onmouseout="this.style.borderColor='';this.style.backgroundColor='';">
+                <a href="/settings.php" class="d-flex align-items-center gap-3 p-3 border rounded-3 text-decoration-none text-dark quick-action-card">
                     <span class="fs-3">⚙️</span>
                     <div>
                         <div class="fw-medium">系統設定</div>

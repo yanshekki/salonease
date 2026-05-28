@@ -246,3 +246,12 @@ h1, h2, h3, h4, h5 {
 .text-muted {
     color: var(--salon-muted) !important;
 }
+
+/* Quick action cards hover (Dashboard) - clean replacement for old inline styles */
+.quick-action-card {
+    transition: border-color 0.1s ease, background-color 0.1s ease;
+}
+.quick-action-card:hover {
+    border-color: var(--salon-sage);
+    background-color: #F8F5F0;
+}
