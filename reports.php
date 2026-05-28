@@ -650,6 +650,14 @@ function reportsApp() {
                             borderColor: '#8FA68F',
                             backgroundColor: 'rgba(143, 166, 143, 0.1)',
                             tension: 0.3
+                        }, {
+                            label: '上期水平',
+                            data: [prev, prev, prev],
+                            borderColor: '#C97C7C',
+                            borderDash: [5, 5],
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            fill: false
                         }]
                     },
                     options: {
