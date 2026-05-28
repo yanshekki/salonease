@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $pageTitle = '零售產品管理';
 $pageSubtitle = '管理美容院零售產品及庫存';
@@ -299,7 +300,10 @@ async function saveProduct() {
 
         await SalonEase.fetch(`/api/products.php?action=${action}`, {
             method: 'POST',
-            body: payload
+            body: {
+                ...payload,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
 
         hideProductModal();
@@ -319,7 +323,11 @@ async function toggleProduct(id, currentStatus) {
     try {
         await SalonEase.fetch('/api/products.php?action=toggle', {
             method: 'POST',
-            body: { id, status: newStatus }
+            body: { 
+                id, 
+                status: newStatus,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
         SalonEase.toast(`產品已${actionText}`);
         loadProducts();
