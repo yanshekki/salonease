@@ -47,6 +47,18 @@ switch ($action) {
             if ($err = validate_money($item['unit_price'], "第 " . ($idx+1) . " 項單價")) json_error($err);
         }
 
+        // Phase 2 A1：銷售前檢查產品庫存是否足夠
+        foreach ($items as $item) {
+            if ($item['type'] === 'product') {
+                $currentStock = db_query_one("SELECT stock_qty FROM products WHERE id = ?", [(int)$item['ref_id']]);
+                $available = (int)($currentStock['stock_qty'] ?? 0);
+                $needed = (int)$item['qty'];
+                if ($available < $needed) {
+                    json_error("產品「{$item['name']}」庫存不足（僅剩 {$available} 件）");
+                }
+            }
+        }
+
         try {
             $result = db_transaction(function($pdo) use ($customer_id, $items, $discount, $payment_method, $amount_received, $notes) {
                 $subtotal = 0;
@@ -96,6 +108,13 @@ switch ($action) {
                     UPDATE customer_packages 
                     SET remaining_sessions = remaining_sessions - ? 
                     WHERE id = ? AND remaining_sessions >= ?
+                ");
+
+                // Phase 2 A1：產品庫存扣減
+                $update_stock_stmt = $pdo->prepare("
+                    UPDATE products 
+                    SET stock_qty = stock_qty - ? 
+                    WHERE id = ? AND stock_qty >= ?
                 ");
 
                 // 按員工分拆佣金的累計器（A 改善）
@@ -167,6 +186,21 @@ switch ($action) {
 
                         log_activity('package.redeemed', $ref_id, 'customer_package', [
                             'sessions_used' => $sessions_used,
+                            'sale_id' => $sale_id
+                        ]);
+                    }
+
+                    // Phase 2 A1：扣減產品庫存
+                    if ($item['type'] === 'product') {
+                        $qty = (int)$item['qty'];
+                        $update_stock_stmt->execute([$qty, $ref_id, $qty]);
+
+                        if ($update_stock_stmt->rowCount() === 0) {
+                            throw new Exception("產品「{$item['name']}」庫存不足或已被其他銷售扣減");
+                        }
+
+                        log_activity('product.stock_deducted', $ref_id, 'product', [
+                            'qty' => $qty,
                             'sale_id' => $sale_id
                         ]);
                     }
