@@ -859,6 +859,10 @@
 
   function renderResults(q) {
     if (!resultsEl) return;
+
+    // 清除舊的預覽面板（避免重複渲染時殘留）
+    const oldPreview = document.getElementById('hero-preview-panel');
+    if (oldPreview) oldPreview.remove();
     const ctxLabel = getContextLabel(currentContext);
     let html = `<div class="px-3 py-2 small text-muted d-flex justify-content-between align-items-center border-bottom">
       <div>目前在 <span class="fw-medium text-dark">${ctxLabel}</span></div>
@@ -1971,8 +1975,45 @@
   }
 
   /**
+   * 根據選擇的價位層級，智能重寫銷售話術
+   */
+  function rewriteScriptForPriceTier(originalScript, tier, selectedRecs, customer) {
+    const name = customer && customer.name ? customer.name : '您';
+    const count = selectedRecs.length;
+
+    let tone = '';
+    let priceNote = '';
+    let cta = `您而家要唔要我一次過幫${name}加落去？`;
+
+    if (tier === 'conservative') {
+      tone = `我為${name}揀咗最抵、最有性價比嘅 ${count} 個組合，全部都係您之前買過或者反應最好嘅項目，預算控制得好好。`;
+      priceNote = `整體都係走高CP值路線，效果同價錢比例非常平衡。`;
+    } else if (tier === 'optimal') {
+      tone = `根據您過去幾次消費記錄，我特別為${name}度身訂造咗呢 ${count} 個組合，價位同您最習慣嘅中位數好貼。`;
+      priceNote = `呢個係您最舒服、最自然嘅價位區間，接受度最高。`;
+    } else if (tier === 'premium') {
+      tone = `想畀${name}更好嘅體驗？我為您升級咗 ${count} 個組合，會用稍為高階嘅服務同產品，感覺同效果都會明顯提升。`;
+      priceNote = `整體客單價會高少少，但絕對值得，客人都話「一次過爽晒」。`;
+    } else {
+      tone = `我為您精選咗 ${count} 個最啱您嘅組合。`;
+    }
+
+    let newScript = `喂${name ? '，' + name : ''}，${tone}\n\n`;
+
+    selectedRecs.forEach((rec, i) => {
+      newScript += `${i + 1}. ${rec.label}\n`;
+      if (rec.suggestedReason) newScript += `   ${rec.suggestedReason}\n`;
+      newScript += `\n`;
+    });
+
+    newScript += `${priceNote} ${cta}`;
+
+    return newScript;
+  }
+
+  /**
    * 顯示英雄組合預覽面板（多選模式專用）
-   * 支援可編輯腳本 + 價格提示 + 複製 + 確認加入
+   * 支援即時價位調整 + 可編輯腳本 + 儲存常用組合 + 確認加入
    */
   function showHeroPreviewPanel(selectedRecs) {
     if (!resultsEl || !selectedRecs.length) return;
@@ -1997,7 +2038,6 @@
     script += `整體預算大約喺您最舒服嘅範圍，效果同客單價都會更好。您而家要唔要我一次過幫您加落去？`;
 
     const panelId = 'hero-preview-panel';
-    // 先移除舊的
     const old = document.getElementById(panelId);
     if (old) old.remove();
 
@@ -2008,15 +2048,25 @@
           <button type="button" class="btn-close btn-close-sm" id="hero-preview-close" aria-label="Close"></button>
         </div>
 
+        <!-- 即時價位調整工具列 -->
+        <div class="d-flex flex-wrap gap-1 mb-2">
+          <div class="small text-muted me-2 align-self-center">快速調整價位：</div>
+          <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" data-tier="conservative" style="font-size:11px;">保守型（高CP）</button>
+          <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" data-tier="optimal" style="font-size:11px;">最啱您（中位）</button>
+          <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" data-tier="premium" style="font-size:11px;">升級體驗</button>
+          <span id="tier-status-badge" class="badge bg-light text-muted ms-1 align-self-center" style="font-size:10px;display:none;"></span>
+        </div>
+
         <textarea id="hero-script-text" class="form-control mb-2" rows="8" style="font-size:13.5px;line-height:1.45;">${script}</textarea>
 
         <div class="small text-muted mb-2">
-          💡 提示：您可以直接修改上面嘅話術，系統會用修改後嘅版本記錄落 sale notes。
-          ${totalPriceHint ? `預計客單價區間參考：約 HK$ ${Math.round(totalPriceHint / selectedRecs.length)} 左右` : ''}
+          💡 提示：點擊上面價位按鈕可即時改寫話術。您可以再手動微調。
+          ${totalPriceHint ? `原始參考：約 HK$ ${Math.round(totalPriceHint / selectedRecs.length)}` : ''}
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
           <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="hero-preview-copy">💬 複製話術</button>
+          <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="hero-preview-save-template">💾 儲存為常用組合</button>
           <button type="button" class="btn btn-success btn-sm flex-fill" id="hero-preview-add">✅ 確認加入已選組合</button>
           <button type="button" class="btn btn-outline-secondary btn-sm" id="hero-preview-cancel">取消</button>
         </div>
@@ -2035,8 +2085,10 @@
     const ta = document.getElementById('hero-script-text');
     const closeBtn = document.getElementById('hero-preview-close');
     const copyBtn = document.getElementById('hero-preview-copy');
+    const saveTemplateBtn = document.getElementById('hero-preview-save-template');
     const addBtn = document.getElementById('hero-preview-add');
     const cancelBtn = document.getElementById('hero-preview-cancel');
+    const tierBadge = document.getElementById('tier-status-badge');
 
     if (closeBtn) closeBtn.onclick = () => panel.remove();
     if (cancelBtn) cancelBtn.onclick = () => panel.remove();
@@ -2048,21 +2100,82 @@
       };
     }
 
+    // === 即時價位調整按鈕 ===
+    panel.querySelectorAll('[data-tier]').forEach(btn => {
+      btn.onclick = () => {
+        const tier = btn.dataset.tier;
+        const newScript = rewriteScriptForPriceTier(ta.value, tier, selectedRecs, customer);
+        ta.value = newScript;
+
+        if (tierBadge) {
+          const labels = {
+            conservative: '已切換至「保守型（高CP）」',
+            optimal: '已切換至「最啱您（中位）」',
+            premium: '已切換至「升級體驗」'
+          };
+          tierBadge.textContent = labels[tier] || '已調整';
+          tierBadge.style.display = 'inline-block';
+          tierBadge.className = 'badge bg-success-subtle text-success ms-1 align-self-center';
+        }
+
+        // 簡單提示
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('價位建議已更新話術', 'info', 1200);
+        }
+      };
+    });
+
+    // === 儲存為常用組合 ===
+    if (saveTemplateBtn) {
+      saveTemplateBtn.onclick = async () => {
+        const name = prompt('請輸入常用組合名稱（例如「面部經典護理套」）：', `智能推薦 ${new Date().toLocaleDateString('zh-HK')}`);
+        if (!name) return;
+
+        const itemsToSave = [];
+        selectedRecs.forEach(rec => {
+          (rec.suggestedItems || []).forEach(it => {
+            itemsToSave.push({
+              type: it.type,
+              ref_id: it.ref_id,
+              name: it.name,
+              unit_price: it.unit_price || 0
+            });
+          });
+        });
+
+        try {
+          const res = await window.SalonEase.fetch('/api/cart_templates.php?action=create', {
+            method: 'POST',
+            body: JSON.stringify({ name, items: itemsToSave })
+          });
+
+          if (res && res.success) {
+            if (window.SalonEase && window.SalonEase.toast) {
+              window.SalonEase.toast(`✅ 已儲存為常用組合：「${name}」`, 'success');
+            }
+          } else {
+            throw new Error(res?.message || '儲存失敗');
+          }
+        } catch (err) {
+          if (window.SalonEase && window.SalonEase.toast) {
+            window.SalonEase.toast('儲存常用組合失敗：' + (err.message || err), 'error');
+          }
+        }
+      };
+    }
+
     if (addBtn) {
       addBtn.onclick = async () => {
         const finalScript = ta.value.trim();
-        // 先加入項目
         await quickAddMultipleHeroes(selectedRecs);
 
-        // 把最終編輯過嘅腳本寫入 notes（加強版）
         const notesEl = document.getElementById('sale-notes');
         if (notesEl) {
-          const tag = `\n[已編輯銷售話術]\n${finalScript}`;
+          const tag = `\n[已編輯銷售話術 + 價位調整]\n${finalScript}`;
           notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}${tag}` : finalScript;
         }
 
         panel.remove();
-        // 因為 quickAddMultipleHeroes 已經 hide()，這裡再確保
         if (window.SalonEase && window.SalonEase._cmdSelectedHeroes) {
           window.SalonEase._cmdSelectedHeroes.clear();
         }
