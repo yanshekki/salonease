@@ -287,6 +287,28 @@ include __DIR__ . '/includes/header.php';
             </a>
         </div>
     </div>
+
+    <!-- A145：運維工具 - 資料庫備份 -->
+    <div class="card mb-4 border-warning">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold text-warning">資料庫備份</div>
+                    <div class="small text-muted">手動產生完整 SQL 備份（含結構與資料）</div>
+                </div>
+                <div class="badge bg-warning text-dark small">運維工具</div>
+            </div>
+
+            <div class="small text-muted mb-3">
+                建議定期手動備份，尤其在進行重要操作前。<br>
+                備份檔案會以 .sql.gz 格式下載，可直接用於還原。
+            </div>
+
+            <button @click="manualBackup()" class="btn btn-warning">
+                📦 手動備份資料庫
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -370,6 +392,19 @@ function shopSettings() {
                 SalonEase.toast(err.message || '儲存失敗', 'error');
             } finally {
                 this.saving = false;
+            }
+        },
+
+        // A145：手動備份資料庫
+        async manualBackup() {
+            if (!confirm('確定要產生資料庫備份嗎？\n備份過程可能需要幾秒鐘。')) return;
+
+            try {
+                // 直接導向下載
+                window.location.href = '/api/backup.php?action=manual';
+                SalonEase.toast('備份已開始下載');
+            } catch (err) {
+                SalonEase.toast('備份失敗', 'error');
             }
         }
     }
