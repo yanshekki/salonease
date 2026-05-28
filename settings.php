@@ -390,6 +390,38 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
     </div>
+
+    <!-- A152：系統資訊 -->
+    <div class="card mb-4 border-light">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">系統資訊</div>
+                    <div class="small text-muted">基本運行環境</div>
+                </div>
+                <div class="badge bg-light text-dark small">收尾</div>
+            </div>
+
+            <div class="row small g-2">
+                <div class="col-6">
+                    <strong>版本</strong><br>
+                    <span class="text-muted">v1.5+ (Phase 3 完成)</span>
+                </div>
+                <div class="col-6">
+                    <strong>PHP</strong><br>
+                    <span class="text-muted"><?= PHP_VERSION ?></span>
+                </div>
+                <div class="col-6">
+                    <strong>資料庫</strong><br>
+                    <span class="text-muted">MySQL (PDO)</span>
+                </div>
+                <div class="col-6">
+                    <strong>最近備份</strong><br>
+                    <span class="text-muted">請參考上方「資料庫備份」</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
