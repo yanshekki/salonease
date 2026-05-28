@@ -871,32 +871,50 @@
     const heroes = (window.SalonEase && window.SalonEase._cmdHeroRecs) || [];
 
     if (currentContext === 'pos' && !q.trim() && hasCustomer && heroes.length > 0) {
+      // 初始化多選狀態
+      if (!window.SalonEase._cmdSelectedHeroes) window.SalonEase._cmdSelectedHeroes = new Set();
+
       html += `<div class="px-3 pt-2 pb-1 small text-success fw-semibold d-flex align-items-center">
-        <span>⭐ Top ${heroes.length} 最可能接受的智能組合（根據您歷史）</span>
+        <span>⭐ Top ${heroes.length} 最可能接受的智能組合（根據您歷史） — 可多選</span>
       </div>`;
 
       heroes.forEach((hero, hIdx) => {
         const itemsCount = (hero.suggestedItems || []).length;
-        const reasonShort = hero.suggestedReason ? hero.suggestedReason.substring(0, 72) + (hero.suggestedReason.length > 72 ? '...' : '') : '';
+        const reasonShort = hero.suggestedReason ? hero.suggestedReason.substring(0, 68) + (hero.suggestedReason.length > 68 ? '...' : '') : '';
         const bandBadge = hero.priceBand ? `<span class="badge bg-success-subtle text-success ms-1" style="font-size:9px">HK$${hero.priceBand.min}-${hero.priceBand.max}</span>` : '';
+        const isChecked = window.SalonEase._cmdSelectedHeroes.has(hIdx) ? 'checked' : '';
 
         html += `
           <div class="cmd-hero mx-2 my-1 p-2 rounded-3 border" style="background:#f8f5f0;border-left:4px solid #8FA68F;" data-hero-idx="${hIdx}">
-            <div class="d-flex justify-content-between align-items-start">
-              <div class="flex-grow-1 min-w-0 pe-2">
+            <div class="d-flex align-items-start gap-2">
+              <div class="form-check mt-1">
+                <input class="form-check-input hero-checkbox" type="checkbox" data-hero-idx="${hIdx}" ${isChecked}>
+              </div>
+              <div class="flex-grow-1 min-w-0">
                 <div class="fw-semibold text-dark small">${hero.icon || '🎁'} ${hero.label}</div>
-                <div class="text-muted" style="font-size:10.5px;line-height:1.25;margin-top:2px;">${hero.sublabel || ''} ${bandBadge}</div>
-                ${reasonShort ? `<div class="text-success" style="font-size:10px;margin-top:3px;">${reasonShort}</div>` : ''}
+                <div class="text-muted" style="font-size:10.5px;line-height:1.25;">${hero.sublabel || ''} ${bandBadge}</div>
+                ${reasonShort ? `<div class="text-success" style="font-size:10px;margin-top:2px;">${reasonShort}</div>` : ''}
               </div>
               <div class="text-end flex-shrink-0">
-                <button type="button" class="btn btn-sm btn-success py-0 px-2 mb-1" style="font-size:11px;" data-hero-action="add" data-hero-idx="${hIdx}">一鍵加入組合${itemsCount ? `(${itemsCount})` : ''}</button><br>
-                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:10px;" data-hero-action="copy-script" data-hero-idx="${hIdx}">💬 複製話術</button>
+                <button type="button" class="btn btn-sm btn-success py-0 px-2 mb-1" style="font-size:11px;" data-hero-action="add-single" data-hero-idx="${hIdx}">加入</button><br>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:10px;" data-hero-action="copy-script" data-hero-idx="${hIdx}">💬</button>
               </div>
             </div>
           </div>`;
       });
 
-      html += `<div class="px-3 pt-2 pb-0 small text-muted fw-medium">其餘推薦項目</div>`;
+      // 多選操作列
+      const selectedCount = window.SalonEase._cmdSelectedHeroes.size;
+      html += `
+        <div class="mx-2 mt-1 mb-2 p-2 rounded-3 d-flex align-items-center justify-content-between" style="background:#e8f0e8;border:1px solid #8FA68F;">
+          <div class="small fw-medium text-success">已選 <span id="hero-selected-count">${selectedCount}</span> 個組合</div>
+          <div>
+            <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 me-1" id="btn-hero-preview" style="font-size:11px;" ${selectedCount === 0 ? 'disabled' : ''}>預覽完整話術</button>
+            <button type="button" class="btn btn-sm btn-success py-0 px-2" id="btn-hero-add-selected" style="font-size:11px;" ${selectedCount === 0 ? 'disabled' : ''}>加入已選組合</button>
+          </div>
+        </div>`;
+
+      html += `<div class="px-3 pt-1 pb-0 small text-muted fw-medium">其餘推薦項目</div>`;
     }
 
     if (!currentResults.length) {
@@ -975,14 +993,32 @@
 
   function bindHeroCardEvents() {
     if (!resultsEl) return;
+
+    // === 多選 checkbox ===
+    resultsEl.querySelectorAll('.hero-checkbox').forEach(chk => {
+      chk.onchange = (e) => {
+        e.stopImmediatePropagation();
+        const hIdx = parseInt(chk.dataset.heroIdx);
+        if (!window.SalonEase._cmdSelectedHeroes) window.SalonEase._cmdSelectedHeroes = new Set();
+
+        if (chk.checked) {
+          window.SalonEase._cmdSelectedHeroes.add(hIdx);
+        } else {
+          window.SalonEase._cmdSelectedHeroes.delete(hIdx);
+        }
+        refreshHeroActionBar();
+      };
+    });
+
+    // === 單個加入 / 複製按鈕 ===
     const heroCards = resultsEl.querySelectorAll('.cmd-hero');
     heroCards.forEach(card => {
-      const addBtn = card.querySelector('[data-hero-action="add"]');
-      const copyBtn = card.querySelector('[data-hero-action="copy-script"]');
       const hIdx = parseInt(card.dataset.heroIdx || card.getAttribute('data-hero-idx'));
+      const addSingleBtn = card.querySelector('[data-hero-action="add-single"]');
+      const copyBtn = card.querySelector('[data-hero-action="copy-script"]');
 
-      if (addBtn) {
-        addBtn.onclick = (e) => {
+      if (addSingleBtn) {
+        addSingleBtn.onclick = (e) => {
           e.stopImmediatePropagation();
           const heroes = (window.SalonEase && window.SalonEase._cmdHeroRecs) || [];
           const hero = heroes[hIdx];
@@ -1003,6 +1039,42 @@
         };
       }
     });
+
+    // === 底部多選操作列按鈕 ===
+    const previewBtn = resultsEl.querySelector('#btn-hero-preview');
+    const addSelectedBtn = resultsEl.querySelector('#btn-hero-add-selected');
+
+    if (previewBtn) {
+      previewBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const heroes = (window.SalonEase && window.SalonEase._cmdHeroRecs) || [];
+        const selected = Array.from(window.SalonEase._cmdSelectedHeroes || []).map(i => heroes[i]).filter(Boolean);
+        if (selected.length > 0) showHeroPreviewPanel(selected);
+      };
+    }
+    if (addSelectedBtn) {
+      addSelectedBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const heroes = (window.SalonEase && window.SalonEase._cmdHeroRecs) || [];
+        const selected = Array.from(window.SalonEase._cmdSelectedHeroes || []).map(i => heroes[i]).filter(Boolean);
+        if (selected.length > 0) {
+          quickAddMultipleHeroes(selected);
+        }
+      };
+    }
+  }
+
+  function refreshHeroActionBar() {
+    if (!resultsEl) return;
+    const countEl = resultsEl.querySelector('#hero-selected-count');
+    const previewBtn = resultsEl.querySelector('#btn-hero-preview');
+    const addBtn = resultsEl.querySelector('#btn-hero-add-selected');
+
+    const count = (window.SalonEase && window.SalonEase._cmdSelectedHeroes) ? window.SalonEase._cmdSelectedHeroes.size : 0;
+
+    if (countEl) countEl.textContent = count;
+    if (previewBtn) previewBtn.disabled = count === 0;
+    if (addBtn) addBtn.disabled = count === 0;
   }
 
   function rowHTML(item, idx, isRecent) {
@@ -1844,6 +1916,160 @@
     window.SalonEase.lastSalesScript = richScript;
   }
 
+  /**
+   * 多選英雄組合加入（支援一次加多個 Top 組合）
+   */
+  async function quickAddMultipleHeroes(selectedRecs) {
+    if (!selectedRecs || selectedRecs.length === 0) return;
+
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+    let totalItems = 0;
+
+    // 全部加入購物車
+    selectedRecs.forEach(rec => {
+      const items = rec.suggestedItems || [];
+      items.forEach(item => {
+        if (window.addToCart) {
+          window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+        }
+        totalItems++;
+      });
+    });
+
+    // 結構化記錄（合併所有推薦來源）
+    const notesEl = document.getElementById('sale-notes');
+    if (notesEl) {
+      const tags = selectedRecs.map(r =>
+        `[智能組合推薦] ${r.label} | 來源：${r.type}`
+      ).join('\n');
+      const cur = notesEl.value.trim();
+      notesEl.value = cur ? `${cur}\n${tags}` : tags;
+    }
+
+    // 產生合併版超豐富腳本
+    let combinedScript = `「${customer && customer.name ? customer.name + '，' : ''}我為您精選咗 ${selectedRecs.length} 個最啱您嘅組合：\n\n`;
+    selectedRecs.forEach((rec, i) => {
+      combinedScript += `${i + 1}. ${rec.label}\n   ${rec.suggestedReason ? rec.suggestedReason.substring(0, 90) : ''}\n\n`;
+    });
+    combinedScript += `整體性價比好高，您而家要唔要我一次過幫您加落去呀？」`;
+
+    hide();
+
+    if (window.SalonEase && window.SalonEase.toast) {
+      window.SalonEase.toast(`✅ 已加入 ${selectedRecs.length} 個組合（共 ${totalItems} 項）`, 'success', 1800);
+      setTimeout(() => {
+        window.SalonEase.toast(combinedScript, 'info', 6500);
+      }, 2100);
+    }
+
+    window.SalonEase = window.SalonEase || {};
+    window.SalonEase.lastSalesScript = combinedScript;
+
+    // 清空多選狀態
+    if (window.SalonEase._cmdSelectedHeroes) window.SalonEase._cmdSelectedHeroes.clear();
+  }
+
+  /**
+   * 顯示英雄組合預覽面板（多選模式專用）
+   * 支援可編輯腳本 + 價格提示 + 複製 + 確認加入
+   */
+  function showHeroPreviewPanel(selectedRecs) {
+    if (!resultsEl || !selectedRecs.length) return;
+
+    const POS = window.SalonEase && window.SalonEase.POS;
+    const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+
+    // 產生豐富合併腳本（預設可編輯）
+    let script = `喂${customer && customer.name ? '，' + customer.name : ''}，我根據您過去嘅消費記錄，為您度身準備咗以下 ${selectedRecs.length} 個最可能接受嘅組合：\n\n`;
+    let totalPriceHint = 0;
+
+    selectedRecs.forEach((rec, i) => {
+      script += `${i + 1}. ${rec.label}\n`;
+      if (rec.suggestedReason) script += `   原因：${rec.suggestedReason}\n`;
+      if (rec.priceBand) {
+        script += `   建議價位：HK$ ${rec.priceBand.min}–${rec.priceBand.max}\n`;
+        totalPriceHint += rec.priceBand.median || 0;
+      }
+      script += `\n`;
+    });
+
+    script += `整體預算大約喺您最舒服嘅範圍，效果同客單價都會更好。您而家要唔要我一次過幫您加落去？`;
+
+    const panelId = 'hero-preview-panel';
+    // 先移除舊的
+    const old = document.getElementById(panelId);
+    if (old) old.remove();
+
+    const panelHtml = `
+      <div id="${panelId}" class="mx-2 my-3 p-3 rounded-4 border shadow-sm" style="background:#fffef9;border-color:#8FA68F;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold text-success">📝 完整銷售話術預覽（可編輯）</div>
+          <button type="button" class="btn-close btn-close-sm" id="hero-preview-close" aria-label="Close"></button>
+        </div>
+
+        <textarea id="hero-script-text" class="form-control mb-2" rows="8" style="font-size:13.5px;line-height:1.45;">${script}</textarea>
+
+        <div class="small text-muted mb-2">
+          💡 提示：您可以直接修改上面嘅話術，系統會用修改後嘅版本記錄落 sale notes。
+          ${totalPriceHint ? `預計客單價區間參考：約 HK$ ${Math.round(totalPriceHint / selectedRecs.length)} 左右` : ''}
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="hero-preview-copy">💬 複製話術</button>
+          <button type="button" class="btn btn-success btn-sm flex-fill" id="hero-preview-add">✅ 確認加入已選組合</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="hero-preview-cancel">取消</button>
+        </div>
+      </div>`;
+
+    // 插入到英雄區之後
+    const actionBar = resultsEl.querySelector('.mx-2.mt-1.mb-2.p-2.rounded-3');
+    if (actionBar) {
+      actionBar.insertAdjacentHTML('afterend', panelHtml);
+    } else {
+      resultsEl.insertAdjacentHTML('beforeend', panelHtml);
+    }
+
+    // 綁定事件
+    const panel = document.getElementById(panelId);
+    const ta = document.getElementById('hero-script-text');
+    const closeBtn = document.getElementById('hero-preview-close');
+    const copyBtn = document.getElementById('hero-preview-copy');
+    const addBtn = document.getElementById('hero-preview-add');
+    const cancelBtn = document.getElementById('hero-preview-cancel');
+
+    if (closeBtn) closeBtn.onclick = () => panel.remove();
+    if (cancelBtn) cancelBtn.onclick = () => panel.remove();
+
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        const val = ta.value.trim();
+        copySalesScriptToClipboard(val);
+      };
+    }
+
+    if (addBtn) {
+      addBtn.onclick = async () => {
+        const finalScript = ta.value.trim();
+        // 先加入項目
+        await quickAddMultipleHeroes(selectedRecs);
+
+        // 把最終編輯過嘅腳本寫入 notes（加強版）
+        const notesEl = document.getElementById('sale-notes');
+        if (notesEl) {
+          const tag = `\n[已編輯銷售話術]\n${finalScript}`;
+          notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}${tag}` : finalScript;
+        }
+
+        panel.remove();
+        // 因為 quickAddMultipleHeroes 已經 hide()，這裡再確保
+        if (window.SalonEase && window.SalonEase._cmdSelectedHeroes) {
+          window.SalonEase._cmdSelectedHeroes.clear();
+        }
+      };
+    }
+  }
+
   // 從智能推薦直接一鍵加入（帶建議原因 + 自動產生銷售話術 + 記錄到備註）
   async function quickAddRecommendedItems(recommendation) {
     const items = recommendation.suggestedItems || [];
@@ -2179,12 +2405,21 @@
 
   function hide() {
     createCustomerMode = false;
+    // 清空英雄多選狀態，避免下次開面板時殘留
+    if (window.SalonEase) {
+      window.SalonEase._cmdSelectedHeroes = new Set();
+      window.SalonEase._cmdHeroRecs = [];
+    }
     if (bsModal) bsModal.hide();
   }
 
   function cleanup() {
     modalEl?.remove();
     modalEl = null; bsModal = null; inputEl = null; resultsEl = null; currentResults = []; activeIndex = 0;
+    if (window.SalonEase) {
+      window.SalonEase._cmdSelectedHeroes = new Set();
+      window.SalonEase._cmdHeroRecs = [];
+    }
   }
 
   // 公開
