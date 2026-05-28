@@ -516,6 +516,10 @@ function reportsApp() {
 
         formatDate(d) {
             return d.toISOString().split('T')[0];
+        },
+
+        formatMoney(amount) {
+            return 'HK$ ' + parseFloat(amount || 0).toLocaleString('zh-HK', { minimumFractionDigits: 0 });
         }
     }
 }
@@ -576,10 +580,6 @@ document.addEventListener('keydown', function(e) {
                 this.to = this.formatDate(new Date());
             }
             this.loadAll();
-        },
-
-        formatMoney(amount) {
-            return 'HK$ ' + parseFloat(amount || 0).toLocaleString('zh-HK', { minimumFractionDigits: 0 });
         },
 
         getPaymentLabel(method) {
