@@ -59,7 +59,14 @@ switch ($action) {
             [$name, $duration, $price, $category]
         );
 
-        json_success(['id' => (int)db_last_id()], '服務項目新增成功');
+        $newId = db_last_id();
+        log_activity('service.created', $newId, 'service', [
+            'name' => $name,
+            'price' => $price,
+            'duration_min' => $duration
+        ]);
+
+        json_success(['id' => (int)$newId], '服務項目新增成功');
         break;
 
     case 'update':
@@ -80,6 +87,11 @@ switch ($action) {
             "UPDATE services SET name = ?, duration_min = ?, price = ?, category = ? WHERE id = ?",
             [$name, $duration, $price, $category, $id]
         );
+
+        log_activity('service.updated', $id, 'service', [
+            'name' => $name,
+            'price' => $price
+        ]);
 
         json_success(null, '服務項目已更新');
         break;

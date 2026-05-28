@@ -75,7 +75,14 @@ switch ($action) {
             [$name, $sku, $price, $cost, $stock, $category]
         );
 
-        json_success(['id' => (int)db_last_id()], '產品新增成功');
+        $newId = db_last_id();
+        log_activity('product.created', $newId, 'product', [
+            'name' => $name,
+            'price' => $price,
+            'sku' => $sku
+        ]);
+
+        json_success(['id' => (int)$newId], '產品新增成功');
         break;
 
     case 'update':
@@ -99,6 +106,11 @@ switch ($action) {
             "UPDATE products SET name = ?, sku = ?, price = ?, cost = ?, stock_qty = ?, low_stock_threshold = ?, category = ? WHERE id = ?",
             [$name, $sku, $price, $cost, $stock, $low_stock, $category, $id]
         );
+
+        log_activity('product.updated', $id, 'product', [
+            'name' => $name,
+            'price' => $price
+        ]);
 
         json_success(null, '產品資料已更新');
         break;

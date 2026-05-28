@@ -141,9 +141,16 @@ switch ($action) {
             [$name, $phone, $role, $id]
         );
 
+        // 取得最新佣金率記錄
+        $rates = db_query_one(
+            "SELECT commission_rate_service, commission_rate_retail, commission_rate_open FROM staff WHERE id = ?",
+            [$id]
+        );
+
         log_activity('staff.updated', $id, 'staff', [
             'name' => $name,
-            'role' => $role
+            'role' => $role,
+            'commission_rates' => $rates
         ]);
 
         json_success(null, '員工資料已更新');
