@@ -807,7 +807,8 @@ async function checkout() {
         discount: parseFloat(document.getElementById('cart-discount').value) || 0,
         payment_method: method,
         amount_received: received,
-        notes: notes
+        notes: notes,
+        csrf_token: window.CSRF_TOKEN || ''
     };
 
     try {

@@ -3,6 +3,7 @@
  * SalonEase - POS 銷售系統
  */
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/csrf.php';
 require_login();
 
 require_once __DIR__ . '/includes/functions.php';
@@ -173,3 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
+
+<script>
+window.CSRF_TOKEN = '<?= csrf_token() ?>';
+</script>
