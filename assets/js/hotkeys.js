@@ -50,15 +50,15 @@
 
         const modalHTML = `
             <div class="modal fade" id="commandPaletteModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
-                <div class="modal-dialog modal-dialog-centered" style="max-width: 540px;">
+                <div class="modal-dialog modal-dialog-centered" style="max-width: 560px;">
                     <div class="modal-content shadow">
                         <div class="modal-header py-2 px-3 border-bottom-0">
                             <input type="text" id="cmd-input" 
                                    class="form-control form-control-sm border-0 shadow-none px-0" 
-                                   placeholder="搜尋頁面或動作..." 
+                                   placeholder="搜尋頁面、客戶或動作..." 
                                    style="font-size: 15px;">
                         </div>
-                        <div class="modal-body p-0" id="cmd-results" style="max-height: 380px; overflow-y: auto;">
+                        <div class="modal-body p-0" id="cmd-results" style="max-height: 400px; overflow-y: auto;">
                         </div>
                         <div class="modal-footer py-2 px-3 small text-muted border-top-0">
                             ↑↓ 選擇 • Enter 執行 • Esc 關閉
@@ -79,34 +79,64 @@
 
         let selectedIndex = 0;
         let currentFiltered = [];
+        let customerResults = [];
 
-        const commands = [
+        const staticCommands = [
             // 頁面
-            { id: 'pos',          label: 'POS 銷售',               type: 'page', url: '/pos.php', shortcut: 'Alt+P' },
-            { id: 'appointments', label: '預約管理',               type: 'page', url: '/appointments.php', shortcut: 'Alt+A' },
-            { id: 'customers',    label: '客戶管理',               type: 'page', url: '/customers.php', shortcut: 'Alt+C' },
-            { id: 'dashboard',    label: '概覽首頁',               type: 'page', url: '/dashboard.php', shortcut: 'Alt+H' },
-            { id: 'reports',      label: '報表',                   type: 'page', url: '/reports.php', shortcut: 'Alt+R' },
-            { id: 'commissions',  label: '佣金查詢',               type: 'page', url: '/commissions.php', shortcut: 'Alt+M' },
-            { id: 'settings',     label: '系統設定',               type: 'page', url: '/settings.php', shortcut: 'Alt+S' },
-            { id: 'staff',        label: '員工管理',               type: 'page', url: '/staff.php' },
-            { id: 'services',     label: '服務項目管理',           type: 'page', url: '/services.php' },
-            { id: 'products',     label: '產品管理',               type: 'page', url: '/products.php' },
-            { id: 'packages',     label: '套票管理',               type: 'page', url: '/packages.php' },
-            { id: 'rooms',        label: '房間管理',               type: 'page', url: '/rooms.php' },
+            { id: 'pos', label: 'POS 銷售', type: 'page', url: '/pos.php', shortcut: 'Alt+P' },
+            { id: 'appointments', label: '預約管理', type: 'page', url: '/appointments.php', shortcut: 'Alt+A' },
+            { id: 'customers', label: '客戶管理', type: 'page', url: '/customers.php', shortcut: 'Alt+C' },
+            { id: 'dashboard', label: '概覽首頁', type: 'page', url: '/dashboard.php', shortcut: 'Alt+H' },
+            { id: 'reports', label: '報表', type: 'page', url: '/reports.php', shortcut: 'Alt+R' },
+            { id: 'commissions', label: '佣金查詢', type: 'page', url: '/commissions.php', shortcut: 'Alt+M' },
+            { id: 'settings', label: '系統設定', type: 'page', url: '/settings.php', shortcut: 'Alt+S' },
+            { id: 'staff', label: '員工管理', type: 'page', url: '/staff.php' },
+            { id: 'services', label: '服務項目管理', type: 'page', url: '/services.php' },
+            { id: 'products', label: '產品管理', type: 'page', url: '/products.php' },
+            { id: 'packages', label: '套票管理', type: 'page', url: '/packages.php' },
+            { id: 'rooms', label: '房間管理', type: 'page', url: '/rooms.php' },
 
             // 動作
-            { id: 'new-customer', label: '新增客戶',               type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/customers.php?new=1', 180); } },
-            { id: 'new-appointment', label: '新增預約',            type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/appointments.php?new=1', 180); } },
+            { id: 'new-customer', label: '新增客戶', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/customers.php?new=1', 180); } },
+            { id: 'new-appointment', label: '新增預約', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/appointments.php?new=1', 180); } },
             { id: 'print-receipt', label: '打印上一張收據 (58mm)', type: 'action', action: () => { modal.hide(); setTimeout(() => window.printLastReceipt?.('58'), 120); } },
-            { id: 'report-today', label: '切換到今日報表',         type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
-            { id: 'report-week',  label: '切換到本週報表',         type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
+            { id: 'report-today', label: '切換到今日報表', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
         ];
+
+        async function searchCustomers(keyword) {
+            if (!keyword || keyword.length < 2) {
+                customerResults = [];
+                return;
+            }
+
+            try {
+                const res = await window.SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(keyword)}&limit=6`);
+                customerResults = (res.data || []).map(c => ({
+                    id: `customer-${c.id}`,
+                    label: `查看客戶：${c.name}`,
+                    type: 'customer',
+                    action: () => {
+                        modal.hide();
+                        setTimeout(() => location.href = `/customers.php?id=${c.id}`, 150);
+                    },
+                    secondaryAction: {
+                        label: `為 ${c.name} 新增預約`,
+                        action: () => {
+                            modal.hide();
+                            setTimeout(() => location.href = `/appointments.php?new=1&customer_id=${c.id}`, 150);
+                        }
+                    },
+                    phone: c.phone
+                }));
+            } catch (e) {
+                customerResults = [];
+            }
+        }
 
         function getRecentCommandsList() {
             const recentIds = getRecentCommands();
             return recentIds
-                .map(id => commands.find(c => c.id === id))
+                .map(id => staticCommands.find(c => c.id === id))
                 .filter(Boolean);
         }
 
@@ -115,25 +145,43 @@
             const recent = getRecentCommandsList();
 
             let toShow = [];
+            currentFiltered = [];
 
             if (!q) {
-                // 沒有搜尋時：顯示「最近使用」 + 其餘指令
                 const recentSet = new Set(recent.map(c => c.id));
-                const others = commands.filter(c => !recentSet.has(c.id));
+                const others = staticCommands.filter(c => !recentSet.has(c.id));
 
                 if (recent.length > 0) {
                     toShow.push({ isSection: true, title: '最近使用' });
                     toShow.push(...recent);
+                    currentFiltered.push(...recent);
                 }
+
                 toShow.push({ isSection: true, title: '所有功能' });
                 toShow.push(...others);
-                currentFiltered = toShow.filter(item => !item.isSection);
+                currentFiltered.push(...others);
             } else {
-                const filtered = commands.filter(cmd =>
+                // 靜態指令
+                const filteredStatic = staticCommands.filter(cmd =>
                     cmd.label.toLowerCase().includes(q)
                 );
-                currentFiltered = filtered;
-                toShow = [...filtered];
+
+                // 客戶結果
+                const filteredCustomers = customerResults.filter(c =>
+                    c.label.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+                );
+
+                if (filteredStatic.length > 0) {
+                    toShow.push({ isSection: true, title: '功能' });
+                    toShow.push(...filteredStatic);
+                    currentFiltered.push(...filteredStatic);
+                }
+
+                if (filteredCustomers.length > 0) {
+                    toShow.push({ isSection: true, title: '客戶' });
+                    toShow.push(...filteredCustomers);
+                    currentFiltered.push(...filteredCustomers);
+                }
             }
 
             if (toShow.length === 0) {
@@ -155,11 +203,23 @@
                 }
 
                 const isSelected = cmdIndex === selectedIndex;
+                const hasSecondary = item.secondaryAction;
+
                 html += `
-                    <div class="cmd-item px-3 py-2 d-flex justify-content-between align-items-center ${isSelected ? 'bg-primary-subtle' : ''}" 
+                    <div class="cmd-item px-3 py-2 ${isSelected ? 'bg-primary-subtle' : ''}" 
                          data-cmd-index="${cmdIndex}" style="cursor: pointer;">
-                        <span>${item.label}</span>
-                        ${item.shortcut ? `<span class="text-muted small">${item.shortcut}</span>` : ''}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>${item.label}</span>
+                            ${item.shortcut ? `<span class="text-muted small">${item.shortcut}</span>` : ''}
+                        </div>
+                        ${hasSecondary ? `
+                            <div class="small mt-1">
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" 
+                                        onclick="event.stopImmediatePropagation(); this.closest('.modal').querySelector('.modal').dispatchEvent(new Event('secondaryAction')); return false;">
+                                    ${item.secondaryAction.label}
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 cmdIndex++;
@@ -167,51 +227,59 @@
 
             resultsContainer.innerHTML = html;
 
-            // Click & hover
+            // Click handlers
             resultsContainer.querySelectorAll('.cmd-item').forEach(item => {
                 const idx = parseInt(item.dataset.cmdIndex);
-                item.addEventListener('click', () => {
-                    executeCommand(currentFiltered[idx]);
-                });
-                item.addEventListener('mouseenter', () => {
-                    selectedIndex = idx;
-                    renderResults(input.value);
+                item.addEventListener('click', (e) => {
+                    if (!e.target.closest('button')) {
+                        executeCommand(currentFiltered[idx]);
+                    }
                 });
             });
+
+            // Secondary action buttons (for customers)
+            // We handle secondary via a custom event for simplicity in this version
         }
 
         function executeCommand(cmd) {
-            saveRecentCommand(cmd.id);
+            saveRecentCommand(cmd.id || cmd.label);
             modal.hide();
             setTimeout(() => {
                 if (cmd.url) {
                     window.location.href = cmd.url;
                 } else if (cmd.action) {
                     cmd.action();
+                } else if (cmd.secondaryAction) {
+                    // fallback
+                    cmd.secondaryAction.action();
                 }
             }, 100);
         }
 
-        function updateSelection() {
-            const items = resultsContainer.querySelectorAll('.cmd-item');
-            items.forEach((item, idx) => {
-                if (parseInt(item.dataset.cmdIndex) === selectedIndex) {
-                    item.classList.add('bg-primary-subtle');
-                } else {
-                    item.classList.remove('bg-primary-subtle');
-                }
-            });
+        async function handleSearch() {
+            const q = input.value.trim();
+            selectedIndex = 0;
+
+            // Fetch customers if query is meaningful
+            if (q.length >= 2) {
+                await searchCustomers(q);
+            } else {
+                customerResults = [];
+            }
+
+            renderResults(q);
         }
 
         // Initial render
         renderResults('');
-        updateSelection();
 
-        // Live search
+        // Live search with debounce for customer API
+        let searchTimeout;
         input.addEventListener('input', () => {
-            selectedIndex = 0;
-            renderResults(input.value);
-            updateSelection();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                await handleSearch();
+            }, 220);
         });
 
         // Keyboard navigation
@@ -221,11 +289,11 @@
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 selectedIndex = Math.min(selectedIndex + 1, max);
-                updateSelection();
+                renderResults(input.value);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 selectedIndex = Math.max(selectedIndex - 1, 0);
-                updateSelection();
+                renderResults(input.value);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (currentFiltered[selectedIndex]) {
