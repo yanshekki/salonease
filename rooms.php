@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $pageTitle = '房間管理';
 $pageSubtitle = '管理美容院房間容量，用於預約衝突檢查';
@@ -186,7 +187,10 @@ async function saveRoom() {
 
         await SalonEase.fetch(`/api/rooms.php?action=${action}`, {
             method: 'POST',
-            body: payload
+            body: {
+                ...payload,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
 
         hideRoomModal();
@@ -206,7 +210,11 @@ async function toggleRoom(id, currentStatus) {
     try {
         await SalonEase.fetch('/api/rooms.php?action=toggle', {
             method: 'POST',
-            body: { id, status: newStatus }
+            body: { 
+                id, 
+                status: newStatus,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
         SalonEase.toast(`房間已${actionText}`);
         loadRooms();

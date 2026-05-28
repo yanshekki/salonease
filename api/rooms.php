@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../db.php';
 
 require_login();
@@ -33,6 +34,7 @@ switch ($action) {
 
     case 'create':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $name = trim(post('name'));
         $capacity = (int)post('capacity', 1);
@@ -51,6 +53,7 @@ switch ($action) {
 
     case 'update':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id');
         $name = trim(post('name'));
@@ -70,6 +73,7 @@ switch ($action) {
 
     case 'toggle':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id');
         $newStatus = (int)post('status');
