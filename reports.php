@@ -520,6 +520,18 @@ function reportsApp() {
 
         formatMoney(amount) {
             return 'HK$ ' + parseFloat(amount || 0).toLocaleString('zh-HK', { minimumFractionDigits: 0 });
+        },
+
+        getPaymentLabel(method) {
+            const map = {
+                'cash': '現金',
+                'fps': '轉數快',
+                'card': '信用卡/八達通',
+                'wechat': 'WeChat Pay',
+                'alipay': 'Alipay',
+                'other': '其他'
+            };
+            return map[method] || method;
         }
     }
 }
@@ -580,18 +592,6 @@ document.addEventListener('keydown', function(e) {
                 this.to = this.formatDate(new Date());
             }
             this.loadAll();
-        },
-
-        getPaymentLabel(method) {
-            const map = {
-                'cash': '現金',
-                'fps': '轉數快',
-                'card': '信用卡/八達通',
-                'wechat': 'WeChat Pay',
-                'alipay': 'Alipay',
-                'other': '其他'
-            };
-            return map[method] || method;
         },
 
         // 載入員工清單（供篩選使用）
