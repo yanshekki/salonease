@@ -542,6 +542,27 @@ function reportsApp() {
             } catch (e) {
                 console.warn('載入員工清單失敗', e);
             }
+        },
+
+        // 匯出員工排行 CSV
+        exportStaffRankingCSV() {
+            if (!this.staffRanking.length) {
+                SalonEase.toast('目前沒有可匯出的排行資料', 'error');
+                return;
+            }
+
+            let csv = '\uFEFF員工,單數,營業額,平均每單,套票扣減次數\n';
+            this.staffRanking.forEach(r => {
+                csv += `${r.staff_name},${r.transaction_count},${r.total_sales},${r.avg_ticket},${r.package_sessions}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = `員工銷售排行_${this.from}_${this.to}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
         }
     }
 }
@@ -602,27 +623,6 @@ document.addEventListener('keydown', function(e) {
                 this.to = this.formatDate(new Date());
             }
             this.loadAll();
-        },
-
-        // 匯出員工排行 CSV
-        exportStaffRankingCSV() {
-            if (!this.staffRanking.length) {
-                SalonEase.toast('目前沒有可匯出的排行資料', 'error');
-                return;
-            }
-
-            let csv = '\uFEFF員工,單數,營業額,平均每單,套票扣減次數\n';
-            this.staffRanking.forEach(r => {
-                csv += `${r.staff_name},${r.transaction_count},${r.total_sales},${r.avg_ticket},${r.package_sessions}\n`;
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.href = url;
-            link.download = `員工銷售排行_${this.from}_${this.to}.csv`;
-            link.click();
-            URL.revokeObjectURL(url);
         },
 
         // 初始化 / 更新圖表
