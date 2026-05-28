@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_role('admin'); // 只有管理員可以管理員工
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $pageTitle = '員工管理';
 $pageSubtitle = '新增、編輯員工帳號及佣金設定';
@@ -298,7 +299,10 @@ async function saveStaff() {
 
         await SalonEase.fetch(`/api/staff.php?action=${action}`, {
             method: 'POST',
-            body: payload
+            body: {
+                ...payload,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
 
         hideStaffModal();
@@ -319,7 +323,11 @@ async function toggleStatus(id, currentStatus) {
     try {
         await SalonEase.fetch('/api/staff.php?action=toggle', {
             method: 'POST',
-            body: { id, status: newStatus }
+            body: { 
+                id, 
+                status: newStatus,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
         SalonEase.toast(`員工已${actionText}`);
         loadStaff();
@@ -341,7 +349,11 @@ async function resetPassword() {
     try {
         await SalonEase.fetch('/api/staff.php?action=reset_pw', {
             method: 'POST',
-            body: { id, password: pw }
+            body: { 
+                id, 
+                password: pw,
+                csrf_token: '<?= csrf_token() ?>'
+            }
         });
         document.getElementById('reset-password').value = '';
         SalonEase.toast('密碼已重設成功');
