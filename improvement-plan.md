@@ -308,14 +308,16 @@
 
 **Phase 3 目前真實進度**：約 80%（運維工具 + Audit Log + 統一匯出 + 打印優化 + 文件整理已完成，Phase 3 主要工作正式就緒）。
 
-**目前進行中**：A150 - Phase 3 文件整理收尾（用戶選擇 B）。這是 Phase 3 最後一個合理大小 chunk，整理文件、更新計劃、總結成果。
+**目前進行中**：A150 已完成。Phase 3 主要工作已全部完成。下一步可選擇 merge A150，或結束 Phase 3 並轉入 Phase 4 規劃。
 
-**A150 定義（合理大小 chunk）**：
-- 整理 improvement-plan.md：清理已完成項目、更新總結、把 Phase 3 標記大致完成
-- 更新 README.md：加入 Phase 3 完成摘要 + 目前系統成熟度說明
-- **完成定義**：文件乾淨、Phase 3 狀態清楚記錄
+**A150 已完成**（用戶選擇 B）：Phase 3 文件整理收尾 chunk 已完成並 commit。
 
-完成後先 update plan，再決定是否 merge。
+**A150 完成內容**：
+- 整理 improvement-plan.md：加入 Phase 3 完成總結
+- 更新 README.md：記錄 Phase 3 成果 + 目前成熟狀態
+- **完成定義**：已達成。文件與計劃狀態清晰
+
+（A150 收尾，php -l 通過，按新規則先 update plan 再 code）
 
 **A149 已完成**（用戶選擇 A）：打印優化 chunk 已完成並 commit。
 
@@ -447,7 +449,7 @@
 6. **其他收尾項目**  
    - （已完成 A148 統一匯出入口 + A149 打印優化 + A150 文件整理）
 
-**A150 進行中**（用戶選擇 B）：Phase 3 文件整理收尾（整理 improvement-plan.md + 更新 README）
+
 
 ---
 
