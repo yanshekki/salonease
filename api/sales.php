@@ -220,6 +220,14 @@ switch ($action) {
                 ];
             });
 
+            // 記錄審計日誌
+            log_activity('sale.created', $result['sale_id'], 'sale', [
+                'total' => $result['total'],
+                'payment_method' => $payment_method,
+                'item_count' => count($items),
+                'customer_id' => $customer_id ?: null
+            ]);
+
             json_success(['id' => $result['sale_id']], '結帳成功');
 
         } catch (Exception $e) {

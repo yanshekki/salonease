@@ -101,6 +101,11 @@ switch ($action) {
         );
 
         $newId = db_last_id();
+        log_activity('staff.created', $newId, 'staff', [
+            'name' => $name,
+            'email' => $email,
+            'role' => $role
+        ]);
         json_success(['id' => (int)$newId], '員工新增成功');
         break;
 
@@ -136,6 +141,11 @@ switch ($action) {
             [$name, $phone, $role, $id]
         );
 
+        log_activity('staff.updated', $id, 'staff', [
+            'name' => $name,
+            'role' => $role
+        ]);
+
         json_success(null, '員工資料已更新');
         break;
 
@@ -157,6 +167,11 @@ switch ($action) {
         }
 
         db_exec("UPDATE staff SET is_active = ? WHERE id = ?", [$newStatus, $id]);
+
+        log_activity('staff.toggled', $id, 'staff', [
+            'new_status' => $newStatus ? 'active' : 'inactive'
+        ]);
+
         json_success(null, $newStatus ? '員工已啟用' : '員工已停用');
         break;
 
