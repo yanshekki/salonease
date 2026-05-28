@@ -399,11 +399,13 @@
             type: 'gap_suggestion',
             label: `${urgency}補充：${name}`,
             sublabel: `平均 ${Math.round(avgInterval)} 天買一次，上次已 ${daysSinceLast} 天`,
+            suggestedReason: `根據此客戶平均購買間隔約 ${Math.round(avgInterval)} 天，上次購買已 ${daysSinceLast} 天，建議及時補充`,
             keywords: '補貨 缺貨 該買 間隔',
             icon: '⏰',
-            action: 'load-history-sale',
+            action: 'quick-add-recommendation',
             priority: 20,
-            isGap: true
+            isGap: true,
+            suggestedItems: [{ type, ref_id: parseInt(refId), name }]
           });
         }
       });
@@ -809,6 +811,11 @@
     if (item.action === 'load-cart-template' && item.templateId) {
       // 智能推薦或一般模板點擊 → 進入確認模式
       await enterLoadConfirmationMode('template', item.templateId, item.label);
+      return;
+    }
+
+    if (item.action === 'quick-add-recommendation' && item.suggestedItems) {
+      await quickAddRecommendedItems(item);
       return;
     }
 
@@ -1362,6 +1369,31 @@
     hide();
     if (window.SalonEase && window.SalonEase.toast) {
       window.SalonEase.toast(`已從「${sourceLabel}」加入 ${selectedItems.length} 項`, 'success');
+    }
+  }
+
+  // 從智能推薦直接一鍵加入（帶建議原因）
+  async function quickAddRecommendedItems(recommendation) {
+    const items = recommendation.suggestedItems || [];
+    if (items.length === 0) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('此推薦暫無可加入項目', 'info');
+      }
+      return;
+    }
+
+    const reason = recommendation.suggestedReason || '系統推薦';
+
+    // 簡單處理：直接加入（不詢問清空，保持輕量）
+    for (const item of items) {
+      if (window.addToCart) {
+        window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+      }
+    }
+
+    hide();
+    if (window.SalonEase && window.SalonEase.toast) {
+      window.SalonEase.toast(`已加入推薦項目（${reason}）`, 'success', 2500);
     }
   }
 
