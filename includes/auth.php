@@ -87,6 +87,7 @@ function require_role(string|array $roles): void
 function attempt_login(string $email, string $password): array
 {
     require_once __DIR__ . '/../db.php';
+    require_once __DIR__ . '/csrf.php';
 
     $user = db_query_one(
         "SELECT id, name, role, password_hash, is_active FROM staff WHERE email = ?",
@@ -112,6 +113,9 @@ function attempt_login(string $email, string $password): array
     $_SESSION['staff_role'] = $user['role'];
     $_SESSION['login_time'] = time();
 
+    // 重新產生 CSRF token（提升安全性）
+    regenerate_csrf_token();
+
     return ['success' => true, 'user' => $user];
 }
 
@@ -120,6 +124,9 @@ function attempt_login(string $email, string $password): array
  */
 function logout(): void
 {
+    // 清除 CSRF token
+    clear_csrf_token();
+
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
