@@ -303,7 +303,7 @@
     }
   }
 
-  // 智能推薦：根據目前選中的客戶，推薦最相關的組合（頻率 + 補貨時機分析）
+  // 智能推薦：根據目前選中的客戶，推薦最相關的組合（進階私人銷售顧問版）
   async function fetchSmartRecommendationsForCurrentCustomer() {
     const POS = window.SalonEase && window.SalonEase.POS;
     const customer = POS && POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
@@ -311,17 +311,16 @@
     if (!customer || !customer.id) return [];
 
     const recommendations = [];
-    const itemFrequency = {};      // 統計客戶最常買的項目
-    const lastPurchaseDate = {};   // 記錄每個項目上次購買日期
+    const itemFrequency = {};
+    const lastPurchaseDate = {};
+    const purchaseIntervals = {}; // 記錄每次購買的間隔天數，用來算平均
 
     try {
-      // 取得該客戶較多歷史銷售（用來做頻率分析）
-      const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=12`);
+      const salesRes = await window.SalonEase.fetch(`/api/sales.php?action=list&customer_id=${customer.id}&limit=15`);
       const recentSales = salesRes.data || [];
 
-      // 為最近幾張銷售抓取詳細項目，做頻率統計
       const recentSalesWithItems = await Promise.all(
-        recentSales.slice(0, 6).map(async (sale) => {
+        recentSales.slice(0, 8).map(async (sale) => {
           try {
             const itemsRes = await window.SalonEase.fetch(`/api/sales.php?action=get_items&sale_id=${sale.id}`);
             return { ...sale, items: itemsRes.data || [] };
@@ -331,54 +330,95 @@
         })
       );
 
-      // 分析頻率 + 關聯（最常一起買）
-      const pairFrequency = {}; // key: "type:refId|type:refId" (排序後)
+      // 排序銷售由舊到新，方便計算購買間隔
+      const sortedSales = [...recentSalesWithItems].sort((a, b) => a.sale_date.localeCompare(b.sale_date));
 
-      recentSalesWithItems.forEach(sale => {
+      // 分析頻率 + 購買間隔 + 關聯
+      const pairFrequency = {};
+
+      sortedSales.forEach((sale, index) => {
         const saleDate = sale.sale_date;
         const itemsInSale = sale.items || [];
 
-        // 單一項目頻率
         itemsInSale.forEach(item => {
           const key = `${item.item_type}:${item.ref_id}`;
           itemFrequency[key] = (itemFrequency[key] || 0) + 1;
 
-          if (!lastPurchaseDate[key] || saleDate > lastPurchaseDate[key]) {
-            lastPurchaseDate[key] = saleDate;
+          // 記錄購買日期歷史
+          if (!lastPurchaseDate[key]) lastPurchaseDate[key] = [];
+          lastPurchaseDate[key].push(saleDate);
+
+          // 計算購買間隔
+          if (index > 0) {
+            const prevDate = new Date(sortedSales[index - 1].sale_date);
+            const currDate = new Date(saleDate);
+            const diffDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
+            if (!purchaseIntervals[key]) purchaseIntervals[key] = [];
+            purchaseIntervals[key].push(diffDays);
           }
         });
 
-        // 關聯分析：同一次銷售內的項目兩兩配對
+        // 關聯分析
         for (let i = 0; i < itemsInSale.length; i++) {
           for (let j = i + 1; j < itemsInSale.length; j++) {
             const a = itemsInSale[i];
             const b = itemsInSale[j];
-
             const keyA = `${a.item_type}:${a.ref_id}`;
             const keyB = `${b.item_type}:${b.ref_id}`;
-
-            // 排序確保 A < B，避免重複
             const pairKey = keyA < keyB ? `${keyA}|${keyB}` : `${keyB}|${keyA}`;
             pairFrequency[pairKey] = (pairFrequency[pairKey] || 0) + 1;
           }
         }
       });
 
-      // 建立「最常購買」推薦（取前幾名）
+      const today = new Date();
+
+      // === 進階：購買間隔 + 缺口建議（私人銷售顧問核心）===
+      Object.entries(purchaseIntervals).forEach(([key, intervals]) => {
+        if (intervals.length < 2) return; // 至少要有兩次購買才有意義
+
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        const lastDateStr = lastPurchaseDate[key][lastPurchaseDate[key].length - 1];
+        const lastDate = new Date(lastDateStr);
+        const daysSinceLast = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+
+        const [type, refId] = key.split(':');
+
+        // 找出項目名稱
+        let name = '項目';
+        for (const sale of recentSalesWithItems) {
+          const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === key);
+          if (found) { name = found.name; break; }
+        }
+
+        // 如果已經超過平均間隔的 80%，就強力建議補貨
+        if (daysSinceLast >= avgInterval * 0.8) {
+          const urgency = daysSinceLast > avgInterval ? '強烈建議' : '建議';
+          recommendations.push({
+            id: `gap-${key}`,
+            type: 'gap_suggestion',
+            label: `${urgency}補充：${name}`,
+            sublabel: `平均 ${Math.round(avgInterval)} 天買一次，上次已 ${daysSinceLast} 天`,
+            keywords: '補貨 缺貨 該買 間隔',
+            icon: '⏰',
+            action: 'load-history-sale',
+            priority: 20,
+            isGap: true
+          });
+        }
+      });
+
+      // 其餘推薦（頻率、關聯、歷史、模板）維持之前邏輯...
       const sortedFrequent = Object.entries(itemFrequency)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3);
 
       sortedFrequent.forEach(([key, count], idx) => {
         const [type, refId] = key.split(':');
-        // 試著從最近銷售找名字
         let name = '常用項目';
         for (const sale of recentSalesWithItems) {
           const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === key);
-          if (found) {
-            name = found.name;
-            break;
-          }
+          if (found) { name = found.name; break; }
         }
 
         recommendations.push({
@@ -389,28 +429,24 @@
           keywords: '最常 常用 頻繁',
           icon: '🔥',
           action: 'load-history-sale',
-          priority: 15 + (3 - idx),
+          priority: 14 + (3 - idx),
           isFrequent: true
         });
       });
 
-      // 建立「最常一起買」的關聯推薦（新功能）
+      // 關聯推薦
       const sortedPairs = Object.entries(pairFrequency)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 3);
+        .slice(0, 2);
 
       sortedPairs.forEach(([pairKey, count], idx) => {
         const [keyA, keyB] = pairKey.split('|');
-
-        let nameA = '項目A';
-        let nameB = '項目B';
-
+        let nameA = '項目A', nameB = '項目B';
         for (const sale of recentSalesWithItems) {
           const foundA = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === keyA);
           const foundB = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === keyB);
           if (foundA) nameA = foundA.name;
           if (foundB) nameB = foundB.name;
-          if (foundA && foundB) break;
         }
 
         recommendations.push({
@@ -418,106 +454,71 @@
           type: 'frequent_pair',
           label: `最常一起買：${nameA} + ${nameB}`,
           sublabel: `一起買 ${count} 次`,
-          keywords: '一起 搭配 組合 常一起',
+          keywords: '一起 搭配 組合',
           icon: '🔗',
-          action: 'load-history-sale', // 可以之後優化成載入這兩個項目
-          priority: 18 + (3 - idx),     // 關聯推薦給最高權重
+          action: 'load-history-sale',
+          priority: 17 + (2 - idx),
           isPair: true
         });
       });
 
-      // 建立「該補貨了」建議（針對產品類，超過一定天數）
-      const today = new Date();
-      Object.entries(lastPurchaseDate).forEach(([key, dateStr]) => {
-        const [type, refId] = key.split(':');
-        if (type !== 'product') return; // 先只對產品做補貨建議
-
-        const lastDate = new Date(dateStr);
-        const daysSince = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
-
-        if (daysSince >= 60) { // 超過 60 天建議補貨（可之後做成可設定）
-          let name = '產品';
-          for (const sale of recentSalesWithItems) {
-            const found = (sale.items || []).find(i => `${i.item_type}:${i.ref_id}` === key);
-            if (found) {
-              name = found.name;
-              break;
-            }
-          }
-
-          recommendations.push({
-            id: `replenish-${key}`,
-            type: 'replenish_suggestion',
-            label: `該補貨了：${name}`,
-            sublabel: `上次購買已 ${daysSince} 天`,
-            keywords: '補貨 補充 該買了',
-            icon: '🧴',
-            action: 'load-history-sale',
-            priority: 12,
-            isReplenish: true
-          });
-        }
-      });
-
-      // 簡單交叉銷售建議（例如常見服務搭配產品）
-      // 從最常買的項目中，簡單推一些常見搭配（可之後做成可設定規則）
-      const topFrequentKeys = Object.keys(itemFrequency).sort((a,b) => itemFrequency[b]-itemFrequency[a]).slice(0,3);
+      // 簡單交叉銷售
+      const topFrequentKeys = Object.keys(itemFrequency).sort((a,b) => itemFrequency[b]-itemFrequency[a]).slice(0,2);
       topFrequentKeys.forEach(key => {
         const [type] = key.split(':');
         if (type === 'service') {
-          // 簡單規則：如果常買服務，推薦常見零售產品（這裡用泛化建議）
           recommendations.push({
             id: `cross-${key}`,
             type: 'cross_sell',
-            label: `搭配推薦：護膚產品`,
+            label: `搭配推薦：護膚/保養產品`,
             sublabel: `常與此服務一起購買`,
-            keywords: '搭配 推薦 一起',
+            keywords: '搭配 推薦',
             icon: '✨',
             action: 'load-history-sale',
-            priority: 11
+            priority: 10
           });
         }
       });
 
-      // 加入原本的歷史銷售與常用組合作為備選
-      recentSales.slice(0, 3).forEach(sale => {
+      // 歷史 + 模板作為備選
+      recentSales.slice(0, 2).forEach(sale => {
         recommendations.push({
           id: `history-${sale.id}`,
           type: 'history_sale',
-          label: `歷史：#${sale.id}（${sale.sale_date}）`,
-          sublabel: `HK$ ${parseFloat(sale.total).toFixed(0)}`,
-          keywords: '歷史 最近',
+          label: `歷史購買 #${sale.id}`,
+          sublabel: `${sale.sale_date}`,
+          keywords: '歷史',
           icon: '🕒',
           action: 'load-history-sale',
           saleId: sale.id,
-          priority: 9
+          priority: 7
         });
       });
 
       const templatesRes = await window.SalonEase.fetch('/api/cart_templates.php?action=list');
       const templates = templatesRes.data || [];
-      templates.slice(0, 3).forEach(t => {
+      templates.slice(0, 2).forEach(t => {
         recommendations.push({
           id: `template-${t.id}`,
           type: 'cart_template',
           label: `常用：${t.name}`,
           sublabel: `${t.items?.length || 0} 項`,
-          keywords: t.name + ' 常用',
+          keywords: '常用 套餐',
           icon: '⭐',
           action: 'load-cart-template',
           templateId: t.id,
-          priority: 8
+          priority: 6
         });
       });
 
     } catch (err) {
-      console.warn('[CommandPalette] 智能推薦分析失敗', err);
+      console.warn('[CommandPalette] 進階智能推薦分析失敗', err);
     }
 
-    // 最終排序：priority 高的 + 頻率/補貨標記的優先
+    // 最終排序
     recommendations.sort((a, b) => {
-      const scoreA = (b.priority || 0) + (b.isFrequent ? 5 : 0) + (b.isReplenish ? 4 : 0);
-      const scoreB = (a.priority || 0) + (a.isFrequent ? 5 : 0) + (a.isReplenish ? 4 : 0);
+      const scoreA = (b.priority || 0) + (b.isGap ? 6 : 0) + (b.isFrequent ? 3 : 0) + (b.isPair ? 4 : 0);
+      const scoreB = (a.priority || 0) + (a.isGap ? 6 : 0) + (a.isFrequent ? 3 : 0) + (a.isPair ? 4 : 0);
       return scoreA - scoreB;
     });
 
