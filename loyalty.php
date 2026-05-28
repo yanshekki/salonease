@@ -14,31 +14,44 @@ $pageSubtitle = '查看客戶積分獲得與兌換歷史';
 $thisMonthStart = date('Y-m-01');
 $thisMonthEnd   = date('Y-m-d');
 
-$monthlyEarned = db_query_one("
-    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points')) AS UNSIGNED)), 0) AS total
-    FROM audit_logs
-    WHERE action = 'customer.points_earned'
-      AND created_at >= ? AND created_at <= ?
-", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+$monthlyEarned = 0;
+$monthlyRedeemed = 0;
+$activePointsCustomers = ['cnt' => 0];
 
-$monthlyRedeemed = db_query_one("
-    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points_used')) AS UNSIGNED)), 0) AS total
-    FROM audit_logs
-    WHERE action = 'customer.points_redeemed'
-      AND created_at >= ? AND created_at <= ?
-", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+try {
+    $monthlyEarnedRow = db_query_one("
+        SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points')) AS UNSIGNED)), 0) AS total
+        FROM audit_logs
+        WHERE action = 'customer.points_earned'
+          AND created_at >= ? AND created_at <= ?
+    ", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+    $monthlyEarned = (int)($monthlyEarnedRow['total'] ?? 0);
 
-$activePointsCustomers = db_query_one("
-    SELECT COUNT(DISTINCT entity_id) AS cnt
-    FROM audit_logs
-    WHERE action IN ('customer.points_earned', 'customer.points_redeemed', 'customer.points_adjusted')
-      AND entity_type = 'customer'
-      AND created_at >= ? AND created_at <= ?
-", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+    $monthlyRedeemedRow = db_query_one("
+        SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points_used')) AS UNSIGNED)), 0) AS total
+        FROM audit_logs
+        WHERE action = 'customer.points_redeemed'
+          AND created_at >= ? AND created_at <= ?
+    ", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+    $monthlyRedeemed = (int)($monthlyRedeemedRow['total'] ?? 0);
+
+    $activePointsCustomers = db_query_one("
+        SELECT COUNT(DISTINCT entity_id) AS cnt
+        FROM audit_logs
+        WHERE action IN ('customer.points_earned', 'customer.points_redeemed', 'customer.points_adjusted')
+          AND entity_type = 'customer'
+          AND created_at >= ? AND created_at <= ?
+    ", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']) ?: ['cnt' => 0];
+} catch (Throwable $e) {
+    // 容錯：audit_logs 表缺失時不影響頁面
+    $monthlyEarned = 0;
+    $monthlyRedeemed = 0;
+    $activePointsCustomers = ['cnt' => 0];
+}
 
 $monthlySummary = [
-    'earned'   => (int)($monthlyEarned['total'] ?? 0),
-    'redeemed' => (int)($monthlyRedeemed['total'] ?? 0),
+    'earned'   => $monthlyEarned,
+    'redeemed' => $monthlyRedeemed,
     'active'   => (int)($activePointsCustomers['cnt'] ?? 0)
 ];
 ?>

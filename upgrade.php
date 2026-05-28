@@ -32,6 +32,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_login();
@@ -139,10 +140,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $hasPending) {
             try {
                 $migration['up']($pdo);
                 $pdo->prepare("INSERT INTO migrations (migration, batch) VALUES (?, ?)")->execute([$name, $batch]);
-                $pdo->commit();
+                if ($pdo->inTransaction()) {
+                    $pdo->commit();
+                }
                 log_line("$name 執行成功", 'ok');
             } catch (Throwable $e) {
-                $pdo->rollBack();
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
                 throw new Exception("$name 失敗：" . $e->getMessage());
             }
         }

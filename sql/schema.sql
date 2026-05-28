@@ -350,6 +350,38 @@ CREATE TABLE `cart_templates` (
   INDEX `idx_ct_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='常用購物車組合模板（POS 快速重複開單）';
 
+-- =====================================================
+-- 17. payment_methods - 自訂付款方法 + 手續費規則（Phase 1 新增）
+-- =====================================================
+DROP TABLE IF EXISTS `payment_methods`;
+CREATE TABLE `payment_methods` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `code` VARCHAR(30) NOT NULL UNIQUE COMMENT '內部代碼：fps, payme, stripe_card, cash 等（程式用）',
+  `name` VARCHAR(60) NOT NULL COMMENT '前台顯示名稱，例如「轉數快 (FPS)」',
+  `fee_model` ENUM('none','fixed','percent','fixed_plus_percent') NOT NULL DEFAULT 'none' COMMENT '手續費計算方式',
+  `fee_fixed` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '固定手續費金額（HKD）',
+  `fee_percent` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '百分比費率（0.00-100.00）',
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否啟用',
+  `sort_order` SMALLINT UNSIGNED NOT NULL DEFAULT 100 COMMENT '顯示排序（數字越小越靠前）',
+  `notes` TEXT COMMENT '備註說明（香港市場實際收費參考）',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_pm_active_sort` (`is_active`, `sort_order`),
+  INDEX `idx_pm_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='自訂付款方法 + 手續費規則（支援一單多付與分期）';
+
+-- 預設 8 種香港常用付款方法（與 migration 009 一致）
+INSERT INTO `payment_methods` (`code`, `name`, `fee_model`, `fee_fixed`, `fee_percent`, `is_active`, `sort_order`, `notes`) VALUES
+('cash', '現金', 'none', 0.00, 0.00, 1, 10, '最常用，無手續費。適合小額消費。'),
+('fps', '轉數快 (FPS)', 'none', 0.00, 0.00, 1, 20, '香港銀行轉帳，個人及商戶多數免費或僅收極低固定費。'),
+('payme', 'PayMe', 'percent', 0.00, 1.50, 1, 30, 'HSBC PayMe 商戶收款手續費約 1.2%~1.5%。'),
+('card', '信用卡 / 八達通', 'fixed_plus_percent', 2.35, 3.40, 1, 40, 'Stripe 等國際收單：典型 3.4% + HK$2.35（視銀行而定）。'),
+('alipay_hk', 'AlipayHK', 'percent', 0.00, 2.00, 1, 50, '支付寶香港商戶手續費約 1.5%~2.5%，視交易類型。'),
+('wechat_hk', 'WeChat Pay HK', 'percent', 0.00, 2.00, 1, 60, '微信支付香港商戶手續費約 1.5%~2.5%。'),
+('bank_transfer', '銀行轉帳', 'none', 0.00, 0.00, 1, 70, '傳統銀行電匯或 FPS 企業戶，費率多數由客戶承擔或雙方協商。'),
+('other', '其他', 'none', 0.00, 0.00, 1, 999, '現金以外無法歸類的方式（例如支票、禮券等）。');
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================

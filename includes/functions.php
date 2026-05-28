@@ -54,6 +54,14 @@ function e(string $string): string
 }
 
 /**
+ * HTML escape 別名（與 install.php / upgrade.php 相容）
+ */
+function h(string $str): string
+{
+    return e($str);
+}
+
+/**
  * 回傳 JSON 成功
  */
 function json_success(mixed $data = null, string $message = ''): never

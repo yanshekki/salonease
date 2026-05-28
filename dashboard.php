@@ -44,31 +44,44 @@ $lowStock = [
 $thisMonthStart = date('Y-m-01');
 $thisMonthEnd   = date('Y-m-d');
 
-$monthlyEarned = db_query_one("
-    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points')) AS UNSIGNED)), 0) AS total
-    FROM audit_logs
-    WHERE action = 'customer.points_earned'
-      AND created_at >= ? AND created_at <= ?
-", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+$monthlyEarned = 0;
+$monthlyRedeemed = 0;
+try {
+    $monthlyEarned = db_query_one("
+        SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points')) AS UNSIGNED)), 0) AS total
+        FROM audit_logs
+        WHERE action = 'customer.points_earned'
+          AND created_at >= ? AND created_at <= ?
+    ", [$thisMonthStart, $thisMonthEnd . ' 23:59:59'])['total'] ?? 0;
 
-$monthlyRedeemed = db_query_one("
-    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points_used')) AS UNSIGNED)), 0) AS total
-    FROM audit_logs
-    WHERE action = 'customer.points_redeemed'
-      AND created_at >= ? AND created_at <= ?
-", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+    $monthlyRedeemed = db_query_one("
+        SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points_used')) AS UNSIGNED)), 0) AS total
+        FROM audit_logs
+        WHERE action = 'customer.points_redeemed'
+          AND created_at >= ? AND created_at <= ?
+    ", [$thisMonthStart, $thisMonthEnd . ' 23:59:59'])['total'] ?? 0;
+} catch (Throwable $e) {
+    // 容錯：audit_logs 表尚未建立或結構不完整時不影響 Dashboard
+    $monthlyEarned = 0;
+    $monthlyRedeemed = 0;
+}
 
-$activePointsCustomers = db_query_one("
-    SELECT COUNT(DISTINCT entity_id) AS cnt
-    FROM audit_logs
-    WHERE action IN ('customer.points_earned', 'customer.points_redeemed', 'customer.points_adjusted')
-      AND entity_type = 'customer'
-      AND created_at >= ? AND created_at <= ?
-", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+$activePointsCustomers = ['cnt' => 0];
+try {
+    $activePointsCustomers = db_query_one("
+        SELECT COUNT(DISTINCT entity_id) AS cnt
+        FROM audit_logs
+        WHERE action IN ('customer.points_earned', 'customer.points_redeemed', 'customer.points_adjusted')
+          AND entity_type = 'customer'
+          AND created_at >= ? AND created_at <= ?
+    ", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']) ?: ['cnt' => 0];
+} catch (Throwable $e) {
+    $activePointsCustomers = ['cnt' => 0];
+}
 
 $monthlyLoyalty = [
-    'earned'   => (int)($monthlyEarned['total'] ?? 0),
-    'redeemed' => (int)($monthlyRedeemed['total'] ?? 0),
+    'earned'   => (int)$monthlyEarned,
+    'redeemed' => (int)$monthlyRedeemed,
     'active'   => (int)($activePointsCustomers['cnt'] ?? 0)
 ];
 
@@ -77,10 +90,10 @@ $thisMonthStart = date('Y-m-01');
 $topServices = db_query("
     SELECT s.name, COUNT(*) as cnt
     FROM sale_items si
-    JOIN services s ON si.service_id = s.id
+    JOIN services s ON si.ref_id = s.id AND si.item_type = 'service'
     JOIN sales sa ON si.sale_id = sa.id
     WHERE sa.sale_date >= ? AND s.is_active = 1
-    GROUP BY s.id
+    GROUP BY s.id, s.name
     ORDER BY cnt DESC
     LIMIT 3
 ", [$thisMonthStart]);
@@ -89,10 +102,10 @@ $topServices = db_query("
 $topProducts = db_query("
     SELECT p.name, COUNT(*) as cnt
     FROM sale_items si
-    JOIN products p ON si.product_id = p.id
+    JOIN products p ON si.ref_id = p.id AND si.item_type = 'product'
     JOIN sales sa ON si.sale_id = sa.id
     WHERE sa.sale_date >= ? AND p.is_active = 1
-    GROUP BY p.id
+    GROUP BY p.id, p.name
     ORDER BY cnt DESC
     LIMIT 3
 ", [$thisMonthStart]);
