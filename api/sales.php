@@ -231,18 +231,33 @@ switch ($action) {
                     $update_customer->execute([$total, $customer_id]);
 
                     // Phase 2 A4：忠誠度積分累積（每 $10 = 1 點）
-                    $pointsEarned = (int) floor($total / 10);
-                    if ($pointsEarned > 0) {
-                        $updatePoints = $pdo->prepare("
-                            UPDATE customers SET points = points + ? WHERE id = ?
-                        ");
-                        $updatePoints->execute([$pointsEarned, $customer_id]);
+                    $pointsEarned = 0;
+                    $customerNewPoints = null;
 
-                        log_activity('customer.points_earned', $customer_id, 'customer', [
-                            'points' => $pointsEarned,
-                            'sale_id' => $sale_id,
-                            'spent' => $total
-                        ]);
+                    if ($customer_id) {
+                        $pointsEarned = (int) floor($total / 10);
+                        if ($pointsEarned > 0) {
+                            $updatePoints = $pdo->prepare("
+                                UPDATE customers SET points = points + ? WHERE id = ?
+                            ");
+                            $updatePoints->execute([$pointsEarned, $customer_id]);
+
+                            // 取得更新後的最新積分
+                            $pointsRow = $pdo->prepare("SELECT points FROM customers WHERE id = ?");
+                            $pointsRow->execute([$customer_id]);
+                            $customerNewPoints = (int)$pointsRow->fetchColumn();
+
+                            log_activity('customer.points_earned', $customer_id, 'customer', [
+                                'points' => $pointsEarned,
+                                'sale_id' => $sale_id,
+                                'spent' => $total
+                            ]);
+                        } else {
+                            // 即使沒賺到點，也回傳目前餘額
+                            $pointsRow = $pdo->prepare("SELECT points FROM customers WHERE id = ?");
+                            $pointsRow->execute([$customer_id]);
+                            $customerNewPoints = (int)$pointsRow->fetchColumn();
+                        }
                     }
                 }
 
@@ -288,7 +303,10 @@ switch ($action) {
 
                 return [
                     'sale_id' => (int)$sale_id,
-                    'total' => $total
+                    'total' => $total,
+                    'customer_id' => $customer_id ?: null,
+                    'points_earned' => $pointsEarned,
+                    'customer_new_points' => $customerNewPoints
                 ];
             });
 
@@ -297,10 +315,21 @@ switch ($action) {
                 'total' => $result['total'],
                 'payment_method' => $payment_method,
                 'item_count' => count($items),
-                'customer_id' => $customer_id ?: null
+                'customer_id' => $result['customer_id'] ?: null
             ]);
 
-            json_success(['id' => $result['sale_id']], '結帳成功');
+            // Phase 2 A5：回傳客戶積分資訊（讓前端可即時顯示）
+            $responseData = [
+                'id' => $result['sale_id'],
+                'total' => $result['total']
+            ];
+
+            if ($result['customer_id']) {
+                $responseData['points_earned'] = $result['points_earned'] ?? 0;
+                $responseData['customer_new_points'] = $result['customer_new_points'];
+            }
+
+            json_success($responseData, '結帳成功');
 
         } catch (Exception $e) {
             json_error('結帳失敗：' . $e->getMessage());
