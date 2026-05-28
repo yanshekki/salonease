@@ -63,7 +63,7 @@ $monthlySummary = [
                 <span class="text-muted">兌換率：</span>
                 <strong id="loyalty-redemption-rate">10</strong> 點 = $1
             </div>
-            <div class="text-muted">（可於「系統設定」頁調整）</div>
+            <div class="text-muted">（可於「<a href="settings.php" class="text-muted text-decoration-none">系統設定</a>」頁調整）</div>
         </div>
     </div>
 </div>
