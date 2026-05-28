@@ -21,6 +21,7 @@ switch ($action) {
         $customer_id = (int)post('customer_id');
         $items = $_POST['items'] ?? [];
         $discount = (float)post('discount', 0);
+        $points_used = (int)post('points_used', 0);
         $payment_method = post('payment_method', 'cash');
         $amount_received = (float)post('amount_received', 0);
         $notes = sanitize_string(post('notes', ''));
@@ -28,6 +29,9 @@ switch ($action) {
         // Phase 1 驗證強化
         if ($err = validate_money($discount, '折扣')) json_error($err);
         if ($err = validate_length($notes, '備註', 500)) json_error($err);
+        if ($points_used < 0) {
+            json_error('使用積分不可為負數');
+        }
 
         $allowedPayments = ['cash', 'card', 'fps', 'other'];
         if (!in_array($payment_method, $allowedPayments, true)) {
@@ -60,7 +64,7 @@ switch ($action) {
         }
 
         try {
-            $result = db_transaction(function($pdo) use ($customer_id, $items, $discount, $payment_method, $amount_received, $notes) {
+            $result = db_transaction(function($pdo) use ($customer_id, $items, $discount, $points_used, $payment_method, $amount_received, $notes) {
                 $subtotal = 0;
                 foreach ($items as $item) {
                     $subtotal += (float)$item['unit_price'] * (int)$item['qty'];
@@ -258,6 +262,36 @@ switch ($action) {
                             $pointsRow->execute([$customer_id]);
                             $customerNewPoints = (int)$pointsRow->fetchColumn();
                         }
+
+                        // Phase 2 A8：簡單積分兌換（1點 = $1）
+                        $pointsDiscount = 0;
+                        $customerPointsAfterRedemption = $customerNewPoints;
+
+                        if ($points_used > 0 && $customer_id) {
+                            // 檢查客戶目前是否有足夠積分
+                            $currentPointsRow = $pdo->prepare("SELECT points FROM customers WHERE id = ? FOR UPDATE");
+                            $currentPointsRow->execute([$customer_id]);
+                            $currentPoints = (int)$currentPointsRow->fetchColumn();
+
+                            if ($points_used > $currentPoints) {
+                                throw new Exception("客戶積分不足（目前 {$currentPoints} 點）");
+                            }
+
+                            $pointsDiscount = $points_used; // 1點 = 1元
+                            $total = max(0, $total - $pointsDiscount);
+
+                            // 扣減積分
+                            $deductPoints = $pdo->prepare("UPDATE customers SET points = points - ? WHERE id = ?");
+                            $deductPoints->execute([$points_used, $customer_id]);
+
+                            $customerPointsAfterRedemption = $currentPoints - $points_used;
+
+                            log_activity('customer.points_redeemed', $customer_id, 'customer', [
+                                'points_used' => $points_used,
+                                'discount' => $pointsDiscount,
+                                'sale_id' => $sale_id
+                            ]);
+                        }
                     }
                 }
 
@@ -306,7 +340,9 @@ switch ($action) {
                     'total' => $total,
                     'customer_id' => $customer_id ?: null,
                     'points_earned' => $pointsEarned,
-                    'customer_new_points' => $customerNewPoints
+                    'customer_new_points' => $customerPointsAfterRedemption ?? $customerNewPoints,
+                    'points_used' => $points_used,
+                    'points_discount' => $pointsDiscount ?? 0
                 ];
             });
 
@@ -318,7 +354,7 @@ switch ($action) {
                 'customer_id' => $result['customer_id'] ?: null
             ]);
 
-            // Phase 2 A5：回傳客戶積分資訊（讓前端可即時顯示）
+            // Phase 2 A5/A8：回傳客戶積分資訊（讓前端可即時顯示）
             $responseData = [
                 'id' => $result['sale_id'],
                 'total' => $result['total']
@@ -327,6 +363,11 @@ switch ($action) {
             if ($result['customer_id']) {
                 $responseData['points_earned'] = $result['points_earned'] ?? 0;
                 $responseData['customer_new_points'] = $result['customer_new_points'];
+            }
+
+            if (!empty($result['points_used'])) {
+                $responseData['points_used'] = $result['points_used'];
+                $responseData['points_discount'] = $result['points_discount'] ?? 0;
             }
 
             json_success($responseData, '結帳成功');
