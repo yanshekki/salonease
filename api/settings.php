@@ -107,6 +107,11 @@ switch ($action) {
                 ]);
             }
 
+            log_activity('settings.updated', 1, 'settings', [
+                'salon_name' => $salon_name,
+                'updated_fields' => 'shop_info + commission_defaults'
+            ]);
+
             json_success(null, '設定已成功儲存');
         } catch (Exception $e) {
             json_error('儲存失敗：' . $e->getMessage());
