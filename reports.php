@@ -226,6 +226,7 @@ include __DIR__ . '/includes/header.php';
                 <span class="ms-2 small text-muted">總 {{ formatMoney(summary.total_sales) }}</span>
                 <span class="ms-2 small text-muted">變 {{ formatMoney(summary.total_sales - prevSummary.total_sales) }}</span>
                 <span class="ms-2 small text-muted">日均 {{ formatMoney(summary.total_sales / Math.max(1, Math.ceil( (new Date(to) - new Date(from)) / (1000*60*60*24) )) ) }}</span>
+                <span class="ms-2 small text-muted">上期 {{ formatMoney(prevSummary.total_sales) }}</span>
             </div>
             <canvas id="salesTrendChart" height="80"></canvas>
             <div class="small text-muted mt-1" style="font-size:0.7rem;">
