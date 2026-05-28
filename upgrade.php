@@ -33,6 +33,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/includes/csrf.php';
 require_login();
 
 $currentUser = get_logged_in_user();
@@ -87,6 +88,7 @@ $lastUpgrade = $pdo->query("SELECT MAX(executed_at) FROM migrations")->fetchColu
 
 // POST 處理升級
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $hasPending) {
+    require_csrf();
     header('Content-Type: text/html; charset=utf-8');
     ?>
     <!DOCTYPE html>
@@ -223,6 +225,7 @@ include __DIR__ . '/includes/header.php';
 
                 <div class="mt-7 border-t pt-6">
                     <form method="post" onsubmit="return confirm('確定要立即執行以上 ' + <?= count($pending) ?> + ' 項資料庫更新？此操作不可逆轉，但系統會盡力保護數據完整性。');">
+                        <?= csrf_field() ?>
                         <button type="submit" 
                                 class="w-full py-4 bg-[#2C2C2E] hover:bg-black text-white font-medium text-lg rounded-2xl transition">
                             開始一鍵升級（共 <?= count($pending) ?> 項）

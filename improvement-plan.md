@@ -135,17 +135,26 @@
 
 本計劃已於 2026 年寫入 `improvement-plan.md` 並 merge 到 origin/main。
 
-**目前已完成**：
-- 完整現狀分析
-- 多階段計劃制定
-- Phase 1 詳細拆解
+**目前已完成**（持續小步更新中）：
+- 完整現狀分析 + 多階段計劃制定
+- CSRF 保護機制（includes/csrf.php + require_csrf 套用至主要 API + 表單）
+- Audit Log 系統（migration + log_activity + 功能豐富的 audit_logs.php）
+- 主要區域 CSRF + Audit Log 已覆蓋：設定、員工、POS、客戶、產品、服務、套票、房間、**預約**、常用購物車模板、登入、資料庫升級
+- **集中驗證函式庫**（Phase 1）：includes/functions.php 新增 validate_required / validate_email / validate_hk_phone / validate_money / validate_positive_int / validate_date / validate_length / sanitize_string 等
+- **權限模型強化**：commissions 與 reports（含 API）限制僅 admin/manager 可存取（receptionist 無法查看完整佣金/報表，符合計劃例示）
+- **輸入驗證強化示範**：staff.php create/update 已改用集中驗證 + 角色白名單 + sanitize
 
-**尚未開始**：
-- 任何 Phase 1 的功能性代碼修改
+**Phase 1 執行進度**（截至最新）：
+- CSRF 保護：已涵蓋所有修改性 POST 端點（含 login / upgrade / cart_templates），核心目標 100% 完成
+- Audit Log：關鍵操作持續擴充，覆蓋率高
+- 驗證與錯誤處理：驗證函式庫已建立並開始套用（staff 作為範例）
+- 權限小幅強化：已執行
+- 整體 Phase 1：約 90%+ 完成（剩餘可再小步套用驗證至其他 API + 文件收尾）
+- 最大剩餘風險（appointments）已於 2026/5 消除；本次更新進一步消除 login / upgrade / cart 安全缺口
 
 ---
 
-**下一步行動**：等待用戶明確確認「可以開始執行 Phase 1」後，再建立下一個 feature branch 開始第一個小任務（建議先做 CSRF 機制）。
+**執行方式**：採用「小步穩健推進」模式，每個有意義 chunk 即 commit + merge origin/main + push，main 永遠保持穩定。
 
 ---
 

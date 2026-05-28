@@ -58,9 +58,9 @@
 
 ---
 
-**注意**：Audit Log 基礎已建立，部分關鍵操作（銷售結帳、員工管理、套票扣減）已開始記錄。
+**注意**：Audit Log 基礎已建立，關鍵操作（銷售結帳、員工管理、設定、產品/服務/房間/套票/客戶/預約/購物車模板）均已記錄。
 
-**CSRF 保護狀態**：主要管理區域（設定、員工、POS、客戶、套票、產品、服務、房間）已完成保護。
+**CSRF 保護狀態**：主要管理區域 + login、upgrade.php、cart_templates.php **已全部完成保護**（所有修改性 POST/表單/API）。
 
 **✅ CSRF 回歸測試階段已正式啟動**
 
@@ -87,13 +87,21 @@
 
 **客戶管理 Audit Log**：
 - `customer.created` 及 `customer.updated` 已加入（與產品/員工/服務一致）。
-- 客戶相關操作現在有完整審計記錄。
 
-**✅ 可開始執行測試**：請參考下方檢查清單逐步進行。測試時可一併觀察 audit_logs 表是否有正確記錄。
-- 強烈建議先從「系統設定」與「員工管理」開始測試（風險較低）。
-- 測試完成一項即在 checklist 打勾，並查看 audit_logs 是否有對應記錄。
-- **小提醒**：`/audit_logs.php` 現在預設只顯示「最近 30 天」的記錄（打開頁面即看到近期操作），重置篩選也會回到 30 天範圍，更易於驗證測試結果。
-- 頁面頂端會顯示「共 X 筆」伺服器端真實總數（不受前端分頁影響），測試時更容易確認某項操作是否已正確記錄。
+**最新改善（2026/5 後續 + 本次更新）**：
+- 補齊剩餘 CSRF 保護：`api/cart_templates.php`（create/delete + Audit Log）、`login.php`（表單 + POST 處理 + api/auth.php login）、`upgrade.php`（管理員升級操作）
+- 新增 `cart_template.created`、`cart_template.deleted` Audit Log
+- **集中驗證函式庫**（Phase 1 核心）：`includes/functions.php` 新增 validate_required、validate_hk_phone、validate_money、validate_email、validate_positive_int、validate_date、validate_length、sanitize_string
+- staff.php create/update 已改用新驗證函式 + 角色白名單 + sanitize
+- **權限小幅強化**：`commissions.php`、`reports.php` 及對應 API 改為 require_role(['admin', 'manager'])，receptionist 無法查看完整佣金/銷售報表
+- improvement-plan.md 與本 checklist 同步更新
+
+**✅ CSRF 核心保護已全面完成**。建議重新執行關鍵測試（login、upgrade、cart_templates）。
+
+**Phase 1 驗證與權限進度**：
+- 驗證函式庫已建立，staff.php 已示範套用
+- commissions / reports 已限制 receptionist 存取
+- 後續建議：繼續把 validate_* 套用到其他 API
 
 **快速 CSRF 驗證指令提示**（建議在測試前先執行）：
 1. 先在瀏覽器登入，開啟「系統設定」頁面，正常修改一項並儲存（觀察成功訊息 + audit log）。

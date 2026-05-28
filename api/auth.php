@@ -8,12 +8,14 @@
  */
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 switch ($action) {
     case 'login':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
