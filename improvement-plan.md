@@ -306,19 +306,19 @@
 - Audit Log 查詢加強 + CSV
 - 常用數據匯出統一入口等
 
-**Phase 3 目前真實進度**：約 75%（運維工具基礎兩步 + Audit Log 查詢加強已開始，其餘項目陸續推進中）。
+**Phase 3 目前真實進度**：約 76%（運維工具基礎 + Audit Log 查詢加強已完成，其餘項目陸續推進中）。
 
-**目前進行中**：A147 - Audit Log 查詢加強（更好篩選 + CSV 匯出）（用戶選擇 B）。這是 Audit Log 系統的強化 chunk，讓管理層能有效查詢與匯出操作記錄。
+**目前進行中**：A147 已完成。下一步可選擇 merge A147，或繼續下一個 chunk（其他收尾項目）。
 
-**A147 定義（合理大小 chunk）**：
-- 後端：audit_logs.php 加強篩選（日期範圍、操作者、action 類型、target_type、target_id）
-- 支援分頁 + 排序
-- 新增 CSV 匯出功能（含目前篩選條件）
-- 前端：改善篩選 UI（下拉 + 日期選擇器）+ 明顯的 CSV 匯出按鈕
-- 權限：僅 admin/manager
-- **完成定義**：Audit Log 頁面可靈活篩選並一鍵匯出 CSV
+**A147 已完成**（用戶選擇 B）：Audit Log 查詢加強 chunk 已完成並 commit。
 
-完成後先 update plan，再決定是否 merge。
+**A147 完成內容**：
+- api/audit.php 加強 list 支援 entity_type、entity_id
+- 新增 export action（後端 CSV 匯出，完整尊重篩選）
+- audit_logs.php 加入實體類型 / 實體ID 篩選 + 改善 export 呼叫後端
+- **完成定義**：已達成。Audit Log 可更好篩選並安全匯出 CSV
+
+（A147 收尾，php -l 通過，按新規則先 update plan 再 code）
 
 **A146 已完成**（用戶選擇 B）：基本系統健康檢查頁 chunk 已完成並 commit。
 
@@ -401,7 +401,7 @@
 其他待辦 chunk：
 6. **其他收尾項目**
 
-**A147 進行中**（用戶選擇 B）：Audit Log 查詢加強（更好篩選 + CSV 匯出）
+
 
 2. **報表頁其他視覺化強化**  
    - 改善付款方式 / 服務分佈圖表  
