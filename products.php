@@ -215,6 +215,24 @@ $extraJs = 'hotkeys.js';
     </div>
 </div>
 
+<!-- A44：小 modal 顯示產品最近庫存異動 -->
+<div class="modal fade" id="stockHistoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="stockHistoryModalTitle">庫存異動記錄</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="stockHistoryModalBody">
+                <!-- JS 動態填入 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     loadProducts();
@@ -612,21 +630,26 @@ async function viewRecentStockMovements(id, name) {
         const res = await SalonEase.fetch(`/api/products.php?action=stock_history&id=${id}`);
         const history = res.data || [];
 
-        let html = `<h6>「${name}」最近異動</h6>`;
+        document.getElementById('stockHistoryModalTitle').textContent = `「${name}」最近庫存異動`;
+
+        let bodyHtml = '';
         if (history.length === 0) {
-            html += '<p class="text-muted">尚無異動記錄</p>';
+            bodyHtml = '<p class="text-muted">尚無異動記錄</p>';
         } else {
-            html += '<ul class="list-unstyled small mb-0">';
+            bodyHtml = '<ul class="list-unstyled small mb-0">';
             history.slice(0, 5).forEach(h => {
                 const change = h.adjustment ? (h.adjustment > 0 ? `+${h.adjustment}` : h.adjustment) : '';
-                html += `<li><strong>${h.time.substring(0,10)}</strong> ${h.type} ${change} (${h.staff})</li>`;
+                bodyHtml += `<li class="mb-1"><strong>${h.time.substring(0,16).replace('T',' ')}</strong> ${h.type} ${change}（${h.staff}）</li>`;
             });
-            html += '</ul>';
-            if (history.length > 5) html += `<div class="small text-muted mt-1">...共 ${history.length} 筆</div>`;
+            bodyHtml += '</ul>';
+            if (history.length > 5) bodyHtml += `<div class="small text-muted mt-2">...共 ${history.length} 筆（可至 CSV 匯出完整記錄）</div>`;
         }
 
-        // 簡單使用 alert（後續可改 modal）
-        alert(html.replace(/<[^>]+>/g, '\n').replace(/\n+/g, '\n'));
+        document.getElementById('stockHistoryModalBody').innerHTML = bodyHtml;
+
+        const modalEl = document.getElementById('stockHistoryModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
 
     } catch (e) {
         SalonEase.toast('無法載入異動記錄', 'error');
