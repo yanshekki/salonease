@@ -498,6 +498,20 @@ function reportsApp() {
             } catch (e) {
                 this.prevSummary = { total_sales: 0, total_transactions: 0, avg_ticket: 0, total_discount: 0, package_sessions: 0 };
             }
+        },
+
+        // 載入員工銷售排行
+        async loadStaffRanking() {
+            try {
+                let url = `/api/reports.php?action=staff_sales_ranking&from=${this.from}&to=${this.to}`;
+                if (this.selectedStaffId) {
+                    url += `&staff_id=${this.selectedStaffId}`;
+                }
+                const res = await SalonEase.fetch(url);
+                this.staffRanking = res.data || [];
+            } catch (e) {
+                this.staffRanking = [];
+            }
         }
     }
 }
@@ -587,20 +601,6 @@ document.addEventListener('keydown', function(e) {
                 this.staffList = res.data || [];
             } catch (e) {
                 console.warn('載入員工清單失敗', e);
-            }
-        },
-
-        // 載入員工銷售排行
-        async loadStaffRanking() {
-            try {
-                let url = `/api/reports.php?action=staff_sales_ranking&from=${this.from}&to=${this.to}`;
-                if (this.selectedStaffId) {
-                    url += `&staff_id=${this.selectedStaffId}`;
-                }
-                const res = await SalonEase.fetch(url);
-                this.staffRanking = res.data || [];
-            } catch (e) {
-                this.staffRanking = [];
             }
         },
 
