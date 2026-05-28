@@ -194,6 +194,7 @@ include __DIR__ . '/includes/header.php';
     <div class="small fw-semibold text-muted mb-2">圖表</div>
     <div class="small text-muted mb-3" style="font-size:0.7rem;">付款方式與熱門服務收入分佈</div>
     <div class="small text-muted mb-2" style="font-size:0.65rem;">（隨查詢條件即時更新）</div>
+    <div class="small text-muted mb-3" style="font-size:0.65rem;">（可使用上方快速日期按鈕或自訂日期範圍）</div>
 
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
