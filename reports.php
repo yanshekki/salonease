@@ -644,6 +644,8 @@ function reportsApp() {
                 const midDate = fromDate < toDate 
                     ? new Date( (new Date(fromDate).getTime() + new Date(toDate).getTime()) / 2 ).toISOString().slice(0,10)
                     : fromDate;
+                const days = Math.max(1, Math.ceil( (new Date(toDate) - new Date(fromDate)) / (1000*60*60*24) ));
+                const dailyAvg = curr / days;
                 const trendLabels = [fromDate, midDate, toDate];
                 const trendData = [
                     prev,
@@ -665,6 +667,14 @@ function reportsApp() {
                             data: [prev, prev, prev],
                             borderColor: '#C97C7C',
                             borderDash: [5, 5],
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            fill: false
+                        }, {
+                            label: '每日平均',
+                            data: [dailyAvg, dailyAvg, dailyAvg],
+                            borderColor: '#6B7280',
+                            borderDash: [2, 2],
                             borderWidth: 1,
                             pointRadius: 0,
                             fill: false
