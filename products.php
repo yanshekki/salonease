@@ -179,6 +179,10 @@ $extraJs = 'hotkeys.js';
                     <div id="stock-lowstock-warning" class="mt-1 small text-danger d-none">
                         ⚠ 調整後仍低於安全庫存門檻
                     </div>
+                    <!-- A31：一鍵調整到安全門檻 -->
+                    <div class="mt-1">
+                        <button type="button" onclick="oneClickToThreshold()" class="btn btn-sm btn-outline-primary">一鍵調整到安全門檻</button>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label small">調整數量 <span class="text-muted">（正數入庫，負數出庫/損耗）</span></label>
@@ -549,6 +553,29 @@ function updateStockPreview() {
             warningEl.classList.add('d-none');
         }
     }
+}
+
+/* A31：一鍵調整到安全門檻 */
+function oneClickToThreshold() {
+    const currentEl = document.getElementById('stock-current');
+    const thresholdInput = document.getElementById('stock-lowstock-threshold');
+    const adjustInput = document.getElementById('stock-adjustment');
+
+    if (!currentEl || !thresholdInput || !adjustInput) return;
+
+    const current = parseInt(currentEl.textContent) || 0;
+    const threshold = parseInt(thresholdInput.value) || 5;
+    const needed = Math.max(0, threshold - current + 1);
+
+    if (needed <= 0) {
+        // 已經足夠
+        adjustInput.value = 0;
+    } else {
+        adjustInput.value = needed;
+    }
+
+    updateStockPreview();
+    adjustInput.focus();
 }
 
 /* A24：列表快速 +10 入庫（不開 modal，直接呼叫 API） */
