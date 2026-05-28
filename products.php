@@ -174,6 +174,13 @@ $extraJs = 'hotkeys.js';
                 <div class="mb-3">
                     <label class="form-label small">調整數量 <span class="text-muted">（正數入庫，負數出庫/損耗）</span></label>
                     <input type="number" id="stock-adjustment" class="form-control" placeholder="例如 +10 或 -3" step="1">
+                    <!-- A23：快速入庫按鈕 -->
+                    <div class="mt-2 d-flex flex-wrap gap-1">
+                        <button type="button" onclick="setQuickAdjustment(5)" class="btn btn-sm btn-outline-success">+5 入庫</button>
+                        <button type="button" onclick="setQuickAdjustment(10)" class="btn btn-sm btn-outline-success">+10 入庫</button>
+                        <button type="button" onclick="setQuickAdjustment(20)" class="btn btn-sm btn-outline-success">+20 入庫</button>
+                        <button type="button" onclick="setQuickAdjustment(-5)" class="btn btn-sm btn-outline-danger">-5 出庫</button>
+                    </div>
                 </div>
                 <div>
                     <label class="form-label small">原因 / 備註 <span class="text-danger">*</span></label>
@@ -455,6 +462,15 @@ async function submitStockAdjustment() {
         loadProducts();
     } catch (err) {
         SalonEase.toast(err.message || '調整失敗', 'error');
+    }
+}
+
+/* A23：快速設定調整數量 */
+function setQuickAdjustment(qty) {
+    const input = document.getElementById('stock-adjustment');
+    if (input) {
+        input.value = qty;
+        input.focus();
     }
 }
 
