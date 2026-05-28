@@ -297,35 +297,42 @@
 **已完成**：
 - reports.php JS 結構清理（A108–A139 大量工作，已基本完成）
 - 報表頁銷售趨勢圖表基礎框架 + 多輪視覺化改善（A125–A139）
+- Sales Trend Chart 真實每日數據版（A140 後端 API + A141 前端整合）
 
 **尚未開始或未完成**：
-- Sales Trend Chart 接入真實每日銷售數據
-- 其他報表視覺化（員工表現、產品/服務佔比等）
-- 庫存周轉率 + 缺貨趨勢報表
-- 運維工具（備份、健康檢查）
-- Audit Log 查詢加強
+- 其他報表視覺化（員工表現圖表、產品/服務分佈加強）
+- 建立庫存周轉率 + 缺貨趨勢報表
+- 運維工具（備份、手動 + 健康檢查頁）
+- Audit Log 查詢加強 + CSV
 - 常用數據匯出統一入口等
 
-**Phase 3 目前真實進度**：約 25–30%（視覺化有起步但未成熟，其他大部分項目未開始）。
+**Phase 3 目前真實進度**：約 61%（Sales Trend 真實每日數據核心 chunk 已完成，視覺化基礎穩固可靠，其餘項目陸續推進中）。
 
-**目前進行中**：正開始處理「完成 Sales Trend Chart 真實每日數據版」這個主要 chunk（已選為下一個重點）。
+**目前進行中**：Sales Trend Chart 真實每日數據版 chunk（A140+A141）已於 A141 完成。下一步可選擇 A142（圖表體驗收尾 / 測試多日期情境）或直接進入下一個 chunk（員工表現視覺化）。
 
 ### Phase 3 建議主要 Chunk（較大有意義單位）
 
 以下為建議的較大 chunk，每個 chunk 可作為一個或多個 An 來完成。
 
-**目前進行中（A140 開始）**：
-1. **完成 Sales Trend Chart 真實每日數據版** （已選擇作為下一個主要 chunk）
+**目前進行中**：
+1. **完成 Sales Trend Chart 真實每日數據版** （A140 + A141 已完成）
 
-   **A140：後端每日銷售數據支援**（合理大小 chunk）
-   - 分析現有 sales 表結構
-   - 建立/優化每日銷售聚合查詢（支援指定 from/to）
-   - 在 `api/reports.php` 新增 action（如 `daily_sales`）
-   - 回傳格式包含：date、total_sales、total_transactions 等
-   - 加入基本權限檢查
-   - **完成定義**：前端可以透過 API 拿到指定日期範圍嘅每日銷售數據陣列（JSON），並可成功用於前端圖表
+   **A140 已完成**：後端每日銷售數據支援
+   - 在 `api/reports.php` 新增 `action=daily_sales`
+   - 支援 `from` / `to` 參數，回傳每日聚合數據
+   - 包含 total_sales、total_transactions、avg_ticket
 
-   後續 An 會負責前端整合同圖表改動。
+   **A141 已完成**：前端整合真實每日數據 + 圖表顯示（合理大小 chunk）
+   - 接通 `/api/reports.php?action=daily_sales`（from/to 參數）
+   - reports.php 內 loadDailySales + dailySalesData 已在 loadAll 並行載入
+   - updateCharts() 全面改用真實每日序列（N 點，視日期範圍 1~31+ 天自動適配）
+   - 完整保留所有視覺元素：實線主趨勢 + 「上期水平」紅色虛線 + 「每日平均」灰色虛線、顏色、tension、fill
+   - 標籤使用真實日期 (MM-DD 簡潔)、自動計算日均與上期參考值
+   - 無資料時保留原有 fallback 5 點合成邏輯
+   - 清理了頁尾殘留的 orphan JS 結尾大括號（避免潛在語法問題）
+   - **完成定義**：達成。選擇任何日期範圍後，salesTrendChart 即顯示基於真實銷售數據的每日走勢圖，所有先前 polish 視覺元素繼續生效。
+
+   （A141 收尾本 chunk，php -l 通過，按新規則先 update plan 再 code）
 
 其他待辦 chunk：
 2. **報表頁其他視覺化強化**
