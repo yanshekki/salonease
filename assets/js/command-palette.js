@@ -24,6 +24,7 @@
   const POS_QUICK_ACTIONS = [
     { id: 'pos-quick-create-customer', label: '快速新增客戶', action: 'quick-create-customer', icon: '➕', keywords: '新增 建立 客戶 新客戶', contexts: ['pos'] },
     { id: 'pos-quick-checkout', label: '快速結帳', action: 'quick-checkout', icon: '💳', keywords: '結帳 付款 收銀 完成交易', contexts: ['pos'] },
+    { id: 'pos-save-cart-template', label: '儲存目前購物車為常用組合', action: 'save-cart-template', icon: '💾', keywords: '儲存 常用組合 模板 套餐 療程組合', contexts: ['pos'] },
   ];
 
   // POS 快速折扣方案（動態產生，支援百分比與固定金額）
@@ -272,6 +273,35 @@
     }
   }
 
+  // 取得目前員工的常用購物車組合（POS 專用）
+  async function fetchCartTemplates(query = '') {
+    try {
+      const res = await window.SalonEase.fetch('/api/cart_templates.php?action=list');
+      let templates = res.data || [];
+
+      if (query) {
+        const q = query.toLowerCase();
+        templates = templates.filter(t =>
+          t.name.toLowerCase().includes(q)
+        );
+      }
+
+      return templates.map(t => ({
+        id: `template-${t.id}`,
+        type: 'cart_template',
+        label: t.name,
+        keywords: t.name + ' 組合 套餐 療程',
+        icon: '📦',
+        action: 'load-cart-template',
+        templateId: t.id,
+        itemCount: t.items ? t.items.length : 0
+      }));
+    } catch (err) {
+      console.warn('[CommandPalette] 載入常用組合失敗', err);
+      return [];
+    }
+  }
+
   async function updateResults(q = '') {
     if (!resultsEl) return;
     const ctx = getContext();
@@ -280,17 +310,18 @@
     let baseItems = getItems(ctx);
     let dynamicItems = [];
 
-    // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋（服務/產品 + 客戶）
+    // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋（服務/產品 + 客戶 + 常用組合）
     if (ctx === 'pos' && q.trim().length >= 1) {
       // 先顯示 loading
       renderLoadingState(q);
 
-      const [servicesProducts, customers] = await Promise.all([
+      const [servicesProducts, customers, templates] = await Promise.all([
         fetchPosItems(q),
-        fetchPosCustomers(q)
+        fetchPosCustomers(q),
+        fetchCartTemplates(q)
       ]);
 
-      dynamicItems = [...servicesProducts, ...customers];
+      dynamicItems = [...servicesProducts, ...customers, ...templates];
 
       // 額外加入：已選客戶的套票扣減（若有符合搜尋字串）
       const customerPkgs = getCurrentPosCustomerPackages();
@@ -304,13 +335,15 @@
       }
     } else if (ctx === 'pos' && q.trim().length === 0) {
       // POS 頁空白查詢時，優先顯示：
-      // 1. 本單最近加入的項目（最強大快速重複功能）
-      // 2. 目前客戶可用的套票
+      // 1. 本單最近加入的項目
+      // 2. 常用購物車組合
+      // 3. 目前客戶可用的套票
       const recent = getPosRecentSessionItems();
+      const templates = await fetchCartTemplates(); // 空白時也顯示部分常用組合
       const customerPkgs = getCurrentPosCustomerPackages();
 
-      dynamicItems = [...recent];
-      // 套票放在最近之後（如果有重疊就讓最近優先）
+      dynamicItems = [...recent, ...templates.slice(0, 6)];
+
       customerPkgs.forEach(pkg => {
         if (!dynamicItems.some(x => x.ref_id == pkg.ref_id && x.type === 'package_redemption')) {
           dynamicItems.push(pkg);
@@ -510,6 +543,16 @@
 
     if (item.action === 'apply-discount') {
       doApplyDiscount(item);
+      return;
+    }
+
+    if (item.action === 'save-cart-template') {
+      enterSaveCartTemplateMode();
+      return;
+    }
+
+    if (item.action === 'load-cart-template' && item.templateId) {
+      doLoadCartTemplate(item);
       return;
     }
 
@@ -845,6 +888,142 @@
 
     // 預設 focus 在金額欄
     setTimeout(() => receivedInput.focus(), 50);
+  }
+
+  // 載入常用組合到購物車
+  async function doLoadCartTemplate(item) {
+    hide();
+
+    try {
+      const res = await window.SalonEase.fetch(
+        `/api/cart_templates.php?action=apply&id=${item.templateId}`
+      );
+
+      const items = res.data.items || [];
+
+      if (items.length === 0) {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('此組合沒有項目', 'error');
+        }
+        return;
+      }
+
+      // 通知使用者即將清空購物車（簡單起見先直接替換）
+      // 未來可改成詢問「清空現有購物車還是合併？」
+      const cart = window.SalonEase.POS.getCart ? window.SalonEase.POS.getCart() : [];
+      if (cart.length > 0) {
+        if (!confirm(`目前購物車有 ${cart.length} 項。\n載入「${item.label}」會先清空購物車，確定繼續？`)) {
+          return;
+        }
+      }
+
+      // 清空現有購物車
+      if (window.SalonEase.POS.clearCart) {
+        window.SalonEase.POS.clearCart();
+      }
+
+      // 逐一加入項目（利用現有 addToCart）
+      for (const it of items) {
+        if (window.addToCart) {
+          window.addToCart(it.type, it.ref_id, it.name, it.unit_price);
+        }
+      }
+
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast(`已載入常用組合：「${item.label}」`, 'success');
+      }
+
+    } catch (err) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast(err.message || '載入常用組合失敗', 'error');
+      }
+    }
+  }
+
+  // 進入儲存購物車為常用組合模式
+  function enterSaveCartTemplateMode() {
+    if (!resultsEl) return;
+
+    // 從 POS 頁讀取目前購物車
+    const cart = (window.SalonEase && window.SalonEase.POS && window.SalonEase.POS.getCart)
+      ? window.SalonEase.POS.getCart()
+      : [];
+
+    if (!cart || cart.length === 0) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('購物車是空的，無法儲存', 'error');
+      }
+      updateResults('');
+      return;
+    }
+
+    resultsEl.innerHTML = `
+      <div class="px-3 py-3">
+        <div class="small fw-medium mb-2 text-success">儲存常用組合</div>
+        
+        <div class="mb-2 small text-muted">
+          目前有 <strong>${cart.length}</strong> 項商品，將會儲存為快速可用的組合。
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small mb-1">組合名稱 <span class="text-danger">*</span></label>
+          <input type="text" id="tpl-name" class="form-control form-control-sm" placeholder="例如：經典面部護理套餐">
+        </div>
+
+        <div class="d-flex gap-2">
+          <button id="tpl-save-btn" class="btn btn-success btn-sm flex-fill">儲存此組合</button>
+          <button id="tpl-save-cancel" class="btn btn-outline-secondary btn-sm">取消</button>
+        </div>
+      </div>
+    `;
+
+    const nameInput = resultsEl.querySelector('#tpl-name');
+    const saveBtn = resultsEl.querySelector('#tpl-save-btn');
+    const cancelBtn = resultsEl.querySelector('#tpl-save-cancel');
+
+    setTimeout(() => nameInput.focus(), 50);
+
+    saveBtn.onclick = async () => {
+      const name = nameInput.value.trim();
+      if (!name) {
+        if (window.SalonEase && window.SalonEase.toast) window.SalonEase.toast('請輸入組合名稱', 'error');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '儲存中...';
+
+      try {
+        const res = await window.SalonEase.fetch('/api/cart_templates.php?action=create', {
+          method: 'POST',
+          body: {
+            name: name,
+            items: JSON.stringify(cart)
+          }
+        });
+
+        hide();
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(`已儲存常用組合：「${name}」`, 'success');
+        }
+
+      } catch (err) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '儲存此組合';
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(err.message || '儲存失敗', 'error');
+        }
+      }
+    };
+
+    cancelBtn.onclick = () => {
+      updateResults('');
+    };
+
+    nameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveBtn.click();
+      if (e.key === 'Escape') cancelBtn.click();
+    });
   }
 
   // 套用折扣（從命令面板觸發）

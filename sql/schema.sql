@@ -332,6 +332,24 @@ CREATE TABLE `activity_logs` (
   INDEX `idx_log_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日誌';
 
+-- =====================================================
+-- 16. cart_templates - 常用購物車組合（POS 快速開單）
+-- =====================================================
+DROP TABLE IF EXISTS `cart_templates`;
+CREATE TABLE `cart_templates` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `staff_id` INT UNSIGNED NOT NULL COMMENT '建立此模板的員工',
+  `name` VARCHAR(100) NOT NULL COMMENT '模板名稱，例如「經典面部護理套餐」',
+  `items` JSON NOT NULL COMMENT '購物車項目快照（type, ref_id, name, unit_price, qty）',
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_ct_staff` (`staff_id`),
+  INDEX `idx_ct_name` (`name`),
+  INDEX `idx_ct_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='常用購物車組合模板（POS 快速重複開單）';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================
