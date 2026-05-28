@@ -432,7 +432,6 @@ function reportsApp() {
         },
 
         // 暴露給熱鍵系統使用
-        setQuickRange: function(type) { this.setQuickRange(type); },
         loadAll: function() { this.loadAll(); },
 
         // A62 小工具：計算「較上期」文字與顏色
@@ -607,7 +606,28 @@ function reportsApp() {
                         scales: { y: { beginAtZero: true } }
                     }
                 });
+            },
+
+        setQuickRange(type) {
+            this.activeRange = type;
+            const today = new Date();
+            let fromDate = new Date(today);
+
+            if (type === 'today') {
+                this.from = this.formatDate(today);
+                this.to = this.formatDate(today);
+            } else if (type === 'week') {
+                const day = today.getDay();
+                const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
+                fromDate = new Date(today.setDate(diff));
+                this.from = this.formatDate(fromDate);
+                this.to = this.formatDate(new Date());
+            } else if (type === 'month') {
+                fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                this.from = this.formatDate(fromDate);
+                this.to = this.formatDate(new Date());
             }
+            this.loadAll();
         }
     }
 }
@@ -648,27 +668,6 @@ document.addEventListener('keydown', function(e) {
 // 目前這些方法實際上不會被 Alpine component 正確呼叫。
 
 
-        setQuickRange(type) {
-            this.activeRange = type;
-            const today = new Date();
-            let fromDate = new Date(today);
-
-            if (type === 'today') {
-                this.from = this.formatDate(today);
-                this.to = this.formatDate(today);
-            } else if (type === 'week') {
-                const day = today.getDay();
-                const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
-                fromDate = new Date(today.setDate(diff));
-                this.from = this.formatDate(fromDate);
-                this.to = this.formatDate(new Date());
-            } else if (type === 'month') {
-                fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
-                this.from = this.formatDate(fromDate);
-                this.to = this.formatDate(new Date());
-            }
-            this.loadAll();
-        },
     }
 }
 </script>
