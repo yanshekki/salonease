@@ -248,6 +248,15 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A79：Phase 3 - 本月平均每單 vs 上月（簡單摘要） -->
+    <div class="mb-3">
+        <div class="small text-muted mb-1">本月平均每單 vs 上月</div>
+        <div class="d-flex align-items-baseline gap-2">
+            <span class="fw-medium" x-text="formatMoney(summary.avg_ticket)"></span>
+            <span class="small" :class="getChangeClass(summary.avg_ticket, prevSummary.avg_ticket)" x-text="getChangeText(summary.avg_ticket, prevSummary.avg_ticket)"></span>
+        </div>
+    </div>
+
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
