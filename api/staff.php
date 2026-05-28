@@ -14,6 +14,7 @@
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../db.php';
 
 require_login();
@@ -73,6 +74,7 @@ switch ($action) {
     // 新增員工
     case 'create':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $name = trim(post('name'));
         $email = trim(post('email'));
@@ -105,6 +107,7 @@ switch ($action) {
     // 更新員工資料
     case 'update':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id');
         $name = trim(post('name'));
@@ -139,6 +142,7 @@ switch ($action) {
     // 啟用 / 停用
     case 'toggle':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id');
         $newStatus = (int)post('status'); // 1 = 啟用, 0 = 停用
@@ -159,6 +163,7 @@ switch ($action) {
     // 重設密碼
     case 'reset_pw':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id');
         $newPassword = post('password');
