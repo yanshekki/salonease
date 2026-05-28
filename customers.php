@@ -25,6 +25,23 @@ $extraJs = 'hotkeys.js';
     </button>
 </div>
 
+<!-- A26：目前忠誠度規則提示 -->
+<div class="card mb-3 bg-light border-0">
+    <div class="card-body py-2 small">
+        <div class="d-flex flex-wrap align-items-center gap-4">
+            <div>
+                <span class="text-muted">累積率：</span>
+                <strong id="customer-earn-rate">10</strong> 元 = 1 點
+            </div>
+            <div>
+                <span class="text-muted">兌換率：</span>
+                <strong id="customer-redemption-rate">10</strong> 點 = $1
+            </div>
+            <div class="text-muted">（可於「系統設定」頁調整）</div>
+        </div>
+    </div>
+</div>
+
 <div class="card mb-3">
     <div class="card-body">
         <div class="row g-3 align-items-end">
@@ -291,6 +308,24 @@ document.addEventListener('keydown', function(e) {
         showAddModal();
     }
 });
+
+/* A26：載入目前忠誠度規則 */
+async function loadCustomerLoyaltyRates() {
+    try {
+        const res = await SalonEase.fetch('/api/settings.php?action=get');
+        if (res.data) {
+            const earn = res.data.points_earn_rate || 10;
+            const redeem = res.data.points_redemption_rate || 10;
+            const earnEl = document.getElementById('customer-earn-rate');
+            const redeemEl = document.getElementById('customer-redemption-rate');
+            if (earnEl) earnEl.textContent = earn;
+            if (redeemEl) redeemEl.textContent = redeem;
+        }
+    } catch (e) {
+        // 靜默失敗
+    }
+}
+loadCustomerLoyaltyRates();
 
 function e(str) {
     return str ? str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
