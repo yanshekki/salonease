@@ -47,6 +47,10 @@ $extraJs = 'hotkeys.js';
                     </template>
                 </select>
             </div>
+            <div class="col-md-3">
+                <label class="form-label small">搜尋</label>
+                <input type="text" x-model="search" @input="page=1" class="form-control form-control-sm" placeholder="搜尋操作、員工、細節...">
+            </div>
             <div class="col-md-3 d-flex align-items-end">
                 <button @click="loadLogs()" class="btn btn-outline-secondary btn-sm w-100">重新載入</button>
             </div>
@@ -117,6 +121,7 @@ function auditLogs() {
         page: 1,
         perPage: 20,
         logs: [],
+        search: '',
 
         init() {
             this.loadActions();
@@ -155,13 +160,24 @@ function auditLogs() {
             }
         },
 
+        get filteredLogs() {
+            if (!this.search) return this.logs;
+            const term = this.search.toLowerCase();
+            return this.logs.filter(log => 
+                (log.action && log.action.toLowerCase().includes(term)) ||
+                (log.staff_name && log.staff_name.toLowerCase().includes(term)) ||
+                (log.entity_type && log.entity_type.toLowerCase().includes(term)) ||
+                (log.details && JSON.stringify(log.details).toLowerCase().includes(term))
+            );
+        },
+
         get paginatedLogs() {
             const start = (this.page - 1) * this.perPage;
-            return this.logs.slice(start, start + this.perPage);
+            return this.filteredLogs.slice(start, start + this.perPage);
         },
 
         get totalPages() {
-            return Math.max(1, Math.ceil(this.logs.length / this.perPage));
+            return Math.max(1, Math.ceil(this.filteredLogs.length / this.perPage));
         },
 
         prevPage() {
