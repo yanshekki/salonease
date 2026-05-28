@@ -641,17 +641,17 @@ function reportsApp() {
                 const curr = this.summary.total_sales || 0;
                 const fromDate = this.from;
                 const toDate = this.to;
-                const midDate = fromDate < toDate 
-                    ? new Date( (new Date(fromDate).getTime() + new Date(toDate).getTime()) / 2 ).toISOString().slice(0,10)
-                    : fromDate;
                 const days = Math.max(1, Math.ceil( (new Date(toDate) - new Date(fromDate)) / (1000*60*60*24) ));
                 const dailyAvg = curr / days;
-                const trendLabels = [fromDate, midDate, toDate];
-                const trendData = [
-                    prev,
-                    prev + (curr - prev) * 0.5,
-                    curr
-                ];
+                // 5 點數據（A136 改善：更平滑）
+                const trendLabels = [];
+                const trendData = [];
+                for (let i = 0; i < 5; i++) {
+                    const ratio = i / 4;
+                    const labelDate = new Date( new Date(fromDate).getTime() + (new Date(toDate).getTime() - new Date(fromDate).getTime()) * ratio ).toISOString().slice(0,10);
+                    trendLabels.push(labelDate);
+                    trendData.push( prev + (curr - prev) * ratio );
+                }
                 this.salesTrendChart = new Chart(trendCtx, {
                     type: 'line',
                     data: {
