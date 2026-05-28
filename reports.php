@@ -143,6 +143,7 @@ include __DIR__ . '/includes/header.php';
     <!-- A91：Phase 3 - 簡單摘要小標題（本期 vs 上期 對比） -->
     <div class="small fw-semibold text-muted mb-2 mt-1">本期 vs 上期 對比</div>
     <div class="small text-muted mb-2" style="font-size:0.75rem;">顯示當前查詢期間與上期比較</div>
+    <div class="small text-muted mb-3" style="font-size:0.7rem;">（隨上方日期與員工篩選即時更新）</div>
 
     <!-- A67：Phase 3 - 本月交易數 vs 上月（簡單摘要） -->
     <div class="mb-3">
