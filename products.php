@@ -267,6 +267,9 @@ function renderProductsTable(list) {
             ? `<span onclick="event.stopImmediatePropagation(); editProduct(${p.id});" class="badge bg-danger-subtle text-danger ms-1 small" style="cursor:pointer;" title="點擊快速編輯低庫存門檻">低庫存</span>` 
             : '';
 
+        // A29：計算補到門檻所需數量（與 quickRestockToThreshold 一致）
+        const needed = isLowStock ? Math.max(0, threshold - p.stock_qty + 1) : 0;
+
         html += `
             <tr>
                 <td class="font-medium">${e(p.name)}</td>
@@ -291,7 +294,7 @@ function renderProductsTable(list) {
                     <?php if ($canAdjustStock): ?>
                     <button onclick="adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-primary p-0 me-2">調整庫存</button>
                     <button onclick="quickStockPlus10(${p.id}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-success p-0 me-2" title="快速入庫 10 件">+10 入庫</button>
-                    <button onclick="quickRestockToThreshold(${p.id}, ${p.stock_qty}, ${threshold}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-warning p-0 me-2" style="${isLowStock ? '' : 'display:none'}" title="一鍵補到安全庫存門檻">補到門檻</button>
+                    <button onclick="quickRestockToThreshold(${p.id}, ${p.stock_qty}, ${threshold}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-warning p-0 me-2" style="${isLowStock ? '' : 'display:none'}" title="一鍵補 ${needed} 件至安全庫存門檻">補到門檻 (+${needed})</button>
                     <?php endif; ?>
                     <button onclick="toggleProduct(${p.id}, ${p.is_active})" class="btn btn-link btn-sm ${p.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${p.is_active == 1 ? '停用' : '啟用'}
