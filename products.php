@@ -273,7 +273,7 @@ function renderProductsTable(list) {
         const isLowStock = p.stock_qty <= threshold;
         const stockColor = isLowStock ? 'text-red-600 font-medium' : '';
         const stockBadge = isLowStock 
-            ? `<span onclick="event.stopImmediatePropagation(); editProduct(${p.id});" class="badge bg-danger-subtle text-danger ms-1 small" style="cursor:pointer;" title="點擊快速編輯低庫存門檻">低庫存（缺 ${shortage} 件）</span>` 
+            ? `<span onclick="event.stopImmediatePropagation(); adjustProductStock(${p.id}, ${p.stock_qty}, '${e(p.name).replace(/'/g, "\\'")}', ${threshold}, ${needed});" class="badge bg-danger-subtle text-danger ms-1 small" style="cursor:pointer;" title="點擊快速補到安全門檻">低庫存（缺 ${shortage} 件）</span>` 
             : '';
 
         // A29：計算補到門檻所需數量（與 quickRestockToThreshold 一致）
@@ -443,7 +443,7 @@ document.addEventListener('keydown', function(e) {
 /* Phase 2 A19：產品庫存調整 UI */
 let stockAdjustModalInstance = null;
 
-function adjustProductStock(id, currentQty, name, lowStockThreshold = 5) {
+function adjustProductStock(id, currentQty, name, lowStockThreshold = 5, initialAdjustment = null) {
     document.getElementById('stock-product-id').value = id;
     document.getElementById('stock-product-name').textContent = `— ${name}`;
     document.getElementById('stock-current').textContent = currentQty;
@@ -465,6 +465,11 @@ function adjustProductStock(id, currentQty, name, lowStockThreshold = 5) {
 
     setTimeout(() => {
         const input = document.getElementById('stock-adjustment');
+
+        if (initialAdjustment !== null && initialAdjustment !== undefined) {
+            input.value = initialAdjustment;
+        }
+
         input.focus();
 
         // 綁定即時更新（只綁一次）
