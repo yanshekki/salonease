@@ -51,6 +51,14 @@ $extraJs = 'hotkeys.js';
                 </select>
             </div>
             <div class="col-md-3">
+                <label class="form-label small">實體類型</label>
+                <input type="text" x-model="entityType" @input.debounce.300ms="loadLogs()" class="form-control form-control-sm" placeholder="例如：product, sale, customer">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">實體 ID</label>
+                <input type="number" x-model="entityId" @input.debounce.300ms="loadLogs()" class="form-control form-control-sm" placeholder="ID">
+            </div>
+            <div class="col-md-3">
                 <label class="form-label small">搜尋</label>
                 <input type="text" x-model="search" @input="page=1" class="form-control form-control-sm" placeholder="搜尋操作、員工、細節...">
             </div>
@@ -143,6 +151,8 @@ function auditLogs() {
         to: '',
         selectedAction: '',
         selectedStaff: '',
+        entityType: '',
+        entityId: '',
         page: 1,
         perPage: 20,
         logs: [],
@@ -196,6 +206,8 @@ function auditLogs() {
                 if (this.to) url += `&to=${this.to}`;
                 if (this.selectedAction) url += `&action=${encodeURIComponent(this.selectedAction)}`;
                 if (this.selectedStaff) url += `&staff_id=${this.selectedStaff}`;
+                if (this.entityType) url += `&entity_type=${encodeURIComponent(this.entityType)}`;
+                if (this.entityId) url += `&entity_id=${this.entityId}`;
 
                 const res = await SalonEase.fetch(url);
                 // 支援新格式 {data, total} 與舊格式（相容）
@@ -270,6 +282,8 @@ function auditLogs() {
             this.setDefaultDateRange();
             this.selectedAction = '';
             this.selectedStaff = '';
+            this.entityType = '';
+            this.entityId = '';
             this.search = '';
             this.myActionsOnly = false;
             this.page = 1;
@@ -277,34 +291,17 @@ function auditLogs() {
         },
 
         exportCSV() {
-            if (this.logs.length === 0) {
-                SalonEase.toast('沒有資料可匯出', 'error');
-                return;
-            }
+            // A147：改用後端匯出（支援完整篩選 + 大量數據）
+            let url = '/api/audit.php?action=export';
+            if (this.from) url += `&from=${this.from}`;
+            if (this.to) url += `&to=${this.to}`;
+            if (this.selectedAction) url += `&action=${encodeURIComponent(this.selectedAction)}`;
+            if (this.selectedStaff) url += `&staff_id=${this.selectedStaff}`;
+            if (this.entityType) url += `&entity_type=${encodeURIComponent(this.entityType)}`;
+            if (this.entityId) url += `&entity_id=${this.entityId}`;
 
-            const headers = ['時間', '員工', '操作', '實體類型', '實體ID', 'IP', '細節'];
-            const rows = this.logs.map(log => [
-                log.created_at,
-                log.staff_name || '系統',
-                log.action,
-                log.entity_type || '',
-                log.entity_id || '',
-                log.ip_address || '',
-                log.details ? JSON.stringify(log.details) : ''
-            ]);
-
-            let csv = headers.join(',') + '\n';
-            rows.forEach(row => {
-                csv += row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',') + '\n';
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.href = url;
-            link.download = `audit_logs_${new Date().toISOString().slice(0,10)}.csv`;
-            link.click();
-            URL.revokeObjectURL(url);
+            window.location.href = url;
+            SalonEase.toast('正在產生 CSV 匯出...');
         }
     }
 }
