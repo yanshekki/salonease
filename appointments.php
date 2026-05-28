@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $pageTitle = '預約管理';
 $pageSubtitle = '新增預約、查看時程、避免時間衝突';
@@ -584,7 +585,7 @@ async function saveAppointment() {
         const action = isEdit ? 'update' : 'create';
         await SalonEase.fetch(`/api/appointments.php?action=${action}`, {
             method: 'POST',
-            body: payload
+            body: { ...payload, csrf_token: window.CSRF_TOKEN }
         });
 
         hideApptModal();
@@ -609,7 +610,7 @@ async function changeStatus(id, status) {
     try {
         await SalonEase.fetch('/api/appointments.php?action=change_status', {
             method: 'POST',
-            body: { id, status }
+            body: { id, status, csrf_token: window.CSRF_TOKEN }
         });
         SalonEase.toast('狀態已更新');
         loadAppointments();
@@ -694,7 +695,7 @@ async function quickStatusChange(id, status, viewType = 'list') {
     try {
         await SalonEase.fetch('/api/appointments.php?action=change_status', {
             method: 'POST',
-            body: { id, status }
+            body: { id, status, csrf_token: window.CSRF_TOKEN }
         });
         SalonEase.toast('狀態已更新');
 
@@ -737,7 +738,8 @@ async function quickTimeShift(id, minutes, viewType = 'list') {
                 start_time: newStart,
                 end_time: newEnd,
                 notes: a.notes || '',
-                services: a.items ? a.items.map(i => i.service_id) : []
+                services: a.items ? a.items.map(i => i.service_id) : [],
+                csrf_token: window.CSRF_TOKEN
             }
         });
 
@@ -779,7 +781,8 @@ async function quickDuplicateAppointment(id, viewType = 'list') {
                 start_time: newStartStr,
                 end_time: newEndStr,
                 notes: a.notes || '',
-                services: a.items ? a.items.map(i => i.service_id) : []
+                services: a.items ? a.items.map(i => i.service_id) : [],
+                csrf_token: window.CSRF_TOKEN
             }
         });
 
@@ -1426,6 +1429,10 @@ function getStaffColor(name) {
         currentFetchId = null;
     });
 })();
+</script>
+
+<script>
+window.CSRF_TOKEN = '<?= csrf_token() ?>';
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>

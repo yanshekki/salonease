@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../db.php';
 
 require_login();
@@ -83,6 +84,7 @@ switch ($action) {
     // 新增預約（含衝突檢查）
     case 'create':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $customer_id = (int)post('customer_id');
         $staff_id    = (int)post('staff_id');
@@ -129,6 +131,12 @@ switch ($action) {
                 return (int)$appt_id;
             });
 
+            log_activity('appointment.created', $new_id, 'appointment', [
+                'customer_id' => $customer_id,
+                'staff_id'    => $staff_id,
+                'start_time'  => $start_time
+            ]);
+
             json_success(['id' => $new_id], '預約已建立');
         } catch (Exception $e) {
             json_error('建立失敗：' . $e->getMessage());
@@ -138,6 +146,7 @@ switch ($action) {
     // 變更狀態
     case 'change_status':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id');
         $new_status = post('status');
@@ -148,12 +157,18 @@ switch ($action) {
         }
 
         db_exec("UPDATE appointments SET status = ? WHERE id = ?", [$new_status, $id]);
+
+        log_activity('appointment.status_changed', $id, 'appointment', [
+            'new_status' => $new_status
+        ]);
+
         json_success(null, '狀態已更新');
         break;
 
     // 更新預約
     case 'update':
         if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
 
         $id = (int)post('id');
         $customer_id = (int)post('customer_id');
@@ -198,6 +213,11 @@ switch ($action) {
                     }
                 }
             });
+
+            log_activity('appointment.updated', $id, 'appointment', [
+                'customer_id' => $customer_id,
+                'staff_id'    => $staff_id
+            ]);
 
             json_success(['id' => $id], '預約已更新');
         } catch (Exception $e) {
