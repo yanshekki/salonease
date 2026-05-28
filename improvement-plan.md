@@ -239,7 +239,8 @@
 - A57：Dashboard 加入「本月 Top 3 員工銷售」小卡片，繼續數據洞察系列
 - A58：Dashboard 加入「本月新客戶數」小卡片，繼續數據洞察系列
 - A59：Dashboard 加入「平均客單價 vs 上月」小卡片，繼續數據洞察系列
-- A60+：繼續 Dashboard 數據強化或開始報表視覺化
+- A60：Dashboard 加入「本月交易數 vs 上月」小卡片，繼續數據洞察系列
+- A61+：繼續 Dashboard 數據強化或開始報表視覺化
 
 **執行方式**：嚴格沿用 Phase 2 成功模式，每完成一個有意義小任務即 commit + --no-ff merge origin/main + push，main 永遠保持穩定。
 
