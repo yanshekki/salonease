@@ -19,10 +19,20 @@ $todaySales = db_query_one("SELECT COALESCE(SUM(total),0) AS total FROM sales WH
 $todayAppointments = db_query_one("SELECT COUNT(*) AS cnt FROM appointments WHERE DATE(start_time) = ? AND status IN ('pending','confirmed')", [$today]);
 $activeCustomers = db_query_one("SELECT COUNT(*) AS cnt FROM customers");
 
-// 使用全域低庫存門檻（而非硬編碼 10）
-$lowStockThreshold = db_query_one("SELECT default_low_stock_threshold FROM settings WHERE id = 1");
-$threshold = (int)($lowStockThreshold['default_low_stock_threshold'] ?? 5);
-$lowStock = db_query_one("SELECT COUNT(*) AS cnt FROM products WHERE stock_qty <= ? AND is_active = 1", [$threshold]);
+// Phase 2 A3：低量警示計算（尊重每個產品自訂門檻）
+$globalThreshold = db_query_one("SELECT default_low_stock_threshold FROM settings WHERE id = 1");
+$globalLow = (int)($globalThreshold['default_low_stock_threshold'] ?? 5);
+
+$allActiveProducts = db_query("SELECT stock_qty, low_stock_threshold FROM products WHERE is_active = 1");
+
+$lowStockCount = 0;
+foreach ($allActiveProducts as $p) {
+    $threshold = $p['low_stock_threshold'] !== null ? (int)$p['low_stock_threshold'] : $globalLow;
+    if ((int)$p['stock_qty'] <= $threshold) {
+        $lowStockCount++;
+    }
+}
+$lowStock = ['cnt' => $lowStockCount];
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
