@@ -74,6 +74,27 @@
         const modal = new bootstrap.Modal(modalEl, { backdrop: true, keyboard: false });
         modal.show();
 
+        // 顯示目前頁面情境
+        const context = getCurrentPageContext();
+        const contextLabel = {
+            'pos': 'POS 銷售',
+            'reports': '報表',
+            'appointments': '預約管理',
+            'customers': '客戶管理',
+            'settings': '系統設定',
+            'general': ''
+        }[context];
+
+        if (contextLabel) {
+            const header = modalEl.querySelector('.modal-header');
+            if (header) {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-secondary-subtle text-dark ms-2 small align-middle';
+                badge.textContent = '目前在 ' + contextLabel;
+                header.appendChild(badge);
+            }
+        }
+
         const input = document.getElementById('cmd-input');
         const resultsContainer = document.getElementById('cmd-results');
 
@@ -105,6 +126,10 @@
             { id: 'report-month', label: '切換到本月報表', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
             { id: 'go-services',  label: '服務項目管理', type: 'page', url: '/services.php' },
             { id: 'go-products',  label: '產品管理', type: 'page', url: '/products.php' },
+
+            // 更多實用動作
+            { id: 'pos-search-service', label: '在 POS 搜尋服務/產品', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/pos.php#search', 180); } },
+            { id: 'report-switch', label: '快速切換報表日期', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
         ];
 
         async function searchCustomers(keyword) {
@@ -146,6 +171,16 @@
                 .filter(Boolean);
         }
 
+        function getCurrentPageContext() {
+            const path = window.location.pathname.toLowerCase();
+            if (path.includes('/pos.php')) return 'pos';
+            if (path.includes('/reports.php')) return 'reports';
+            if (path.includes('/appointments.php')) return 'appointments';
+            if (path.includes('/customers.php')) return 'customers';
+            if (path.includes('/settings.php')) return 'settings';
+            return 'general';
+        }
+
         function renderResults(filter = '') {
             const q = filter.toLowerCase().trim();
             const recent = getRecentCommandsList();
@@ -157,10 +192,36 @@
                 const recentSet = new Set(recent.map(c => c.id));
                 const others = staticCommands.filter(c => !recentSet.has(c.id));
 
+                // 情境感知推薦動作
+                const context = getCurrentPageContext();
+                let contextActions = [];
+
+                if (context === 'pos') {
+                    contextActions = [
+                        { id: 'pos-search', label: '搜尋服務/產品加入購物車', type: 'action', action: () => { modal.hide(); setTimeout(() => { const el = document.getElementById('item-search'); if (el) el.focus(); }, 200); } },
+                        { id: 'pos-search-customer', label: '搜尋客戶加入購物車', type: 'action', action: () => { modal.hide(); setTimeout(() => { const el = document.getElementById('pos-customer-search'); if (el) el.focus(); }, 200); } },
+                    ];
+                } else if (context === 'reports') {
+                    contextActions = [
+                        { id: 'report-today', label: '切換到今日報表', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
+                        { id: 'report-week', label: '切換到本週報表', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/reports.php', 180); } },
+                    ];
+                } else if (context === 'appointments') {
+                    contextActions = [
+                        { id: 'new-appointment', label: '新增預約', type: 'action', action: () => { modal.hide(); setTimeout(() => location.href = '/appointments.php?new=1', 180); } },
+                    ];
+                }
+
                 if (recent.length > 0) {
                     toShow.push({ isSection: true, title: '最近使用' });
                     toShow.push(...recent);
                     currentFiltered.push(...recent);
+                }
+
+                if (contextActions.length > 0) {
+                    toShow.push({ isSection: true, title: '目前頁面推薦' });
+                    toShow.push(...contextActions);
+                    currentFiltered.push(...contextActions);
                 }
 
                 toShow.push({ isSection: true, title: '所有功能' });
