@@ -19,6 +19,23 @@ $pageSubtitle = '查看客戶積分獲得與兌換歷史';
     </div>
 </div>
 
+<!-- A22：目前忠誠度規則（從設定讀取） -->
+<div class="card mb-3 bg-light border-0">
+    <div class="card-body py-2 small">
+        <div class="d-flex flex-wrap align-items-center gap-4">
+            <div>
+                <span class="text-muted">累積率：</span>
+                <strong id="loyalty-earn-rate">10</strong> 元 = 1 點
+            </div>
+            <div>
+                <span class="text-muted">兌換率：</span>
+                <strong id="loyalty-redemption-rate">10</strong> 點 = $1
+            </div>
+            <div class="text-muted">（可於「系統設定」頁調整）</div>
+        </div>
+    </div>
+</div>
+
 <!-- Phase 2 A16：積分排行榜 -->
 <div class="card mb-4">
     <div class="card-body">
@@ -174,6 +191,24 @@ async function loadLoyaltyRanking() {
 
 // 自動載入排行榜
 loadLoyaltyRanking();
+
+/* A22：載入目前忠誠度累積率與兌換率 */
+async function loadLoyaltyRates() {
+    try {
+        const res = await SalonEase.fetch('/api/settings.php?action=get');
+        if (res.data) {
+            const earn = res.data.points_earn_rate || 10;
+            const redeem = res.data.points_redemption_rate || 10;
+            const earnEl = document.getElementById('loyalty-earn-rate');
+            const redeemEl = document.getElementById('loyalty-redemption-rate');
+            if (earnEl) earnEl.textContent = earn;
+            if (redeemEl) redeemEl.textContent = redeem;
+        }
+    } catch (e) {
+        // 靜默失敗，不影響主要功能
+    }
+}
+loadLoyaltyRates();
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
