@@ -2012,6 +2012,56 @@
   }
 
   /**
+   * 根據價位層級，從目前 POS itemsCache 智能揀 1-2 個最貼價位嘅額外項目
+   */
+  function getExtraSuggestionsForTier(tier, selectedRecs, allItems) {
+    if (!allItems || allItems.length === 0) return [];
+
+    const alreadyIn = new Set();
+    selectedRecs.forEach(rec => {
+      (rec.suggestedItems || []).forEach(it => alreadyIn.add(`${it.type}:${it.ref_id}`));
+    });
+
+    // 簡單定義每個 tier 的價格偏好
+    let priceFilter = (price) => true;
+    let sortKey = (price) => price;
+
+    if (tier === 'conservative') {
+      // 偏向較平價、高CP
+      priceFilter = (p) => p > 0 && p <= 650;
+      sortKey = (p) => p; // 由平到貴
+    } else if (tier === 'optimal') {
+      priceFilter = (p) => p > 0;
+      sortKey = (p) => Math.abs(p - 580); // 圍繞中位附近
+    } else if (tier === 'premium') {
+      priceFilter = (p) => p >= 550;
+      sortKey = (p) => -p; // 由貴到平
+    }
+
+    const candidates = allItems
+      .filter(i => i.price && priceFilter(i.price) && !alreadyIn.has(`${i.type}:${i.id}`))
+      .sort((a, b) => sortKey(a.price) - sortKey(b.price))
+      .slice(0, 4); // 先多取幾個
+
+    // 再隨機或簡單挑 1-2 個不同類型
+    const result = [];
+    const seenType = new Set();
+    for (const item of candidates) {
+      if (result.length >= 2) break;
+      if (!seenType.has(item.type)) {
+        seenType.add(item.type);
+        result.push({
+          type: item.type,
+          ref_id: item.id,
+          name: item.name,
+          unit_price: item.price
+        });
+      }
+    }
+    return result;
+  }
+
+  /**
    * 顯示英雄組合預覽面板（多選模式專用）
    * 支援即時價位調整 + 可編輯腳本 + 儲存常用組合 + 確認加入
    */
@@ -2064,6 +2114,9 @@
           ${totalPriceHint ? `原始參考：約 HK$ ${Math.round(totalPriceHint / selectedRecs.length)}` : ''}
         </div>
 
+        <!-- 價位調整後的額外推薦項目（動態插入） -->
+        <div id="hero-extra-suggestions" class="mb-2" style="display:none;"></div>
+
         <div class="d-flex gap-2 flex-wrap">
           <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="hero-preview-copy">💬 複製話術</button>
           <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="hero-preview-save-template">💾 儲存為常用組合</button>
@@ -2100,7 +2153,60 @@
       };
     }
 
-    // === 即時價位調整按鈕 ===
+    // === 即時價位調整按鈕（加強版：改寫腳本 + 顯示額外推薦） ===
+    const extraContainer = panel.querySelector('#hero-extra-suggestions');
+
+    function renderExtraSuggestions(tier, selectedRecsForSuggest) {
+      if (!extraContainer) return;
+
+      const POS = window.SalonEase && window.SalonEase.POS;
+      const cache = POS && POS.getItemsCache ? POS.getItemsCache() : [];
+      const extras = getExtraSuggestionsForTier(tier, selectedRecsForSuggest, cache);
+
+      if (extras.length === 0) {
+        extraContainer.style.display = 'none';
+        extraContainer.innerHTML = '';
+        return;
+      }
+
+      let html = `<div class="small fw-medium text-success mb-1">根據「${tier === 'conservative' ? '保守型' : tier === 'optimal' ? '最啱您' : '升級體驗'}」價位，額外推薦：</div>`;
+      html += '<div class="d-flex flex-wrap gap-2">';
+
+      extras.forEach((item, idx) => {
+        const priceText = item.unit_price ? `HK$ ${Math.round(item.unit_price)}` : '';
+        html += `
+          <div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size:12px;">
+            <span>${item.type === 'service' ? '💆' : '🧴'} ${item.name}</span>
+            <span class="text-muted">${priceText}</span>
+            <button type="button" class="btn btn-sm btn-success py-0 px-2" style="font-size:10px;" data-extra-idx="${idx}">加入</button>
+          </div>`;
+      });
+      html += '</div>';
+
+      extraContainer.innerHTML = html;
+      extraContainer.style.display = 'block';
+
+      // 綁定即時加入按鈕
+      extraContainer.querySelectorAll('[data-extra-idx]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopImmediatePropagation();
+          const i = parseInt(btn.dataset.extraIdx);
+          const item = extras[i];
+          if (item && window.addToCart) {
+            window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
+            // 移除已加入的建議卡片
+            btn.closest('.d-flex.align-items-center').remove();
+            if (extraContainer.querySelectorAll('[data-extra-idx]').length === 0) {
+              extraContainer.style.display = 'none';
+            }
+            if (window.SalonEase && window.SalonEase.toast) {
+              window.SalonEase.toast(`已加入額外推薦：${item.name}`, 'success', 1400);
+            }
+          }
+        };
+      });
+    }
+
     panel.querySelectorAll('[data-tier]').forEach(btn => {
       btn.onclick = () => {
         const tier = btn.dataset.tier;
@@ -2118,9 +2224,11 @@
           tierBadge.className = 'badge bg-success-subtle text-success ms-1 align-self-center';
         }
 
-        // 簡單提示
+        // 顯示/更新額外推薦項目
+        renderExtraSuggestions(tier, selectedRecs);
+
         if (window.SalonEase && window.SalonEase.toast) {
-          window.SalonEase.toast('價位建議已更新話術', 'info', 1200);
+          window.SalonEase.toast('價位建議已更新話術 + 額外推薦', 'info', 1300);
         }
       };
     });
