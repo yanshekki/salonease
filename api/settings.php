@@ -40,7 +40,7 @@ switch ($action) {
     case 'save_shop':
         if (!is_post()) json_error('只接受 POST 請求', 405);
 
-        // CSRF 保護
+        // CSRF 保護 - Phase 1 已套用
         require_csrf();
 
         // 只有 admin / manager 可以改店舖資訊
