@@ -285,6 +285,30 @@
     return null;
   }
 
+  // 計算目前結果嘅價位分佈（用於視覺條）
+  function getPriceDistribution(items, band) {
+    if (!band || !items || items.length === 0) return null;
+
+    let below = 0, within = 0, above = 0;
+    items.forEach(item => {
+      if (!item.price || item.type === 'package_redemption') return;
+      const p = parseFloat(item.price);
+      if (p < band.min) below++;
+      else if (p > band.max) above++;
+      else within++;
+    });
+
+    const total = below + within + above;
+    if (total === 0) return null;
+
+    return {
+      belowPct: Math.round((below / total) * 100),
+      withinPct: Math.round((within / total) * 100),
+      abovePct: Math.round((above / total) * 100),
+      counts: { below, within, above, total }
+    };
+  }
+
   // 取得本次 POS 開單期間最近加入的項目（快速重複銷售）
   function getPosRecentSessionItems() {
     const POS = window.SalonEase && window.SalonEase.POS;
@@ -1017,8 +1041,46 @@
     }
     html += `<div class="px-3 pt-2 pb-1 small text-muted fw-medium">${section}</div>`;
 
+    // 價位分佈視覺條（只喺 POS 搜尋 + 有有效價位區間時顯示）
+    if (currentContext === 'pos' && q.trim()) {
+      const band = getEffectivePriceBand();
+      const dist = getPriceDistribution(currentResults, band);
+      const activeFilter = (window.SalonEase && window.SalonEase._cmdPriceFilter) || null;
+
+      if (dist) {
+        html += `
+          <div class="px-3 pb-1">
+            <div class="d-flex align-items-center gap-1" style="height:14px; font-size:9px;">
+              <div class="text-muted me-1" style="font-size:9px; white-space:nowrap;">價位分佈</div>
+              <div class="flex-grow-1 d-flex" style="height:8px; border-radius:4px; overflow:hidden; cursor:pointer; border:1px solid #dee2e6;"
+                   id="price-dist-bar">
+                <div class="price-seg" data-filter="below" style="width:${dist.belowPct}%; background:#adb5bd; ${activeFilter === 'below' ? 'outline:2px solid #6c757d;' : ''}" title="低於最愛價位：${dist.counts.below} 項"></div>
+                <div class="price-seg" data-filter="within" style="width:${dist.withinPct}%; background:#8FA68F; ${activeFilter === 'within' ? 'outline:2px solid #198754;' : ''}" title="最愛價位範圍：${dist.counts.within} 項"></div>
+                <div class="price-seg" data-filter="above" style="width:${dist.abovePct}%; background:#f4a261; ${activeFilter === 'above' ? 'outline:2px solid #e76f51;' : ''}" title="高於最愛價位：${dist.counts.above} 項"></div>
+              </div>
+              <div class="text-muted ms-1" style="font-size:9px; white-space:nowrap;">${dist.counts.within}/${dist.counts.total}</div>
+            </div>
+          </div>`;
+      }
+    }
+
     currentResults.forEach((item, i) => {
       if (recentOnes.some(r => r.id === item.id) && !q.trim()) return;
+
+      // 價位分佈過濾
+      if (currentContext === 'pos' && q.trim()) {
+        const filter = (window.SalonEase && window.SalonEase._cmdPriceFilter) || null;
+        if (filter) {
+          const band = getEffectivePriceBand();
+          if (band && item.price) {
+            const p = parseFloat(item.price);
+            if (filter === 'below' && p >= band.min) return;
+            if (filter === 'within' && (p < band.min || p > band.max)) return;
+            if (filter === 'above' && p <= band.max) return;
+          }
+        }
+      }
+
       html += rowHTML(item, i, false);
     });
 
@@ -1031,6 +1093,8 @@
         const newMode = btn.dataset.priceMode;
         window.SalonEase = window.SalonEase || {};
         window.SalonEase._cmdPriceMode = newMode;
+        // 切換模式時清除之前嘅分佈過濾
+        if (window.SalonEase) delete window.SalonEase._cmdPriceFilter;
 
         // 重新計分 + 重新渲染（保持目前輸入）
         if (currentResults && currentResults.length > 0) {
@@ -1042,10 +1106,33 @@
             return (ra === -1 ? 999 : ra) - (rb === -1 ? 999 : rb);
           });
           currentResults = scored;
-          renderResults(q);   // 重新渲染，會自動套用新 active 樣式
+          renderResults(q);
         }
       };
     });
+
+    // 價位分佈視覺條點擊過濾
+    const distBar = resultsEl.querySelector('#price-dist-bar');
+    if (distBar) {
+      distBar.querySelectorAll('.price-seg').forEach(seg => {
+        seg.onclick = (e) => {
+          e.stopImmediatePropagation();
+          const filter = seg.dataset.filter; // below / within / above
+          window.SalonEase = window.SalonEase || {};
+
+          // 切換過濾：如果已經係呢個 filter，就清除
+          if (window.SalonEase._cmdPriceFilter === filter) {
+            delete window.SalonEase._cmdPriceFilter;
+          } else {
+            window.SalonEase._cmdPriceFilter = filter;
+          }
+
+          // 重新渲染（只係過濾顯示，唔使重新計分）
+          const q = inputEl ? inputEl.value : '';
+          renderResults(q);
+        };
+      });
+    }
 
     resultsEl.querySelectorAll('.cmd-row').forEach(row => {
       const idx = parseInt(row.dataset.idx);
@@ -3026,8 +3113,9 @@
     if (window.SalonEase) {
       window.SalonEase._cmdSelectedHeroes = new Set();
       window.SalonEase._cmdHeroRecs = [];
-      // 重置暫時價位模式
+      // 重置暫時價位模式同分佈過濾
       delete window.SalonEase._cmdPriceMode;
+      delete window.SalonEase._cmdPriceFilter;
     }
     if (bsModal) bsModal.hide();
   }
