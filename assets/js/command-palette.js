@@ -2752,6 +2752,118 @@
         }
       };
     });
+
+    // === Phase 46: 自動缺口補位建議（高貼合項目太少時主動幫手補位）===
+    const highCount = scored.filter(i => i.closeness >= 70).length;
+    if (highCount < 3) {
+      const gapFills = gapAlternatives
+        .filter(a => a.price && a.type !== 'package_redemption')
+        .map(a => ({
+          ...a,
+          closeness: (typeof getPriceClosenessScore === 'function') ? getPriceClosenessScore(a.price, band) : 55
+        }))
+        .filter(a => a.closeness < 70 && a.closeness > 40)
+        .sort((a, b) => b.closeness - a.closeness)
+        .slice(0, 3);
+
+      if (gapFills.length > 0) {
+        const gapDiv = document.createElement('div');
+        gapDiv.className = 'mt-2 p-2 rounded border';
+        gapDiv.style.background = '#fffef0';
+        gapDiv.style.borderColor = '#D4A017';
+
+        let gHtml = `<div class="small fw-semibold text-warning mb-1">⚠️ 高貼合項目選擇較少，教練自動建議最接近替代：</div><div class="d-flex flex-wrap gap-1">`;
+
+        gapFills.forEach((item, i) => {
+          gHtml += `<button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size:10px;" data-gapfill-idx="${i}">
+            ${item.label || item.name}
+            <span class="badge bg-warning text-dark" style="font-size:9px;">${item.closeness}%</span>
+          </button>`;
+        });
+
+        gHtml += `</div>
+          <button type="button" class="btn btn-sm btn-warning mt-1 py-0 px-2" style="font-size:10px;" id="gapfill-batch">
+            一鍵加入呢批替代
+          </button>
+          <div class="small text-muted mt-1" style="font-size:9px;">批量加入後會自動記錄結構化補位話術</div>`;
+
+        gapDiv.innerHTML = gHtml;
+        container.appendChild(gapDiv);
+
+        // 個別加入
+        gapDiv.querySelectorAll('button[data-gapfill-idx]').forEach(btn => {
+          btn.onclick = (ev) => {
+            ev.stopImmediatePropagation();
+            const idx = parseInt(btn.dataset.gapfillIdx);
+            const item = gapFills[idx];
+            if (!item) return;
+
+            if (window.addToCart) {
+              window.addToCart(item.type, item.ref_id, item.label || item.name, item.price);
+            }
+
+            const line = `高貼合選擇較少，我為您補咗「${item.label || item.name}」（貼合度 ${item.closeness}%）`;
+            if (addToTranscriptFn) addToTranscriptFn('我（自動補位）', line);
+
+            let script = mainTa.value.trim();
+            if (!script.includes('補咗')) {
+              script = script.replace(/您而家要唔要我.*?$/u, '') + ` ${line}。`;
+            }
+            mainTa.value = script;
+
+            const notesEl = document.getElementById('sale-notes');
+            if (notesEl) {
+              const note = `[價位智能缺口提示] 高貼合項目選擇較少，已自動建議加入「${item.label || item.name}」。`;
+              notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+            }
+
+            btn.remove();
+            if (gapDiv.querySelectorAll('button[data-gapfill-idx]').length === 0) {
+              gapDiv.remove();
+            }
+          };
+        });
+
+        // 批量一鍵加入
+        const batchBtn = gapDiv.querySelector('#gapfill-batch');
+        if (batchBtn) {
+          batchBtn.onclick = (ev) => {
+            ev.stopImmediatePropagation();
+
+            let added = 0;
+            const names = [];
+            gapFills.forEach(item => {
+              if (window.addToCart) {
+                window.addToCart(item.type, item.ref_id, item.label || item.name, item.price);
+                added++;
+                names.push(item.label || item.name);
+              }
+            });
+
+            const line = `高貼合選擇較少，我為您補咗呢幾樣最接近您價位偏好嘅項目：${names.join('、')}`;
+            if (addToTranscriptFn) addToTranscriptFn('我（自動補位）', line);
+
+            let script = mainTa.value.trim();
+            if (!script.includes('補咗呢幾樣')) {
+              script = script.replace(/您而家要唔要我.*?$/u, '') + ` ${line}。`;
+            }
+            mainTa.value = script;
+
+            const notesEl = document.getElementById('sale-notes');
+            if (notesEl) {
+              const note = `[價位智能缺口提示] 高貼合項目選擇較少，自動建議加入 ${added} 個最接近替代項目：${names.join('、')}`;
+              notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+            }
+
+            gapDiv.remove();
+
+            if (window.SalonEase && window.SalonEase.toast) {
+              window.SalonEase.toast(`✅ 已一鍵補位加入 ${added} 個最接近替代`, 'success', 1600);
+            }
+          };
+        }
+      }
+    }
   }
 
   /**
