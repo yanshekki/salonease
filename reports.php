@@ -100,6 +100,19 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A63：Phase 3 - 熱門服務 Top 3（簡單摘要） -->
+    <div class="mb-3" x-show="topServices.length > 0">
+        <div class="small text-muted mb-1">熱門服務 Top 3</div>
+        <div class="d-flex gap-2 flex-wrap">
+            <template x-for="s in topServices.slice(0,3)" :key="s.name">
+                <span class="badge bg-light border small px-2 py-1">
+                    <span x-text="s.name"></span>
+                    <span class="text-muted ms-1" x-text="s.qty + ' 次'"></span>
+                </span>
+            </template>
+        </div>
+    </div>
+
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
