@@ -225,21 +225,25 @@ switch ($action) {
         break;
 
     case 'payment_breakdown':
+        // Phase 2: 使用 payments 表做更精準的多筆付款分佈
         $rows = db_query("
             SELECT 
-                payment_method,
-                COUNT(*) as count,
-                COALESCE(SUM(total), 0) as amount
-            FROM sales 
-            WHERE sale_date BETWEEN ? AND ?
-            GROUP BY payment_method
+                pm.name as method,
+                COUNT(DISTINCT p.sale_id) as count,
+                COALESCE(SUM(p.amount), 0) as amount
+            FROM payments p
+            JOIN payment_methods pm ON p.payment_method_id = pm.id
+            JOIN sales s ON p.sale_id = s.id
+            WHERE s.sale_date BETWEEN ? AND ?
+              AND p.is_refund = 0
+            GROUP BY pm.id, pm.name
             ORDER BY amount DESC
         ", [$from, $to]);
 
         $result = [];
         foreach ($rows as $r) {
             $result[] = [
-                'method' => $r['payment_method'],
+                'method' => $r['method'],
                 'count'  => (int)$r['count'],
                 'amount' => (float)$r['amount']
             ];
