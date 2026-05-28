@@ -58,6 +58,60 @@ switch ($action) {
         json_success($products);
         break;
 
+    // Phase 2 A3：專用低量警示列表 API（方便 Dashboard / 警示頁面使用）
+    case 'low_stock':
+        $search = trim(get('search', ''));
+        $category = get('category', '');
+
+        // 取得全域低庫存預設門檻
+        $globalThreshold = db_query_one("SELECT default_low_stock_threshold FROM settings WHERE id = 1");
+        $globalLowStock = (int)($globalThreshold['default_low_stock_threshold'] ?? 5);
+
+        $sql = "SELECT id, name, sku, price, stock_qty, low_stock_threshold, category, is_active 
+                FROM products 
+                WHERE 1=1";
+        $params = [];
+
+        if ($search !== '') {
+            $sql .= " AND (name LIKE ? OR sku LIKE ?)";
+            $like = "%{$search}%";
+            $params[] = $like;
+            $params[] = $like;
+        }
+        if ($category !== '') {
+            $sql .= " AND category = ?";
+            $params[] = $category;
+        }
+
+        // 只取活躍產品
+        $sql .= " AND is_active = 1";
+        $sql .= " ORDER BY stock_qty ASC, name ASC";
+
+        $products = db_query($sql, $params);
+
+        $lowStockProducts = [];
+        foreach ($products as $p) {
+            $threshold = $p['low_stock_threshold'] !== null 
+                ? (int)$p['low_stock_threshold'] 
+                : $globalLowStock;
+
+            $stock = (int)$p['stock_qty'];
+            $isLow = $stock <= $threshold;
+
+            if ($isLow) {
+                $p['effective_low_stock_threshold'] = $threshold;
+                $p['shortage'] = $threshold - $stock;   // 還差多少才達門檻
+                $lowStockProducts[] = $p;
+            }
+        }
+
+        json_success([
+            'count' => count($lowStockProducts),
+            'global_threshold' => $globalLowStock,
+            'products' => $lowStockProducts
+        ]);
+        break;
+
     case 'create':
         if (!is_post()) json_error('只接受 POST 請求', 405);
         require_csrf();
