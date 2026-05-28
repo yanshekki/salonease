@@ -233,7 +233,8 @@
 ### 執行起點建議（A53 之後逐步拆細）
 
 - A53：本任務（Phase 3 初步路線圖寫入計劃）
-- A54+：從「報表視覺化」或「Dashboard 數據強化」開始，逐一拆成可獨立 merge 的小任務
+- A54：Dashboard 加入「本月熱門服務 Top 3」小卡片（Phase 3 首個數據洞察功能）
+- A55+：繼續拆細報表視覺化、更多 Dashboard 洞察、運維工具等
 
 **執行方式**：嚴格沿用 Phase 2 成功模式，每完成一個有意義小任務即 commit + --no-ff merge origin/main + push，main 永遠保持穩定。
 
