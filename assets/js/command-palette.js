@@ -160,6 +160,29 @@
     }
   }
 
+  // 取得目前 POS 已選客戶的可用套票（優先使用 POS 已載入的資料，避免多餘 API）
+  function getCurrentPosCustomerPackages() {
+    const POS = window.SalonEase && window.SalonEase.POS;
+    if (!POS) return [];
+
+    const customer = POS.getCurrentCustomer ? POS.getCurrentCustomer() : null;
+    if (!customer) return [];
+
+    const pkgs = POS.getCustomerPackages ? POS.getCustomerPackages() : [];
+    return pkgs.map(p => ({
+      id: `pkg-${p.id}`,
+      ref_id: p.id,
+      type: 'package_redemption',
+      label: p.name,
+      price: 0,                    // 套票扣減不計費
+      keywords: '套票 扣減 ' + p.name,
+      icon: '🎫',
+      remaining: p.remaining_sessions,
+      expiry: p.expiry_date,
+      action: 'add-package'
+    }));
+  }
+
   async function updateResults(q = '') {
     if (!resultsEl) return;
     const ctx = getContext();
@@ -168,14 +191,30 @@
     let baseItems = getItems(ctx);
     let dynamicItems = [];
 
-    // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋
+    // POS 情境：有查詢字串時 → 真正呼叫 API 動態搜尋服務/產品
     if (ctx === 'pos' && q.trim().length >= 1) {
       // 先顯示 loading
       renderLoadingState(q);
       dynamicItems = await fetchPosItems(q);
+
+      // 額外加入：已選客戶的套票扣減（若有符合搜尋字串）
+      const customerPkgs = getCurrentPosCustomerPackages();
+      if (customerPkgs.length > 0) {
+        const qLower = q.toLowerCase();
+        const matchedPkgs = customerPkgs.filter(pkg =>
+          pkg.label.toLowerCase().includes(qLower) ||
+          (pkg.keywords || '').toLowerCase().includes(qLower)
+        );
+        dynamicItems = [...dynamicItems, ...matchedPkgs];
+      }
     } else if (ctx === 'pos' && q.trim().length === 0) {
-      // POS 頁空白查詢 → 只顯示靜態導航，不顯示整本 catalog
-      dynamicItems = [];
+      // POS 頁空白查詢時，也顯示目前客戶可用的套票（方便快速扣減）
+      const customerPkgs = getCurrentPosCustomerPackages();
+      if (customerPkgs.length > 0) {
+        dynamicItems = customerPkgs;
+      } else {
+        dynamicItems = [];
+      }
     }
 
     let allItems = [...baseItems, ...dynamicItems];
@@ -215,7 +254,11 @@
     </div>`;
 
     if (!currentResults.length) {
-      html += `<div class="p-4 text-center text-muted">找不到符合「${q}」的項目</div>`;
+      let emptyMsg = `找不到符合「${q}」的項目`;
+      if (currentContext === 'pos') {
+        emptyMsg = `找不到符合「${q}」的服務/產品<br><span class="small">可嘗試「面部」「精華」等關鍵字</span>`;
+      }
+      html += `<div class="p-4 text-center text-muted">${emptyMsg}</div>`;
       resultsEl.innerHTML = html;
       return;
     }
@@ -233,7 +276,11 @@
 
     let section = q.trim() ? '搜尋結果' : '所有功能';
     if (currentContext === 'pos') {
-      section = q.trim() ? '服務 / 產品搜尋結果（可直接加入購物車）' : '快速功能（輸入關鍵字可即時搜尋服務與產品）';
+      if (q.trim()) {
+        section = '服務 / 產品 / 套票搜尋結果';
+      } else {
+        section = '快速功能 + 客戶可用套票（可直接扣減）';
+      }
     }
     html += `<div class="px-3 pt-2 pb-1 small text-muted fw-medium">${section}</div>`;
 
@@ -248,10 +295,16 @@
       const idx = parseInt(row.dataset.idx);
       row.addEventListener('mouseenter', () => { activeIndex = idx; highlight(); });
       row.addEventListener('click', e => {
+        const item = currentResults[idx];
         if (e.target.closest('.cmd-add-btn')) {
-          doAddToCart(currentResults[idx]);
+          // 套票扣減走獨立路徑
+          if (item.type === 'package_redemption' || item.action === 'add-package') {
+            doAddPackageRedemption(item);
+          } else {
+            doAddToCart(item);
+          }
         } else {
-          doExecute(currentResults[idx]);
+          doExecute(item);
         }
       });
     });
@@ -259,14 +312,23 @@
   }
 
   function rowHTML(item, idx, isRecent) {
-    const isAdd = item.action === 'add-to-cart' || (currentContext === 'pos' && (item.type === 'service' || item.type === 'product'));
+    const isNormalAdd = item.action === 'add-to-cart' || (currentContext === 'pos' && (item.type === 'service' || item.type === 'product'));
+    const isPackage = item.type === 'package_redemption' || item.action === 'add-package';
+
     const price = item.price ? `<span class="text-success fw-medium">$${item.price}</span>` : '';
     const sku = item.sku ? `<span class="text-muted ms-1" style="font-size:10px">(${item.sku})</span>` : '';
     const lowStock = item.stock !== undefined && item.stock < 10 ? `<span class="badge bg-danger-subtle text-danger ms-1" style="font-size:9px">剩${item.stock}</span>` : '';
     const recent = isRecent ? `<span class="badge bg-warning-subtle text-warning ms-2" style="font-size:9px">最近</span>` : '';
-    const sec = isAdd
-      ? `<button type="button" class="cmd-add-btn btn btn-sm btn-success py-0 px-2 ms-2" style="font-size:12px">加入購物車</button>`
-      : `<span class="ms-auto text-muted">${item.icon || ''}</span>`;
+
+    let sec;
+    if (isPackage) {
+      const remain = item.remaining ? `剩 ${item.remaining} 次` : '';
+      sec = `<button type="button" class="cmd-add-btn btn btn-sm py-0 px-2 ms-2" style="font-size:12px; background:#c084fc; color:white; border:none;">扣減套票</button>`;
+    } else if (isNormalAdd) {
+      sec = `<button type="button" class="cmd-add-btn btn btn-sm btn-success py-0 px-2 ms-2" style="font-size:12px">加入購物車</button>`;
+    } else {
+      sec = `<span class="ms-auto text-muted">${item.icon || ''}</span>`;
+    }
 
     return `<div class="cmd-row d-flex align-items-center gap-2 px-3 py-2 rounded-2 cursor-pointer ${idx === activeIndex ? 'bg-light' : ''}" data-idx="${idx}" style="cursor:pointer">
       <div style="width:28px" class="text-center fs-5">${item.icon || '🔗'}</div>
@@ -300,6 +362,12 @@
       doAddToCart(item);
       return;
     }
+
+    if (item.action === 'add-package' || item.type === 'package_redemption') {
+      doAddPackageRedemption(item);
+      return;
+    }
+
     if (item.url) location.href = item.url;
     else if (typeof item.fn === 'function') item.fn();
   }
@@ -332,6 +400,28 @@
 
     // 最後 fallback
     if (confirm(`「${item.label}」已記錄。\n請前往 POS 頁使用完整購物車。`)) {
+      location.href = '/pos.php';
+    }
+  }
+
+  // 專門處理套票扣減（從命令面板呼叫）
+  function doAddPackageRedemption(item) {
+    recordUsage(item.id);
+    // 已經 hide() 了
+
+    const POS = window.SalonEase && window.SalonEase.POS;
+    if (POS && typeof POS.addPackageRedemption === 'function') {
+      const success = POS.addPackageRedemption(item);
+      if (success) {
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast(`已加入套票扣減：${item.label}`, 'success', 1800);
+        }
+        return;
+      }
+    }
+
+    // 如果 POS 沒有暴露或客戶未選，給提示
+    if (confirm(`「${item.label}」套票扣減需要先在 POS 選擇客戶。\n\n立即前往 POS 頁？`)) {
       location.href = '/pos.php';
     }
   }

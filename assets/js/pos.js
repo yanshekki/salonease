@@ -1000,7 +1000,23 @@ window.SalonEase.POS = {
     renderCart: () => { if (window.renderCart) window.renderCart(); },
     clearCart: () => { if (window.clearCart) window.clearCart(); },
     getCart: () => Array.isArray(cart) ? [...cart] : [],
-    getItemsCache: () => Array.isArray(itemsCache) ? [...itemsCache] : []
+    getItemsCache: () => Array.isArray(itemsCache) ? [...itemsCache] : [],
+
+    // === 新增：客戶與套票狀態暴露（供命令面板動態套票扣減使用）===
+    getCurrentCustomer: () => currentCustomer ? { ...currentCustomer } : null,
+    getCustomerPackages: () => Array.isArray(customerPackages) ? [...customerPackages] : [],
+
+    // 從命令面板加入套票扣減（1 次起跳，之後可在購物車調整數量）
+    addPackageRedemption: function(pkg) {
+        if (!pkg || !window.addPackageRedemption) return false;
+
+        const customerPackageId = pkg.ref_id || pkg.id;
+        const name = pkg.name || pkg.label;
+        const remaining = pkg.remaining_sessions || pkg.remaining || 99;
+
+        window.addPackageRedemption(customerPackageId, name, remaining);
+        return true;
+    }
 };
 
-console.log('%c[SalonEase] POS 命名空間已暴露（命令面板可直接加購物車）', 'color:#8FA68F;font-size:9px');
+console.log('%c[SalonEase] POS 命名空間已暴露（含套票扣減支援）', 'color:#8FA68F;font-size:9px');
