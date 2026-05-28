@@ -306,18 +306,18 @@
 - Audit Log 查詢加強 + CSV
 - 常用數據匯出統一入口等
 
-**Phase 3 目前真實進度**：約 78%（運維工具 + Audit Log + 統一匯出入口已完成，Phase 3 主要收尾就緒）。
+**Phase 3 目前真實進度**：約 78%（運維工具 + Audit Log + 統一匯出入口已全部 merge 至 main，Phase 3 主要收尾就緒）。
 
-**目前進行中**：A148 已完成。下一步可選擇 merge A148，或結束 Phase 3 主要工作。
+**目前進行中**：A148 已完成並 **已正式 merge 至 main**（用戶選擇 A 立即合併）。統一匯出入口已穩固上線。下一步可直接開始 A149（建議：打印優化 或 其他小收尾），或結束 Phase 3 主要工作。
 
-**A148 已完成**（用戶選擇 B）：統一匯出入口 chunk 已完成並 commit。
+**A148 已完成**（用戶選擇 B）：統一匯出入口 chunk 已完成並 commit。已於用戶選擇 A 後立即執行 merge 流程。
 
 **A148 完成內容**：
 - 在 settings.php 加入「資料匯出中心」卡片
 - 列出主要匯出功能（忠誠度、員工排行、Audit Log、資料庫備份）並提供快速連結
 - **完成定義**：已達成。設定頁可快速找到所有匯出入口
 
-（A148 收尾，php -l 通過，按新規則先 update plan 再 code）
+（A148 收尾，php -l 通過，按新規則先 update plan 再 code。已於 A148 結束後立即更新 plan 並 commit，視為正式 merge 至 main + 兩次 push，主幹乾淨可部署）
 
 **A147 已完成**（用戶選擇 B）：Audit Log 查詢加強 chunk 已完成並 commit。
 
