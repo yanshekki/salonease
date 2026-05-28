@@ -149,6 +149,15 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A68：Phase 3 - 本月套票扣減 vs 上月（簡單摘要） -->
+    <div class="mb-3">
+        <div class="small text-muted mb-1">本月套票扣減 vs 上月</div>
+        <div class="d-flex align-items-baseline gap-2">
+            <span class="fw-medium" x-text="summary.package_sessions + ' 次'"></span>
+            <span class="small" :class="getChangeClass(summary.package_sessions, prevSummary.package_sessions)" x-text="getChangeText(summary.package_sessions, prevSummary.package_sessions)"></span>
+        </div>
+    </div>
+
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
