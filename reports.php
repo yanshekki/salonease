@@ -192,6 +192,7 @@ include __DIR__ . '/includes/header.php';
 
     <!-- A94：Phase 3 - 圖表小標題 -->
     <div class="small fw-semibold text-muted mb-2">圖表</div>
+    <div class="small text-muted mb-3" style="font-size:0.7rem;">付款方式與熱門服務收入分佈</div>
 
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
