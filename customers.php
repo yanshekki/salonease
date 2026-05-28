@@ -310,6 +310,7 @@ async function editCustomer(id) {
                         </tr>`;
                 });
                 html += '</tbody></table>';
+                html += `<div class="small text-muted mt-1">...共 ${history.length} 筆</div>`;
                 historyList.innerHTML = html;
             }
         }
