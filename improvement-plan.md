@@ -164,6 +164,7 @@
 - A16 已完成：在 loyalty.php 加入「積分排行榜」（前 10 名客戶），包含積分與累計消費
 - A17 已完成：在 POS 客戶選擇時加入快速兌換按鈕（10/20/50點），提升日常使用便利性
 - A18 已完成：積分累積率（points_earn_rate）與兌換率（points_redemption_rate）真正可從設定頁調整 + sales 結帳邏輯全面使用設定值（補完 A12 僅加欄位未實作之缺口）
+- A19 已完成：在產品管理頁加入「調整庫存」按鈕 + modal（admin/manager 專用），讓 A2 的 adjust_stock API 真正可從畫面操作
 
 ---
 
