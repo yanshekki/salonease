@@ -10,6 +10,7 @@
  * GET /api/reports.php?action=daily_sales&from=...&to=...   （A140 新增）
  * GET /api/reports.php?action=inventory_turnover&from=...&to=...  （A143 新增）
  * GET /api/reports.php?action=stockout_trend&from=...&to=...     （A143 新增）
+ * GET /api/reports.php?action=staff_performance_trend&from=...&to=...&staff_id= (optional)  （A144 新增）
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -173,6 +174,53 @@ switch ($action) {
             'data' => $result,
             'from' => $from,
             'to'   => $to
+        ]);
+        break;
+
+    case 'staff_performance_trend':
+        // A144：員工表現趨勢（每日銷售數據，用於圖表）
+        $staffId = (int)($_GET['staff_id'] ?? 0);
+
+        $where = "s.sale_date BETWEEN ? AND ?";
+        $params = [$from, $to];
+
+        if ($staffId > 0) {
+            $where .= " AND s.staff_id = ?";
+            $params[] = $staffId;
+        }
+
+        $rows = db_query("
+            SELECT 
+                s.staff_id,
+                st.name as staff_name,
+                s.sale_date,
+                COALESCE(SUM(s.total), 0) as total_sales,
+                COUNT(*) as transaction_count,
+                COALESCE(AVG(s.total), 0) as avg_ticket
+            FROM sales s
+            JOIN staff st ON s.staff_id = st.id
+            WHERE $where
+            GROUP BY s.staff_id, st.name, s.sale_date
+            ORDER BY s.sale_date ASC, total_sales DESC
+        ", $params);
+
+        $result = [];
+        foreach ($rows as $r) {
+            $result[] = [
+                'staff_id' => (int)$r['staff_id'],
+                'staff_name' => $r['staff_name'],
+                'date' => $r['sale_date'],
+                'total_sales' => (float)$r['total_sales'],
+                'transaction_count' => (int)$r['transaction_count'],
+                'avg_ticket' => (float)$r['avg_ticket']
+            ];
+        }
+
+        json_success([
+            'data' => $result,
+            'from' => $from,
+            'to'   => $to,
+            'staff_id' => $staffId
         ]);
         break;
 

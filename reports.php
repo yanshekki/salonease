@@ -338,6 +338,30 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A144：員工表現趨勢 -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="fw-semibold mb-3 d-flex align-items-center justify-content-between">
+                員工表現趨勢
+                <span class="small text-muted" x-show="staffPerformanceLoading">載入中...</span>
+            </div>
+
+            <div x-show="staffPerformanceLoading" class="text-center py-4 text-muted small">
+                <span class="spinner-border spinner-border-sm me-2"></span> 載入員工表現數據中...
+            </div>
+
+            <div x-show="!staffPerformanceLoading && staffPerformanceTrend.length === 0" class="text-muted small py-4 text-center border rounded bg-light">
+                查詢期間暫無員工銷售記錄
+            </div>
+
+            <canvas x-show="!staffPerformanceLoading && staffPerformanceTrend.length > 0" id="staffPerformanceChart" height="140"></canvas>
+
+            <div class="small text-muted mt-2" style="font-size:0.75rem;" x-show="staffPerformanceTrend.length > 0">
+                顯示前 5 位員工的每日銷售走勢（隨日期範圍與員工篩選即時更新）
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3">
         
         <!-- 付款方式分佈 -->
@@ -481,6 +505,11 @@ function reportsApp() {
         inventoryTurnoverChart: null,
         stockoutTrendChart: null,
 
+        // A144：員工表現趨勢
+        staffPerformanceTrend: [],
+        staffPerformanceLoading: false,
+        staffPerformanceChart: null,
+
         summary: {
             total_sales: 0,
             total_transactions: 0,
@@ -518,7 +547,8 @@ function reportsApp() {
                     this.loadStaffRanking(),
                     this.loadDailySales(),   // A141
                     this.loadInventoryTurnover(), // A143
-                    this.loadStockoutTrend()      // A143
+                    this.loadStockoutTrend(),     // A143
+                    this.loadStaffPerformanceTrend() // A144
                 ]);
             } finally {
                 this.loading = false;
@@ -649,6 +679,24 @@ function reportsApp() {
                 this.stockoutTrend = [];
             } finally {
                 this.inventoryLoading = false;
+            }
+        },
+
+        // A144：載入員工表現趨勢
+        async loadStaffPerformanceTrend() {
+            this.staffPerformanceLoading = true;
+            try {
+                let url = `/api/reports.php?action=staff_performance_trend&from=${this.from}&to=${this.to}`;
+                if (this.selectedStaffId) {
+                    url += `&staff_id=${this.selectedStaffId}`;
+                }
+                const res = await SalonEase.fetch(url);
+                this.staffPerformanceTrend = res.data || [];
+            } catch (e) {
+                console.warn('載入員工表現趨勢失敗', e);
+                this.staffPerformanceTrend = [];
+            } finally {
+                this.staffPerformanceLoading = false;
             }
         },
 
@@ -913,6 +961,48 @@ function reportsApp() {
                         scales: { y: { beginAtZero: true } }
                     }
                 });
+            }
+
+            // A144：員工表現趨勢圖表（多員工比較）
+            const perfCtx = document.getElementById('staffPerformanceChart');
+            if (perfCtx) {
+                if (this.staffPerformanceChart) this.staffPerformanceChart.destroy();
+
+                if (this.staffPerformanceTrend.length > 0) {
+                    // 按員工分組
+                    const byStaff = {};
+                    this.staffPerformanceTrend.forEach(d => {
+                        if (!byStaff[d.staff_id]) {
+                            byStaff[d.staff_id] = { name: d.staff_name, dates: [], sales: [] };
+                        }
+                        byStaff[d.staff_id].dates.push(d.date.substring(5));
+                        byStaff[d.staff_id].sales.push(d.total_sales);
+                    });
+
+                    const staffIds = Object.keys(byStaff);
+                    const colors = ['#8FA68F', '#C97C7C', '#6B7280', '#A78BFA', '#F59E0B'];
+
+                    const datasets = staffIds.slice(0, 5).map((id, idx) => ({
+                        label: byStaff[id].name,
+                        data: byStaff[id].sales,
+                        borderColor: colors[idx % colors.length],
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        borderWidth: 2
+                    }));
+
+                    // 取第一個員工的日期作為 labels（假設日期對齊）
+                    const labels = byStaff[staffIds[0]] ? byStaff[staffIds[0]].dates : [];
+
+                    this.staffPerformanceChart = new Chart(perfCtx, {
+                        type: 'line',
+                        data: { labels, datasets },
+                        options: {
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                }
             }
         },
 
