@@ -265,7 +265,8 @@
 - A83：reports.php 加入「本月平均每單 vs 上月」簡單摘要，報表頁數據對比延續
 - A84：reports.php 加入「本月平均每單 vs 上月」簡單摘要，報表頁數據對比延續
 - A85：reports.php 加入「本月平均每單 vs 上月」簡單摘要，報表頁數據對比延續
-- A86+：繼續報表視覺化或 Dashboard 數據強化
+- A86：reports.php 加入「本月平均每單 vs 上月」簡單摘要，報表頁數據對比延續
+- A87+：繼續報表視覺化或 Dashboard 數據強化
 
 **執行方式**：嚴格沿用 Phase 2 成功模式，每完成一個有意義小任務即 commit + --no-ff merge origin/main + push，main 永遠保持穩定。
 
