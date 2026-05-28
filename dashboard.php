@@ -136,6 +136,19 @@ $newCustomersThisMonth = db_query_one("
     FROM customers 
     WHERE created_at >= ?
 ", [$thisMonthStartForSales]);
+
+// A59：Phase 3 - 平均客單價 vs 上月（數據洞察）
+$thisMonthTxCount = db_query_one("
+    SELECT COUNT(*) as cnt FROM sales WHERE sale_date >= ?
+", [$thisMonthStartForSales]);
+
+$lastMonthTxCount = db_query_one("
+    SELECT COUNT(*) as cnt FROM sales WHERE sale_date >= ? AND sale_date <= ?
+", [$lastMonthStart, $lastMonthEnd]);
+
+$thisMonthAvgTicket = $thisMonthTxCount['cnt'] > 0 ? round($thisMonthTotal / $thisMonthTxCount['cnt'], 0) : 0;
+$lastMonthAvgTicket = $lastMonthTxCount['cnt'] > 0 ? round($lastMonthTotal / $lastMonthTxCount['cnt'], 0) : 0;
+$avgTicketDiff = $thisMonthAvgTicket - $lastMonthAvgTicket;
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -320,6 +333,20 @@ $newCustomersThisMonth = db_query_one("
         </div>
         <div class="fs-5 fw-semibold"><?= (int)($newCustomersThisMonth['cnt'] ?? 0) ?> 位</div>
         <div class="small text-muted">本月新增</div>
+    </div>
+</div>
+
+<!-- A59：Phase 3 - 平均客單價 vs 上月（數據洞察） -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="fw-semibold small mb-1">平均客單價 vs 上月</div>
+        <div class="d-flex align-items-baseline gap-2">
+            <div class="fs-5 fw-semibold">HK$ <?= number_format($thisMonthAvgTicket) ?></div>
+            <div class="small <?= $avgTicketDiff >= 0 ? 'text-success' : 'text-danger' ?>">
+                <?= $avgTicketDiff >= 0 ? '+' : '' ?>HK$ <?= number_format($avgTicketDiff) ?>
+            </div>
+        </div>
+        <div class="small text-muted mt-1">較上月</div>
     </div>
 </div>
 
