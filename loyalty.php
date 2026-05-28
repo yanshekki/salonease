@@ -45,6 +45,9 @@ $pageSubtitle = '查看客戶積分獲得與兌換歷史';
             <div class="col-md-2 d-flex align-items-end">
                 <button onclick="loadLoyaltyLog()" class="btn btn-dark btn-sm w-100">查詢</button>
             </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button onclick="exportLoyaltyCSV()" class="btn btn-outline-success btn-sm w-100">匯出 CSV</button>
+            </div>
         </div>
     </div>
 </div>
@@ -116,6 +119,16 @@ async function loadLoyaltyLog() {
 // 預設載入最近 30 天
 document.getElementById('from').value = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
 document.getElementById('to').value = new Date().toISOString().split('T')[0];
+
+function exportLoyaltyCSV() {
+    const from = document.getElementById('from').value;
+    const to = document.getElementById('to').value;
+    const search = document.getElementById('search').value;
+    const type = document.getElementById('action_type').value;
+
+    const params = new URLSearchParams({ from, to, search, action_type: type, format: 'csv' });
+    window.location.href = `/api/reports.php?action=loyalty_log&${params}`;
+}
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
