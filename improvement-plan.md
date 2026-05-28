@@ -308,7 +308,7 @@
 
 **Phase 3 目前真實進度**：約 61%（Sales Trend 真實每日數據核心 chunk 已完成，視覺化基礎穩固可靠，其餘項目陸續推進中）。
 
-**目前進行中**：Sales Trend Chart 真實每日數據版 chunk（A140+A141）已於 A141 完成。下一步可選擇 A142（圖表體驗收尾 / 測試多日期情境）或直接進入下一個 chunk（員工表現視覺化）。
+**目前進行中**：Sales Trend Chart 真實每日數據版 chunk（A140 後端 + A141 前端）已完成並 **已 merge 至 main**（用戶選擇 A 立即合併）。主幹現包含真實每日銷售趨勢圖表功能。下一步可直接開始 A142（建議方向：圖表體驗收尾 + 測試，或進入下一個視覺化 chunk「員工表現圖表」）。
 
 ### Phase 3 建議主要 Chunk（較大有意義單位）
 
@@ -332,7 +332,7 @@
    - 清理了頁尾殘留的 orphan JS 結尾大括號（避免潛在語法問題）
    - **完成定義**：達成。選擇任何日期範圍後，salesTrendChart 即顯示基於真實銷售數據的每日走勢圖，所有先前 polish 視覺元素繼續生效。
 
-   （A141 收尾本 chunk，php -l 通過，按新規則先 update plan 再 code）
+   （A141 收尾本 chunk，php -l 通過，按新規則先 update plan 再 code。已於 A141 結束後立即 --no-ff merge 至 main + 兩次 push + 刪 branch，主幹乾淨可部署）
 
 其他待辦 chunk：
 2. **報表頁其他視覺化強化**
