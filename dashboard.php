@@ -39,6 +39,38 @@ $lowStock = [
     'cnt' => $lowStockCount,
     'total_shortage' => $totalShortage
 ];
+
+// A43：本月忠誠度摘要（輕量查詢，與 A41 一致）
+$thisMonthStart = date('Y-m-01');
+$thisMonthEnd   = date('Y-m-d');
+
+$monthlyEarned = db_query_one("
+    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points')) AS UNSIGNED)), 0) AS total
+    FROM audit_logs
+    WHERE action = 'customer.points_earned'
+      AND created_at >= ? AND created_at <= ?
+", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+
+$monthlyRedeemed = db_query_one("
+    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points_used')) AS UNSIGNED)), 0) AS total
+    FROM audit_logs
+    WHERE action = 'customer.points_redeemed'
+      AND created_at >= ? AND created_at <= ?
+", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+
+$activePointsCustomers = db_query_one("
+    SELECT COUNT(DISTINCT entity_id) AS cnt
+    FROM audit_logs
+    WHERE action IN ('customer.points_earned', 'customer.points_redeemed', 'customer.points_adjusted')
+      AND entity_type = 'customer'
+      AND created_at >= ? AND created_at <= ?
+", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+
+$monthlyLoyalty = [
+    'earned'   => (int)($monthlyEarned['total'] ?? 0),
+    'redeemed' => (int)($monthlyRedeemed['total'] ?? 0),
+    'active'   => (int)($activePointsCustomers['cnt'] ?? 0)
+];
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -93,6 +125,38 @@ $lowStock = [
                     共缺 <span class="fw-semibold text-danger"><?= (int)($lowStock['total_shortage'] ?? 0) ?></span> 件
                 </div>
                 <a href="/products.php?low-stock-only=1" class="small text-danger text-decoration-none d-inline-block mt-2">查看需補貨產品 →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- A43：本月忠誠度摘要 -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-success-subtle">
+            <div class="card-body">
+                <div class="text-uppercase text-muted small">本月累積</div>
+                <div class="display-6 fw-semibold text-success"><?= number_format($monthlyLoyalty['earned']) ?></div>
+                <div class="small text-muted">點</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-warning-subtle">
+            <div class="card-body">
+                <div class="text-uppercase text-muted small">本月兌換</div>
+                <div class="display-6 fw-semibold text-warning"><?= number_format($monthlyLoyalty['redeemed']) ?></div>
+                <div class="small text-muted">點</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-info-subtle">
+            <div class="card-body">
+                <div class="text-uppercase text-muted small">本月有活動</div>
+                <div class="display-6 fw-semibold text-info"><?= number_format($monthlyLoyalty['active']) ?></div>
+                <div class="small text-muted">位客戶</div>
+                <a href="/loyalty.php" class="small text-info text-decoration-none d-inline-block mt-2">查看忠誠度 →</a>
             </div>
         </div>
     </div>
