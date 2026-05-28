@@ -461,6 +461,13 @@ function reportsApp() {
                 const res = await SalonEase.fetch(`/api/reports.php?action=payment_breakdown&from=${this.from}&to=${this.to}`);
                 this.paymentBreakdown = res.data || [];
             } catch (e) {}
+        },
+
+        async loadTopProducts() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=top_products&from=${this.from}&to=${this.to}&limit=5`);
+                this.topProducts = res.data || [];
+            } catch (e) {}
         }
     }
 }
@@ -521,13 +528,6 @@ document.addEventListener('keydown', function(e) {
             try {
                 const res = await SalonEase.fetch(`/api/reports.php?action=top_services&from=${this.from}&to=${this.to}&limit=5`);
                 this.topServices = res.data || [];
-            } catch (e) {}
-        },
-
-        async loadTopProducts() {
-            try {
-                const res = await SalonEase.fetch(`/api/reports.php?action=top_products&from=${this.from}&to=${this.to}&limit=5`);
-                this.topProducts = res.data || [];
             } catch (e) {}
         },
 
