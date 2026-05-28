@@ -562,36 +562,40 @@
         });
       });
 
-      // 根據客戶平均消費力，產生更精準的價格區間 + 適合等級推薦
+      // 根據客戶平均消費力，產生更精準的「價格等級 + 適合組合」推薦
       if (avgSpend > 0) {
-        const lowTier = Math.round(avgSpend * 0.7);
-        const midTier = Math.round(avgSpend * 1.1);
-        const highTier = Math.round(avgSpend * 1.4);
+        const lowTier = Math.round(avgSpend * 0.75);
+        const midTier = Math.round(avgSpend * 1.15);
+        const highTier = Math.round(avgSpend * 1.5);
 
         let tierLabel = '';
         let tierReason = '';
+        let suggestedCombo = '';
 
-        if (avgSpend < 400) {
-          tierLabel = `價值組合（約 HK$ ${lowTier}–${midTier}）`;
-          tierReason = `根據您平時消費習慣，建議選擇性價比高的搭配組合`;
-        } else if (avgSpend < 800) {
-          tierLabel = `平衡升級（約 HK$ ${midTier}–${highTier}）`;
-          tierReason = `根據您平時消費習慣，建議可適度升級搭配，感受更好效果`;
+        if (avgSpend < 450) {
+          tierLabel = `高CP值組合（約 HK$ ${lowTier}–${midTier}）`;
+          tierReason = `根據您平時消費習慣，建議選擇性價比高的搭配`;
+          suggestedCombo = '經典服務 + 基礎保養產品';
+        } else if (avgSpend < 850) {
+          tierLabel = `平衡升級組合（約 HK$ ${midTier}–${highTier}）`;
+          tierReason = `根據您平時消費習慣，建議適度升級，感受更好效果`;
+          suggestedCombo = '熱門服務 + 熱賣護膚產品';
         } else {
-          tierLabel = `高端體驗（約 HK$ ${highTier}+）`;
-          tierReason = `根據您平時消費習慣，建議體驗更高階的服務與產品組合`;
+          tierLabel = `高端體驗組合（約 HK$ ${highTier}+）`;
+          tierReason = `根據您平時消費習慣，建議體驗更高階的服務與產品`;
+          suggestedCombo = '旗艦服務 + 頂級護理產品';
         }
 
         recommendations.push({
           id: `price-tier-${customer.id}`,
           type: 'price_suggestion',
           label: tierLabel,
-          sublabel: `貼合您消費水平`,
+          sublabel: `${suggestedCombo}`,
           suggestedReason: tierReason,
-          keywords: '價格 升級 消費 等級',
+          keywords: '價格 升級 消費 等級 適合',
           icon: '💎',
           action: 'quick-add-recommendation',
-          priority: 12
+          priority: 13
         });
       }
 
@@ -1544,7 +1548,7 @@
       }
     }
 
-    // 自動產生更完整、自然、專業的銷售話術（開場 + 理由 + 價格 + 行動呼籲）
+    // 自動產生更完整、自然、專業的銷售話術（開場 + 個人化理由 + 價格 + 行動呼籲）
     let script = '';
     const reason = recommendation.suggestedReason || '';
 
