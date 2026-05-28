@@ -300,6 +300,7 @@ $avgTicketDiff = $thisMonthAvgTicket - $lastMonthAvgTicket;
             <?php endif; ?>
         </div>
         <div class="small text-muted mt-1">較上月</div>
+        <a href="/reports.php" class="small text-muted text-decoration-none d-inline-block mt-2">查看完整報表 →</a>
     </div>
 </div>
 
