@@ -53,16 +53,19 @@ switch ($action) {
         if (!is_post()) json_error('只接受 POST 請求', 405);
         require_csrf();
 
-        $name = trim(post('name'));
-        $phone = trim(post('phone'));
-        $email = trim(post('email'));
-        $gender = post('gender');
-        $birthday = post('birthday');
-        $notes = trim(post('notes'));
+        $name = sanitize_string(post('name', ''));
+        $phone = trim(post('phone', ''));
+        $email = trim(post('email', ''));
+        $gender = post('gender', '');
+        $birthday = post('birthday', '');
+        $notes = sanitize_string(post('notes', ''));
 
-        if (!$name || !$phone) {
-            json_error('姓名與電話為必填');
-        }
+        if ($err = validate_required($name, '姓名')) json_error($err);
+        if ($err = validate_required($phone, '電話')) json_error($err);
+        if ($err = validate_length($name, '姓名', 50, 1)) json_error($err);
+        if ($err = validate_hk_phone($phone)) json_error($err);
+        if ($err = validate_email($email)) json_error($err);
+        if ($err = validate_length($notes, '備註', 500)) json_error($err);
 
         // 檢查電話是否已存在
         $exists = db_query_one("SELECT id FROM customers WHERE phone = ?", [$phone]);
@@ -90,16 +93,20 @@ switch ($action) {
         require_csrf();
 
         $id = (int)post('id');
-        $name = trim(post('name'));
-        $phone = trim(post('phone'));
-        $email = trim(post('email'));
-        $gender = post('gender');
-        $birthday = post('birthday');
-        $notes = trim(post('notes'));
+        $name = sanitize_string(post('name', ''));
+        $phone = trim(post('phone', ''));
+        $email = trim(post('email', ''));
+        $gender = post('gender', '');
+        $birthday = post('birthday', '');
+        $notes = sanitize_string(post('notes', ''));
 
-        if (!$id || !$name || !$phone) {
-            json_error('姓名與電話為必填');
-        }
+        if ($err = validate_required($id, '客戶 ID')) json_error($err);
+        if ($err = validate_required($name, '姓名')) json_error($err);
+        if ($err = validate_required($phone, '電話')) json_error($err);
+        if ($err = validate_length($name, '姓名', 50, 1)) json_error($err);
+        if ($err = validate_hk_phone($phone)) json_error($err);
+        if ($err = validate_email($email)) json_error($err);
+        if ($err = validate_length($notes, '備註', 500)) json_error($err);
 
         // 檢查電話是否被其他客戶使用
         $exists = db_query_one("SELECT id FROM customers WHERE phone = ? AND id != ?", [$phone, $id]);
