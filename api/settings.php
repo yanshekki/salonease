@@ -33,7 +33,10 @@ switch ($action) {
                 'default_commission_open' => 5.00,
                 'default_low_stock_threshold' => 5,
                 'points_earn_rate' => 10,
-                'points_redemption_rate' => 10
+                'points_redemption_rate' => 10,
+                'quick_restock_5' => 5,
+                'quick_restock_10' => 10,
+                'quick_restock_20' => 20
             ];
         }
         json_success($settings);
@@ -66,6 +69,11 @@ switch ($action) {
         $points_earn_rate = max(1, min(100, (int)post('points_earn_rate', 10)));
         $points_redemption_rate = max(1, min(100, (int)post('points_redemption_rate', 10)));
 
+        // 快速補貨預設數量（A38）
+        $quick_restock_5  = max(1, min(100, (int)post('quick_restock_5', 5)));
+        $quick_restock_10 = max(1, min(100, (int)post('quick_restock_10', 10)));
+        $quick_restock_20 = max(1, min(100, (int)post('quick_restock_20', 20)));
+
         if (!$salon_name) {
             json_error('店舖名稱不能為空');
         }
@@ -84,13 +92,17 @@ switch ($action) {
                     default_low_stock_threshold = ?,
                     points_earn_rate = ?,
                     points_redemption_rate = ?,
+                    quick_restock_5 = ?,
+                    quick_restock_10 = ?,
+                    quick_restock_20 = ?,
                     updated_at = NOW()
                 WHERE id = 1
             ");
             $stmt->execute([
                 $salon_name, $address, $phone, $printer_width,
                 $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
-                $points_earn_rate, $points_redemption_rate
+                $points_earn_rate, $points_redemption_rate,
+                $quick_restock_5, $quick_restock_10, $quick_restock_20
             ]);
 
             if ($stmt->rowCount() === 0) {
@@ -99,8 +111,9 @@ switch ($action) {
                     INSERT INTO settings 
                     (id, salon_name, address, phone, printer_width, 
                      default_commission_service, default_commission_retail, default_commission_open, default_low_stock_threshold,
-                     points_earn_rate, points_redemption_rate)
-                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     points_earn_rate, points_redemption_rate,
+                     quick_restock_5, quick_restock_10, quick_restock_20)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         salon_name = VALUES(salon_name),
                         address = VALUES(address),
@@ -111,18 +124,22 @@ switch ($action) {
                         default_commission_open = VALUES(default_commission_open),
                         default_low_stock_threshold = VALUES(default_low_stock_threshold),
                         points_earn_rate = VALUES(points_earn_rate),
-                        points_redemption_rate = VALUES(points_redemption_rate)
+                        points_redemption_rate = VALUES(points_redemption_rate),
+                        quick_restock_5 = VALUES(quick_restock_5),
+                        quick_restock_10 = VALUES(quick_restock_10),
+                        quick_restock_20 = VALUES(quick_restock_20)
                 ");
                 $stmt->execute([
                     $salon_name, $address, $phone, $printer_width,
                     $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
-                    $points_earn_rate, $points_redemption_rate
+                    $points_earn_rate, $points_redemption_rate,
+                    $quick_restock_5, $quick_restock_10, $quick_restock_20
                 ]);
             }
 
             log_activity('settings.updated', 1, 'settings', [
                 'salon_name' => $salon_name,
-                'updated_fields' => 'shop_info + commission_defaults + loyalty_rates'
+                'updated_fields' => 'shop_info + commission_defaults + loyalty_rates + quick_restock_defaults'
             ]);
 
             json_success(null, '設定已成功儲存');
