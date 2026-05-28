@@ -35,14 +35,15 @@ switch ($action) {
         if (!is_post()) json_error('只接受 POST 請求', 405);
         require_csrf();
 
-        $name = trim(post('name'));
-        $sessions = (int)post('total_sessions');
-        $price = (float)post('price');
+        $name = sanitize_string(post('name', ''));
+        $sessions = (int)post('total_sessions', 0);
+        $price = (float)post('price', 0);
         $validity = (int)post('validity_days', 365);
 
-        if (!$name || $sessions <= 0 || $price <= 0) {
-            json_error('套票名稱、總次數與價格為必填');
-        }
+        if ($err = validate_required($name, '套票名稱')) json_error($err);
+        if ($err = validate_positive_int($sessions, '總次數', 1)) json_error($err);
+        if ($err = validate_money($price, '價格')) json_error($err);
+        if ($err = validate_length($name, '套票名稱', 100, 1)) json_error($err);
 
         db_exec(
             "INSERT INTO packages (name, total_sessions, price, validity_days, is_active) VALUES (?, ?, ?, ?, 1)",
@@ -64,14 +65,16 @@ switch ($action) {
         require_csrf();
 
         $id = (int)post('id');
-        $name = trim(post('name'));
-        $sessions = (int)post('total_sessions');
-        $price = (float)post('price');
+        $name = sanitize_string(post('name', ''));
+        $sessions = (int)post('total_sessions', 0);
+        $price = (float)post('price', 0);
         $validity = (int)post('validity_days', 365);
 
-        if (!$id || !$name) {
-            json_error('缺少必要資料');
-        }
+        if ($err = validate_required($id, '套票 ID')) json_error($err);
+        if ($err = validate_required($name, '套票名稱')) json_error($err);
+        if ($err = validate_positive_int($sessions, '總次數', 1)) json_error($err);
+        if ($err = validate_money($price, '價格')) json_error($err);
+        if ($err = validate_length($name, '套票名稱', 100, 1)) json_error($err);
 
         db_exec(
             "UPDATE packages SET name = ?, total_sessions = ?, price = ?, validity_days = ? WHERE id = ?",
