@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_login();
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $pageTitle = '客戶管理';
 $pageSubtitle = '管理客戶資料、查看消費記錄';
@@ -250,7 +251,8 @@ async function saveCustomer() {
         email: document.getElementById('customer-email').value.trim(),
         gender: document.getElementById('customer-gender').value,
         birthday: document.getElementById('customer-birthday').value,
-        notes: document.getElementById('customer-notes').value.trim()
+        notes: document.getElementById('customer-notes').value.trim(),
+        csrf_token: '<?= csrf_token() ?>'
     };
 
     try {
