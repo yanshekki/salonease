@@ -2508,8 +2508,40 @@
   }
 
   /**
-   * 顯示「缺口智能替代」完整銷售話術預覽面板（Phase 41 活生生銷售教練模式）
-   * 支援：即時微調、即時 WhatsApp 深層連結、可編輯 textarea、確認後「面板不自動隱藏」
+   * Phase 42 新增：客戶回應模擬重寫器（活生生銷售教練核心）
+   * 根據常見 objections 即時改寫話術，加入針對性回應 + 更強軟收結
+   */
+  function rewriteScriptForCustomerResponse(originalScript, responseType, extra = {}) {
+    const name = extra.customerName || '您';
+    let objectionHandling = '';
+    let strengthenedCTA = '';
+
+    if (responseType === 'too_expensive') {
+      objectionHandling = `明白${name}擔心價錢，呢個我完全理解。`;
+      strengthenedCTA = `所以我特登為您揀咗呢批最貼您平時價位區間嘅替代項目，效果同正價版本分別唔大，但預算輕好多。CP 值係最高嘅選擇。您而家肯唔肯試下呢個方案？`;
+    } else if (responseType === 'done_before') {
+      objectionHandling = `明白${name}之前已經試過類似項目，好正常。`;
+      strengthenedCTA = `但而家您嘅皮膚或頭髮狀態同上次已經唔同，呢幾樣替代係針對您而家嘅缺口度身訂造，效果會比之前更明顯同持久。您肯唔肯畀我機會幫您再優化一次？`;
+    } else if (responseType === 'want_more') {
+      objectionHandling = `好！${name}想追求更好效果，我好欣賞呢種態度。`;
+      strengthenedCTA = `我可以即刻再加 1-2 樣加強版項目落去，組成一個更完整嘅療程，效果會再提升一個層次。CP 值仍然控制得好好。您想唔想我而家就幫您配埋呢批加強組合？`;
+    } else {
+      objectionHandling = `明白您嘅顧慮。`;
+      strengthenedCTA = `我會繼續為您調整至最啱嘅方案。您而家要唔要我即刻幫您加落去？`;
+    }
+
+    // 保留原有推薦核心，替換結尾 CTA
+    let rewritten = originalScript.trim();
+    // 粗略移除最後一句 CTA，換上新嘅
+    rewritten = rewritten.replace(/[。！？」]\s*您而家.*?[。！？」]?$/u, '。');
+    rewritten = rewritten.replace(/您而家要唔要我即刻幫您.*?$/u, '');
+
+    return `${objectionHandling} ${rewritten} ${strengthenedCTA}`;
+  }
+
+  /**
+   * 顯示「缺口智能替代」完整銷售話術預覽面板（Phase 42 客戶回應模擬教練模式）
+   * 支援：即時微調、WhatsApp、客戶 objection 即時重寫、確認後面板不自動隱藏
    */
   function showGapFillScriptPreview(alternatives, initialScript, context = {}) {
     if (!resultsEl || !alternatives || !alternatives.length) return;
@@ -2537,6 +2569,18 @@
           <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="gap-price-minus" style="font-size:10px;" title="話術微調：價位 -50">價位 -50</button>
           <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="gap-price-plus" style="font-size:10px;" title="話術微調：價位 +50">價位 +50</button>
           <span class="small text-muted ms-1">（即時更新話術內價位參考）</span>
+        </div>
+
+        <!-- Phase 42: 客戶回應模擬（活生生銷售教練） -->
+        <div class="mt-1 mb-2">
+          <div class="small text-muted mb-1 d-flex align-items-center">
+            <span>客戶可能會點講？即時模擬回應（點擊即重寫話術）：</span>
+          </div>
+          <div class="d-flex gap-1 flex-wrap" id="gap-response-buttons">
+            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-response="too_expensive" style="font-size:10px;">「太貴 / 想平啲」</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-response="done_before" style="font-size:10px;">「之前做過」</button>
+            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" data-response="want_more" style="font-size:10px;">「想再強啲效果」</button>
+          </div>
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
@@ -2588,6 +2632,41 @@
           window.SalonEase.toast('📱 教練模式：WhatsApp 已開啟，您可以繼續微調話術', 'info', 1600);
         }
       };
+    }
+
+    // === Phase 42 新增：客戶回應模擬按鈕（即時重寫話術）===
+    const responseContainer = document.getElementById('gap-response-buttons');
+    if (responseContainer) {
+      responseContainer.querySelectorAll('button[data-response]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopImmediatePropagation();
+          const responseType = btn.dataset.response;
+          const current = ta.value.trim();
+
+          const cust = context.customer || (window.SalonEase && window.SalonEase.POS && window.SalonEase.POS.getCurrentCustomer ? window.SalonEase.POS.getCurrentCustomer() : null);
+          const rewritten = rewriteScriptForCustomerResponse(current, responseType, {
+            customerName: cust && cust.name ? cust.name : ''
+          });
+
+          ta.value = rewritten;
+
+          // 自動記錄模擬動作到 sale-notes
+          const notesEl = document.getElementById('sale-notes');
+          if (notesEl) {
+            const labelMap = {
+              too_expensive: '太貴/想平啲',
+              done_before: '之前做過',
+              want_more: '想再強啲效果'
+            };
+            const note = `[客戶回應模擬] 已處理「${labelMap[responseType] || responseType}」 objections，話術已即時優化`;
+            notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${note}` : note;
+          }
+
+          if (window.SalonEase && window.SalonEase.toast) {
+            window.SalonEase.toast(`✅ 已根據客戶回應「${btn.textContent}」即時重寫話術`, 'success', 1400);
+          }
+        };
+      });
     }
 
     // 微調 +/- 50：簡單字串替換價位提示 + 輕微改寫
