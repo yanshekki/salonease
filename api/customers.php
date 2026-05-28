@@ -76,7 +76,13 @@ switch ($action) {
             [$name, $phone, $email, $gender, $birthday ?: null, $notes, $_SESSION['staff_id'] ?? null]
         );
 
-        json_success(['id' => (int)db_last_id()], '客戶新增成功');
+        $newId = db_last_id();
+        log_activity('customer.created', $newId, 'customer', [
+            'name' => $name,
+            'phone' => $phone
+        ]);
+
+        json_success(['id' => (int)$newId], '客戶新增成功');
         break;
 
     case 'update':
@@ -106,6 +112,11 @@ switch ($action) {
              WHERE id = ?",
             [$name, $phone, $email, $gender, $birthday ?: null, $notes, $id]
         );
+
+        log_activity('customer.updated', $id, 'customer', [
+            'name' => $name,
+            'phone' => $phone
+        ]);
 
         json_success(null, '客戶資料已更新');
         break;
