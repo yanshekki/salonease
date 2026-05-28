@@ -251,7 +251,8 @@
 - A69：reports.php 加入「本月平均每單 vs 上月」簡單摘要，報表頁數據對比延續
 - A70：reports.php 加入「本月套票扣減次數 vs 上月」簡單摘要，報表頁數據對比延續
 - A71：reports.php 加入「本月套票扣減次數 vs 上月」簡單摘要，報表頁數據對比延續
-- A72+：繼續報表視覺化或 Dashboard 數據強化
+- A72：reports.php 加入「本月平均每單 vs 上月」簡單摘要，報表頁數據對比延續
+- A73+：繼續報表視覺化或 Dashboard 數據強化
 
 **執行方式**：嚴格沿用 Phase 2 成功模式，每完成一個有意義小任務即 commit + --no-ff merge origin/main + push，main 永遠保持穩定。
 
