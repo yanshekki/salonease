@@ -307,6 +307,7 @@ function renderProductsTable(list) {
                     <button onclick="quickStockPlus10(${p.id}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-success p-0 me-2" title="快速入庫 10 件">+10 入庫</button>
                     <button onclick="quickRestockToThreshold(${p.id}, ${p.stock_qty}, ${threshold}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-warning p-0 me-2" style="${isLowStock ? '' : 'display:none'}" title="一鍵補 ${needed} 件至安全庫存門檻">補到門檻 (+${needed})</button>
                     <button onclick="exportStockMovements(${p.id}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-secondary p-0 me-2" title="匯出該產品庫存異動記錄 (CSV)">異動CSV</button>
+                    <button onclick="viewRecentStockMovements(${p.id}, '${e(p.name).replace(/'/g, "\\'")}')" class="btn btn-link btn-sm text-info p-0 me-2" title="查看最近 5 筆庫存異動">最近異動</button>
                     <?php endif; ?>
                     <button onclick="toggleProduct(${p.id}, ${p.is_active})" class="btn btn-link btn-sm ${p.is_active == 1 ? 'text-danger' : 'text-success'} p-0">
                         ${p.is_active == 1 ? '停用' : '啟用'}
@@ -603,6 +604,33 @@ function exportStockMovements(id, name) {
     if (!confirm(`確定要匯出「${name}」的庫存異動記錄嗎？`)) return;
     const url = `/api/products.php?action=stock_history&id=${id}&format=csv`;
     window.open(url, '_blank');
+}
+
+/* A42：查看最近庫存異動 */
+async function viewRecentStockMovements(id, name) {
+    try {
+        const res = await SalonEase.fetch(`/api/products.php?action=stock_history&id=${id}`);
+        const history = res.data || [];
+
+        let html = `<h6>「${name}」最近異動</h6>`;
+        if (history.length === 0) {
+            html += '<p class="text-muted">尚無異動記錄</p>';
+        } else {
+            html += '<ul class="list-unstyled small mb-0">';
+            history.slice(0, 5).forEach(h => {
+                const change = h.adjustment ? (h.adjustment > 0 ? `+${h.adjustment}` : h.adjustment) : '';
+                html += `<li><strong>${h.time.substring(0,10)}</strong> ${h.type} ${change} (${h.staff})</li>`;
+            });
+            html += '</ul>';
+            if (history.length > 5) html += `<div class="small text-muted mt-1">...共 ${history.length} 筆</div>`;
+        }
+
+        // 簡單使用 alert（後續可改 modal）
+        alert(html.replace(/<[^>]+>/g, '\n').replace(/\n+/g, '\n'));
+
+    } catch (e) {
+        SalonEase.toast('無法載入異動記錄', 'error');
+    }
 }
 
 /* A39：載入並套用快速補貨預設值到 Modal 按鈕 */
