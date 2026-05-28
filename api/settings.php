@@ -31,7 +31,9 @@ switch ($action) {
                 'default_commission_service' => 40.00,
                 'default_commission_retail' => 15.00,
                 'default_commission_open' => 5.00,
-                'default_low_stock_threshold' => 5
+                'default_low_stock_threshold' => 5,
+                'points_earn_rate' => 10,
+                'points_redemption_rate' => 10
             ];
         }
         json_success($settings);
@@ -60,6 +62,10 @@ switch ($action) {
         $open_rate    = max(0, min(100, (float)post('default_commission_open', 5)));
         $low_stock_threshold = max(0, (int)post('default_low_stock_threshold', 5));
 
+        // 忠誠度積分率（A18）
+        $points_earn_rate = max(1, min(100, (int)post('points_earn_rate', 10)));
+        $points_redemption_rate = max(1, min(100, (int)post('points_redemption_rate', 10)));
+
         if (!$salon_name) {
             json_error('店舖名稱不能為空');
         }
@@ -76,12 +82,15 @@ switch ($action) {
                     default_commission_retail = ?,
                     default_commission_open = ?,
                     default_low_stock_threshold = ?,
+                    points_earn_rate = ?,
+                    points_redemption_rate = ?,
                     updated_at = NOW()
                 WHERE id = 1
             ");
             $stmt->execute([
                 $salon_name, $address, $phone, $printer_width,
-                $service_rate, $retail_rate, $open_rate, $low_stock_threshold
+                $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
+                $points_earn_rate, $points_redemption_rate
             ]);
 
             if ($stmt->rowCount() === 0) {
@@ -89,8 +98,9 @@ switch ($action) {
                 $stmt = db()->prepare("
                     INSERT INTO settings 
                     (id, salon_name, address, phone, printer_width, 
-                     default_commission_service, default_commission_retail, default_commission_open, default_low_stock_threshold)
-                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+                     default_commission_service, default_commission_retail, default_commission_open, default_low_stock_threshold,
+                     points_earn_rate, points_redemption_rate)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         salon_name = VALUES(salon_name),
                         address = VALUES(address),
@@ -99,17 +109,20 @@ switch ($action) {
                         default_commission_service = VALUES(default_commission_service),
                         default_commission_retail = VALUES(default_commission_retail),
                         default_commission_open = VALUES(default_commission_open),
-                        default_low_stock_threshold = VALUES(default_low_stock_threshold)
+                        default_low_stock_threshold = VALUES(default_low_stock_threshold),
+                        points_earn_rate = VALUES(points_earn_rate),
+                        points_redemption_rate = VALUES(points_redemption_rate)
                 ");
                 $stmt->execute([
                     $salon_name, $address, $phone, $printer_width,
-                    $service_rate, $retail_rate, $open_rate, $low_stock_threshold
+                    $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
+                    $points_earn_rate, $points_redemption_rate
                 ]);
             }
 
             log_activity('settings.updated', 1, 'settings', [
                 'salon_name' => $salon_name,
-                'updated_fields' => 'shop_info + commission_defaults'
+                'updated_fields' => 'shop_info + commission_defaults + loyalty_rates'
             ]);
 
             json_success(null, '設定已成功儲存');

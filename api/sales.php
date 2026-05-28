@@ -234,12 +234,25 @@ switch ($action) {
                     ");
                     $update_customer->execute([$total, $customer_id]);
 
-                    // Phase 2 A4：忠誠度積分累積（每 $10 = 1 點）
+                    // Phase 2 A18：忠誠度積分率（從設定讀取，可配置）
+                    $earnRate = 10;
+                    $redemptionRate = 10;
+                    try {
+                        $rateRow = $pdo->query("SELECT points_earn_rate, points_redemption_rate FROM settings WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
+                        if ($rateRow) {
+                            $earnRate = max(1, (int)$rateRow['points_earn_rate']);
+                            $redemptionRate = max(1, (int)$rateRow['points_redemption_rate']);
+                        }
+                    } catch (Exception $e) {
+                        // 容錯：使用預設值
+                    }
+
+                    // Phase 2 A4：忠誠度積分累積（依設定 earn_rate）
                     $pointsEarned = 0;
                     $customerNewPoints = null;
 
                     if ($customer_id) {
-                        $pointsEarned = (int) floor($total / 10);
+                        $pointsEarned = (int) floor($total / $earnRate);
                         if ($pointsEarned > 0) {
                             $updatePoints = $pdo->prepare("
                                 UPDATE customers SET points = points + ? WHERE id = ?
@@ -263,7 +276,7 @@ switch ($action) {
                             $customerNewPoints = (int)$pointsRow->fetchColumn();
                         }
 
-                        // Phase 2 A8：簡單積分兌換（1點 = $1）
+                        // Phase 2 A8：積分兌換（依設定 redemption_rate：X 點 = $1）
                         $pointsDiscount = 0;
                         $customerPointsAfterRedemption = $customerNewPoints;
 
@@ -277,7 +290,7 @@ switch ($action) {
                                 throw new Exception("客戶積分不足（目前 {$currentPoints} 點）");
                             }
 
-                            $pointsDiscount = $points_used; // 1點 = 1元
+                            $pointsDiscount = (int) floor($points_used / $redemptionRate); // X 點 = $1
                             $total = max(0, $total - $pointsDiscount);
 
                             // 扣減積分
