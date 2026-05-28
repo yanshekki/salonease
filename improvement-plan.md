@@ -144,13 +144,14 @@
 - **權限模型強化**：commissions 與 reports（含 API）限制僅 admin/manager 可存取（receptionist 無法查看完整佣金/報表，符合計劃例示）
 - **輸入驗證強化示範**：staff.php create/update 已改用集中驗證 + 角色白名單 + sanitize
 
-**Phase 1 執行進度**（截至最新）：
+**Phase 1 執行進度**（截至最新 - 已完成）：
 - CSRF 保護：已涵蓋所有修改性 POST 端點（含 login / upgrade / cart_templates），核心目標 100% 完成
-- Audit Log：關鍵操作持續擴充，覆蓋率高
-- 驗證與錯誤處理：驗證函式庫已建立並開始套用（staff 作為範例）
+- Audit Log：關鍵操作已全面覆蓋
+- 驗證與錯誤處理：**集中驗證函式庫已全面套用**至 sales, customers, products, packages, services, rooms, appointments 等主要 API + 引入 log_error 輔助函式
 - 權限小幅強化：已執行
-- 整體 Phase 1：約 90%+ 完成（剩餘可再小步套用驗證至其他 API + 文件收尾）
-- 最大剩餘風險（appointments）已於 2026/5 消除；本次更新進一步消除 login / upgrade / cart 安全缺口
+- **Phase 1 安全性硬化與基礎強化已正式完成**（2026 年）
+- 最大剩餘風險（appointments）已於 2026/5 消除
+- 進入 Phase 2 準備階段
 
 ---
 

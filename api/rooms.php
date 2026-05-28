@@ -36,12 +36,12 @@ switch ($action) {
         if (!is_post()) json_error('只接受 POST 請求', 405);
         require_csrf();
 
-        $name = trim(post('name'));
+        $name = sanitize_string(post('name', ''));
         $capacity = (int)post('capacity', 1);
 
-        if (!$name) {
-            json_error('房間名稱為必填');
-        }
+        if ($err = validate_required($name, '房間名稱')) json_error($err);
+        if ($err = validate_positive_int($capacity, '容納人數', 1)) json_error($err);
+        if ($err = validate_length($name, '房間名稱', 50, 1)) json_error($err);
 
         db_exec(
             "INSERT INTO rooms (name, capacity, is_active) VALUES (?, ?, 1)",
@@ -62,12 +62,13 @@ switch ($action) {
         require_csrf();
 
         $id = (int)post('id');
-        $name = trim(post('name'));
+        $name = sanitize_string(post('name', ''));
         $capacity = (int)post('capacity', 1);
 
-        if (!$id || !$name) {
-            json_error('缺少必要資料');
-        }
+        if ($err = validate_required($id, '房間 ID')) json_error($err);
+        if ($err = validate_required($name, '房間名稱')) json_error($err);
+        if ($err = validate_positive_int($capacity, '容納人數', 1)) json_error($err);
+        if ($err = validate_length($name, '房間名稱', 50, 1)) json_error($err);
 
         db_exec(
             "UPDATE rooms SET name = ?, capacity = ? WHERE id = ?",

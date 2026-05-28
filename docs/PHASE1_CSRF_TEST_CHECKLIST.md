@@ -99,9 +99,10 @@
 **✅ CSRF 核心保護已全面完成**。建議重新執行關鍵測試（login、upgrade、cart_templates）。
 
 **Phase 1 驗證與權限進度**：
-- 驗證函式庫已建立，staff.php 已示範套用
+- 驗證函式庫已全面套用至 sales, customers, products, packages, services, rooms, appointments
+- 引入 log_error 集中錯誤記錄輔助函式
 - commissions / reports 已限制 receptionist 存取
-- 後續建議：繼續把 validate_* 套用到其他 API
+- **Phase 1 已正式完成**，可開始 Phase 2（庫存 + 忠誠度）
 
 **快速 CSRF 驗證指令提示**（建議在測試前先執行）：
 1. 先在瀏覽器登入，開啟「系統設定」頁面，正常修改一項並儲存（觀察成功訊息 + audit log）。
