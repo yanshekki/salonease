@@ -143,6 +143,12 @@
 
             try {
                 const res = await window.SalonEase.fetch(`/api/customers.php?action=list&search=${encodeURIComponent(keyword)}&limit=5`);
+                const context = getCurrentPageContext();
+                const secondaryLabel = context === 'pos' ? '加入購物車' : '新增預約';
+                const secondaryAction = context === 'pos'
+                    ? () => { modal.hide(); setTimeout(() => location.href = `/pos.php?add_customer=${c.id}`, 120); }
+                    : () => { modal.hide(); setTimeout(() => location.href = `/appointments.php?new=1&customer_id=${c.id}`, 120); };
+
                 customerResults = (res.data || []).map(c => ({
                     id: `customer-${c.id}`,
                     label: `${c.name} ${c.phone ? `(${c.phone})` : ''}`,
@@ -152,11 +158,8 @@
                         setTimeout(() => location.href = `/customers.php?id=${c.id}`, 120);
                     },
                     secondary: {
-                        label: '新增預約',
-                        action: () => {
-                            modal.hide();
-                            setTimeout(() => location.href = `/appointments.php?new=1&customer_id=${c.id}`, 120);
-                        }
+                        label: secondaryLabel,
+                        action: secondaryAction
                     }
                 }));
             } catch (e) {
@@ -179,6 +182,36 @@
             if (path.includes('/customers.php')) return 'customers';
             if (path.includes('/settings.php')) return 'settings';
             return 'general';
+        }
+
+        // 簡單但有效的搜尋評分
+        function scoreCommand(cmd, query, context) {
+            if (!query) return 0;
+
+            const label = cmd.label.toLowerCase();
+            const q = query.toLowerCase();
+
+            let score = 0;
+
+            if (label === q) score += 100;
+            else if (label.startsWith(q)) score += 80;
+            else if (label.includes(q)) score += 50;
+
+            // 最近使用加權
+            const recent = getRecentCommands();
+            if (recent.includes(cmd.id)) {
+                const index = recent.indexOf(cmd.id);
+                score += Math.max(0, 30 - index * 5);
+            }
+
+            // 情境加權
+            if (context === 'pos' && (cmd.id.includes('pos') || cmd.label.includes('POS') || cmd.label.includes('服務') || cmd.label.includes('產品'))) {
+                score += 25;
+            }
+            if (context === 'reports' && cmd.id.includes('report')) score += 25;
+            if (context === 'appointments' && cmd.label.includes('預約')) score += 25;
+
+            return score;
         }
 
         function renderResults(filter = '') {
@@ -228,26 +261,44 @@
                 toShow.push(...others);
                 currentFiltered.push(...others);
             } else {
-                // 靜態指令
-                const filteredStatic = staticCommands.filter(cmd =>
-                    cmd.label.toLowerCase().includes(q)
-                );
+                const context = getCurrentPageContext();
 
-                // 客戶結果
-                const filteredCustomers = customerResults.filter(c =>
-                    c.label.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
-                );
+                // 靜態指令 + 評分排序
+                let scoredStatic = staticCommands
+                    .filter(cmd => cmd.label.toLowerCase().includes(q))
+                    .map(cmd => ({ cmd, score: scoreCommand(cmd, q, context) }))
+                    .sort((a, b) => b.score - a.score)
+                    .map(item => item.cmd);
 
-                if (filteredStatic.length > 0) {
+                // 客戶結果（動態）
+                let scoredCustomers = customerResults
+                    .filter(c => c.label.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)))
+                    .map(c => {
+                        // 在 POS 頁時，次要動作改為「加入購物車」
+                        if (context === 'pos') {
+                            c = { ...c };
+                            c.secondary = {
+                                label: '加入購物車',
+                                action: () => {
+                                    modal.hide();
+                                    // 簡單做法：跳轉並帶參數（未來可改成直接呼叫 POS JS）
+                                    setTimeout(() => location.href = `/pos.php?add_customer=${c.id?.split('-')[1] || ''}`, 120);
+                                }
+                            };
+                        }
+                        return c;
+                    });
+
+                if (scoredStatic.length > 0) {
                     toShow.push({ isSection: true, title: '功能' });
-                    toShow.push(...filteredStatic);
-                    currentFiltered.push(...filteredStatic);
+                    toShow.push(...scoredStatic);
+                    currentFiltered.push(...scoredStatic);
                 }
 
-                if (filteredCustomers.length > 0) {
+                if (scoredCustomers.length > 0) {
                     toShow.push({ isSection: true, title: '客戶' });
-                    toShow.push(...filteredCustomers);
-                    currentFiltered.push(...filteredCustomers);
+                    toShow.push(...scoredCustomers);
+                    currentFiltered.push(...scoredCustomers);
                 }
             }
 
