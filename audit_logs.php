@@ -73,9 +73,10 @@ $extraJs = 'hotkeys.js';
         <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="small text-muted">
                 共 <span x-text="logs.length"></span> 筆
-                （目前顯示第 <span x-text="page"></span> / <span x-text="totalPages"></span> 頁）
+                （篩選後 <span x-text="filteredLogs.length"></span> 筆，目前顯示第 <span x-text="page"></span> / <span x-text="totalPages"></span> 頁）
             </div>
-            <div>
+            <div class="d-flex gap-2">
+                <button @click="resetFilters()" class="btn btn-sm btn-outline-secondary">重置篩選</button>
                 <button @click="exportCSV()" class="btn btn-sm btn-outline-success">匯出 CSV</button>
             </div>
         </div>
@@ -218,6 +219,17 @@ function auditLogs() {
 
         nextPage() {
             if (this.page < this.totalPages) this.page++;
+        },
+
+        resetFilters() {
+            this.from = '';
+            this.to = '';
+            this.selectedAction = '';
+            this.selectedStaff = '';
+            this.search = '';
+            this.myActionsOnly = false;
+            this.page = 1;
+            this.loadLogs();
         },
 
         exportCSV() {
