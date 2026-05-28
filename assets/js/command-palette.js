@@ -324,6 +324,33 @@
     return count;
   }
 
+  /**
+   * 計算項目價格同目前有效價位區間嘅貼合程度（0-100）
+   * 用於價位熱力圖視覺
+   */
+  function getPriceClosenessScore(itemPrice, band) {
+    if (!band || itemPrice == null) return 0;
+    const p = parseFloat(itemPrice);
+    const center = (band.min + band.max) / 2;
+    const range = band.max - band.min;
+
+    if (p >= band.min && p <= band.max) {
+      // 在範圍內：越接近中心越接近 100
+      const distFromCenter = Math.abs(p - center);
+      const maxDist = range / 2;
+      return Math.round(100 - (distFromCenter / maxDist) * 30); // 範圍內 70-100 分
+    } else {
+      // 在範圍外：根據距離衰減
+      let distance = 0;
+      if (p < band.min) distance = band.min - p;
+      else distance = p - band.max;
+
+      // 每超出 100 元扣 10 分，最低 10 分
+      const penalty = Math.min(Math.floor(distance / 100) * 10, 80);
+      return Math.max(20, 60 - penalty);
+    }
+  }
+
   // 取得本次 POS 開單期間最近加入的項目（快速重複銷售）
   function getPosRecentSessionItems() {
     const POS = window.SalonEase && window.SalonEase.POS;
@@ -1318,6 +1345,21 @@
     const lowStock = item.stock !== undefined && item.stock < 10 ? `<span class="badge bg-danger-subtle text-danger ms-1" style="font-size:9px">剩${item.stock}</span>` : '';
     const recent = isRecent ? `<span class="badge bg-warning-subtle text-warning ms-2" style="font-size:9px">最近</span>` : '';
 
+    // 價位熱力圖（只喺 POS 頁有有效價位區間時顯示）
+    let priceHeat = '';
+    if (currentContext === 'pos' && (item.type === 'service' || item.type === 'product') && item.price) {
+      const band = getEffectivePriceBand();
+      const closeness = getPriceClosenessScore(item.price, band);
+      if (closeness > 0 && band) {
+        // 越貼合越綠，越遠越橙黃
+        const hue = closeness >= 75 ? 145 : (closeness >= 55 ? 85 : 40);
+        const alpha = Math.max(0.35, closeness / 100 * 0.9);
+        const label = band.label || '最愛價位';
+        const title = `${label}貼合度 ${closeness}%`;
+        priceHeat = `<span class="ms-1 d-inline-block align-middle" style="width:7px;height:7px;border-radius:2px;background-color:hsl(${hue},70%,42%);opacity:${alpha}" title="${title}"></span>`;
+      }
+    }
+
     let sec;
     if (isPackage) {
       const remain = item.remaining ? `剩 ${item.remaining} 次` : '';
@@ -1359,7 +1401,7 @@
         ${item.category ? `<div class="text-muted" style="font-size:11px;line-height:1">${item.category}</div>` : ''}
         ${item.sublabel && (item.type && item.type.includes('suggestion') || item.isGap || item.isPair) ? `<div class="text-success" style="font-size:10px;line-height:1.1">${item.sublabel}</div>` : ''}
       </div>
-      <div class="d-flex align-items-center small">${price}${sec}</div>
+      <div class="d-flex align-items-center small">${price}${priceHeat}${sec}</div>
     </div>`;
   }
 
