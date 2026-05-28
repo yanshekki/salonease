@@ -9,6 +9,38 @@ require_once __DIR__ . '/includes/functions.php';
 
 $pageTitle = '忠誠度記錄';
 $pageSubtitle = '查看客戶積分獲得與兌換歷史';
+
+// A41：本月忠誠度摘要（輕量查詢）
+$thisMonthStart = date('Y-m-01');
+$thisMonthEnd   = date('Y-m-d');
+
+$monthlyEarned = db_query_one("
+    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points')) AS UNSIGNED)), 0) AS total
+    FROM audit_logs
+    WHERE action = 'customer.points_earned'
+      AND created_at >= ? AND created_at <= ?
+", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+
+$monthlyRedeemed = db_query_one("
+    SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(details, '$.points_used')) AS UNSIGNED)), 0) AS total
+    FROM audit_logs
+    WHERE action = 'customer.points_redeemed'
+      AND created_at >= ? AND created_at <= ?
+", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+
+$activePointsCustomers = db_query_one("
+    SELECT COUNT(DISTINCT entity_id) AS cnt
+    FROM audit_logs
+    WHERE action IN ('customer.points_earned', 'customer.points_redeemed', 'customer.points_adjusted')
+      AND entity_type = 'customer'
+      AND created_at >= ? AND created_at <= ?
+", [$thisMonthStart, $thisMonthEnd . ' 23:59:59']);
+
+$monthlySummary = [
+    'earned'   => (int)($monthlyEarned['total'] ?? 0),
+    'redeemed' => (int)($monthlyRedeemed['total'] ?? 0),
+    'active'   => (int)($activePointsCustomers['cnt'] ?? 0)
+];
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
@@ -32,6 +64,37 @@ $pageSubtitle = '查看客戶積分獲得與兌換歷史';
                 <strong id="loyalty-redemption-rate">10</strong> 點 = $1
             </div>
             <div class="text-muted">（可於「系統設定」頁調整）</div>
+        </div>
+    </div>
+</div>
+
+<!-- A41：本月忠誠度摘要 -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-success-subtle">
+            <div class="card-body">
+                <div class="text-uppercase text-muted small">本月累積</div>
+                <div class="display-6 fw-semibold text-success"><?= number_format($monthlySummary['earned']) ?></div>
+                <div class="small text-muted">點</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-warning-subtle">
+            <div class="card-body">
+                <div class="text-uppercase text-muted small">本月兌換</div>
+                <div class="display-6 fw-semibold text-warning"><?= number_format($monthlySummary['redeemed']) ?></div>
+                <div class="small text-muted">點</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-info-subtle">
+            <div class="card-body">
+                <div class="text-uppercase text-muted small">本月有活動</div>
+                <div class="display-6 fw-semibold text-info"><?= number_format($monthlySummary['active']) ?></div>
+                <div class="small text-muted">位客戶</div>
+            </div>
         </div>
     </div>
 </div>
