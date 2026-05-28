@@ -170,6 +170,10 @@ $extraJs = 'hotkeys.js';
                 <div class="mb-3">
                     <label class="form-label small">目前庫存</label>
                     <div id="stock-current" class="fs-5 fw-semibold"></div>
+                    <!-- A28：調整後庫存即時預覽 -->
+                    <div class="mt-1 small text-muted">
+                        調整後：<span id="stock-after-preview" class="fw-semibold text-dark">—</span>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label small">調整數量 <span class="text-muted">（正數入庫，負數出庫/損耗）</span></label>
@@ -432,12 +436,24 @@ function adjustProductStock(id, currentQty, name) {
     document.getElementById('stock-adjustment').value = '';
     document.getElementById('stock-reason').value = '';
 
+    // A28：初始化預覽
+    const previewEl = document.getElementById('stock-after-preview');
+    if (previewEl) previewEl.textContent = currentQty;
+
     const modalEl = document.getElementById('stockAdjustModal');
     stockAdjustModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
     stockAdjustModalInstance.show();
 
     setTimeout(() => {
-        document.getElementById('stock-adjustment').focus();
+        const input = document.getElementById('stock-adjustment');
+        input.focus();
+
+        // 綁定即時更新（只綁一次）
+        if (!input.dataset.previewBound) {
+            input.addEventListener('input', updateStockPreview);
+            input.dataset.previewBound = 'true';
+        }
+        updateStockPreview();
     }, 350);
 }
 
@@ -480,6 +496,7 @@ function setQuickAdjustment(qty) {
     if (input) {
         input.value = qty;
         input.focus();
+        updateStockPreview();
     }
 }
 
@@ -490,6 +507,22 @@ function setQuickReason(reason) {
         textarea.value = reason;
         textarea.focus();
     }
+}
+
+/* A28：即時更新調整後庫存預覽 */
+function updateStockPreview() {
+    const currentEl = document.getElementById('stock-current');
+    const adjustInput = document.getElementById('stock-adjustment');
+    const previewEl = document.getElementById('stock-after-preview');
+
+    if (!currentEl || !adjustInput || !previewEl) return;
+
+    const current = parseInt(currentEl.textContent) || 0;
+    const adjustment = parseInt(adjustInput.value) || 0;
+    const after = current + adjustment;
+
+    previewEl.textContent = after;
+    previewEl.className = adjustment > 0 ? 'fw-semibold text-success' : (adjustment < 0 ? 'fw-semibold text-danger' : 'fw-semibold text-dark');
 }
 
 /* A24：列表快速 +10 入庫（不開 modal，直接呼叫 API） */
