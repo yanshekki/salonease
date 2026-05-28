@@ -197,7 +197,6 @@ include __DIR__ . '/includes/header.php';
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（可使用上方快速日期按鈕或自訂日期範圍）</div>
     <div class="small text-muted mb-2" style="font-size:0.65rem;">（兩張圖表均會隨查詢條件即時更新）</div>
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（圖表會隨上方日期與員工篩選即時更新）</div>
-    <div class="small text-muted mb-3" style="font-size:0.65rem;">（圖表會隨上方日期與員工篩選即時更新）</div>
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（兩張圖表均會隨查詢條件即時更新）</div>
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（圖表會隨上方日期與員工篩選即時更新）</div>
     <div class="small text-muted mb-3" style="font-size:0.65rem;">（兩張圖表均會隨查詢條件即時更新）</div>
