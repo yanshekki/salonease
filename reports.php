@@ -231,6 +231,9 @@ include __DIR__ . '/includes/header.php';
             <div class="small text-muted mt-1" style="font-size:0.7rem;">
                 總變化：{{ formatMoney(summary.total_sales - prevSummary.total_sales) }}
             </div>
+            <div class="small text-muted mt-1" style="font-size:0.7rem;">
+                總銷售：{{ formatMoney(summary.total_sales) }}
+            </div>
             <div class="small text-muted mt-2" style="font-size:0.65rem;">（隨日期範圍即時更新，後續版本將接入真實每日數據）</div>
         </div>
     </div>
