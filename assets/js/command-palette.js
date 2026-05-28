@@ -2475,8 +2475,41 @@
   }
 
   /**
-   * 顯示「缺口智能替代」完整銷售話術預覽面板（輕量版，專為 Phase 40 設計）
-   * 支援：即時微調（+/- 50）、可編輯 textarea、複製 WhatsApp、一鍵確認加入 + 自動記錄完整腳本
+   * 開啟 WhatsApp 深層連結（活生生銷售教練模式核心）
+   * 自動帶入客戶電話（如果有）+ 當前話術作為預填訊息
+   */
+  function openWhatsAppWithScript(script, customer = null) {
+    const cleanScript = (script || '').replace(/^「|」$/g, '').trim();
+    let phone = '';
+    if (customer) {
+      phone = customer.phone || customer.phone_number || customer.tel || customer.mobile || customer.contact || '';
+      // 清理香港電話格式（去空格、去 +852 前綴等）
+      phone = String(phone).replace(/\s+/g, '').replace(/^(\+852|852)/, '');
+    }
+
+    let url = 'https://wa.me/';
+    if (phone && /^\d{8,9}$/.test(phone)) {
+      url += phone;
+    }
+    url += `?text=${encodeURIComponent(cleanScript)}`;
+
+    window.open(url, '_blank');
+
+    if (window.SalonEase && window.SalonEase.toast) {
+      window.SalonEase.toast('📱 WhatsApp 已開啟（已預填話術）', 'success', 1800);
+    }
+
+    // 同時記錄
+    const notesEl = document.getElementById('sale-notes');
+    if (notesEl) {
+      const waNote = `[已透過 WhatsApp 發送] ${new Date().toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'})} · 缺口話術已發送給客戶`;
+      notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n${waNote}` : waNote;
+    }
+  }
+
+  /**
+   * 顯示「缺口智能替代」完整銷售話術預覽面板（Phase 41 活生生銷售教練模式）
+   * 支援：即時微調、即時 WhatsApp 深層連結、可編輯 textarea、確認後「面板不自動隱藏」
    */
   function showGapFillScriptPreview(alternatives, initialScript, context = {}) {
     if (!resultsEl || !alternatives || !alternatives.length) return;
@@ -2492,11 +2525,11 @@
     const panelHtml = `
       <div id="${panelId}" class="mx-2 my-3 p-3 rounded-4 border shadow-sm" style="background:#fffef9;border-color:#D4A017;">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="fw-semibold text-warning">📝 缺口智能銷售話術（可即時編輯）</div>
+          <div class="fw-semibold text-warning">📝 缺口智能銷售話術（可即時編輯） <span class="badge bg-warning-subtle text-dark" style="font-size:9px;">🟢 活生生銷售教練模式</span></div>
           <button type="button" class="btn-close btn-close-sm" id="gap-preview-close" aria-label="Close"></button>
         </div>
 
-        <div class="small text-muted mb-1">價位智能缺口提示 · ${count} 個最接近替代 · 點擊微調後確認加入</div>
+        <div class="small text-muted mb-1">價位智能缺口提示 · ${count} 個最接近替代 · 一邊同客戶傾一邊微調 + 即時發 WhatsApp</div>
 
         <textarea id="gap-script-text" class="form-control mb-2" rows="6" style="font-size:13.5px;line-height:1.5;">${initialScript}</textarea>
 
@@ -2508,10 +2541,11 @@
 
         <div class="d-flex gap-2 flex-wrap">
           <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="gap-preview-copy">💬 複製話術</button>
-          <button type="button" class="btn btn-warning btn-sm flex-fill" id="gap-preview-confirm">✅ 確認加入 + 記錄完整話術</button>
+          <button type="button" class="btn btn-success btn-sm flex-fill" id="gap-preview-whatsapp">📱 WhatsApp 即時發送</button>
+          <button type="button" class="btn btn-warning btn-sm flex-fill" id="gap-preview-confirm">✅ 確認加入 + 記錄話術</button>
           <button type="button" class="btn btn-outline-secondary btn-sm" id="gap-preview-cancel">取消</button>
         </div>
-        <div class="small text-muted mt-1">確認後會自動加入購物車 + 將完整腳本寫入備註欄（可直接用作 WhatsApp 跟進）</div>
+        <div class="small text-muted mt-1"><strong>教練模式：</strong>確認後面板不會自動關閉，您可以繼續搜尋項目、一邊傾一邊即時加落去 + 更新備註。</div>
       </div>`;
 
     // 插入到結果區較後面（或 action bar 之後）
@@ -2541,6 +2575,21 @@
       };
     }
 
+    // === Phase 41 新增：WhatsApp 即時發送按鈕（活生生銷售教練模式）===
+    const waBtn = document.getElementById('gap-preview-whatsapp');
+    if (waBtn) {
+      waBtn.onclick = (e) => {
+        e.stopImmediatePropagation();
+        const currentScript = ta.value.trim();
+        const cust = context.customer || (window.SalonEase && window.SalonEase.POS && window.SalonEase.POS.getCurrentCustomer ? window.SalonEase.POS.getCurrentCustomer() : null);
+        openWhatsAppWithScript(currentScript, cust);
+        // 記錄教練動作
+        if (window.SalonEase && window.SalonEase.toast) {
+          window.SalonEase.toast('📱 教練模式：WhatsApp 已開啟，您可以繼續微調話術', 'info', 1600);
+        }
+      };
+    }
+
     // 微調 +/- 50：簡單字串替換價位提示 + 輕微改寫
     function microAdjustPrice(delta) {
       let text = ta.value;
@@ -2561,7 +2610,7 @@
     if (minusBtn) minusBtn.onclick = (e) => { e.stopImmediatePropagation(); microAdjustPrice(-50); };
     if (plusBtn) plusBtn.onclick = (e) => { e.stopImmediatePropagation(); microAdjustPrice(50); };
 
-    // 核心：確認加入 + 記錄完整話術
+    // 核心：確認加入 + 記錄完整話術（教練模式：確認後「不自動隱藏」面板）
     if (confirmBtn) {
       confirmBtn.onclick = (e) => {
         e.stopImmediatePropagation();
@@ -2576,28 +2625,31 @@
           }
         });
 
-        // 2. 寫入 sale-notes（結構化 + 完整腳本）
+        // 2. 寫入 sale-notes（結構化 + 完整腳本 + 教練模式標記）
         const notesEl = document.getElementById('sale-notes');
         if (notesEl) {
           const tag = `[價位智能缺口提示] ${new Date().toLocaleDateString('zh-HK')} · 自動建議 ${added} 個最接近替代（平均貼合 ${Math.round(context.avgCloseness || 55)}%）`;
-          const fullNote = `${tag}\n完整銷售話術：\n${finalScript}`;
+          const coachNote = `[教練模式] 面板保持開啟，可一邊同客戶傾一邊繼續搜尋/微調`;
+          const fullNote = `${tag}\n完整銷售話術：\n${finalScript}\n${coachNote}`;
           notesEl.value = notesEl.value.trim() ? `${notesEl.value.trim()}\n\n${fullNote}` : fullNote;
         }
 
-        // 3. 記錄到 lastSalesScript 方便之後快速複製
+        // 3. 記錄到 lastSalesScript
         window.SalonEase = window.SalonEase || {};
         window.SalonEase.lastSalesScript = finalScript;
 
         if (window.SalonEase && window.SalonEase.toast) {
-          window.SalonEase.toast(`✅ 已加入 ${added} 個缺口替代 + 完整話術已記錄`, 'success', 2200);
+          window.SalonEase.toast(`✅ 已加入 ${added} 個缺口替代 + 話術已記錄`, 'success', 1600);
+          setTimeout(() => {
+            if (window.SalonEase && window.SalonEase.toast) {
+              window.SalonEase.toast('🟢 活生生銷售教練模式：命令面板繼續開著，您可以即時再搜尋其他項目或再微調話術', 'info', 3200);
+            }
+          }, 1750);
         }
 
+        // 教練模式重點：不呼叫 hide()，讓用戶可以一邊傾一邊繼續操作
+        // 只移除預覽面板，命令面板本身繼續停留
         panel.remove();
-
-        // 可選：成功後自動隱藏命令面板，讓用戶專心看 POS 購物車
-        setTimeout(() => {
-          if (typeof hide === 'function') hide();
-        }, 650);
       };
     }
 
