@@ -75,8 +75,8 @@ $extraJs = 'hotkeys.js';
 
         <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="small text-muted">
-                共 <span x-text="logs.length"></span> 筆
-                （篩選後 <span x-text="filteredLogs.length"></span> 筆，目前顯示第 <span x-text="page"></span> / <span x-text="totalPages"></span> 頁）
+                共 <span x-text="totalRecords"></span> 筆
+                （目前載入 <span x-text="logs.length"></span> 筆，篩選後 <span x-text="filteredLogs.length"></span> 筆，第 <span x-text="page"></span> / <span x-text="totalPages"></span> 頁）
             </div>
             <div class="d-flex gap-2">
                 <button @click="resetFilters()" class="btn btn-sm btn-outline-secondary">重置篩選</button>
@@ -150,6 +150,7 @@ function auditLogs() {
         myActionsOnly: false,
         perPageOptions: [10, 20, 50, 100],
         serverActionCounts: {},
+        totalRecords: 0,
 
         init() {
             this.setDefaultDateRange();
@@ -197,10 +198,18 @@ function auditLogs() {
                 if (this.selectedStaff) url += `&staff_id=${this.selectedStaff}`;
 
                 const res = await SalonEase.fetch(url);
-                this.logs = res.data || [];
+                // 支援新格式 {data, total} 與舊格式（相容）
+                if (res.data && typeof res.data === 'object' && 'data' in res.data) {
+                    this.logs = res.data.data || [];
+                    this.totalRecords = res.data.total || 0;
+                } else {
+                    this.logs = res.data || [];
+                    this.totalRecords = this.logs.length;
+                }
                 this.page = 1;
             } catch (err) {
                 this.logs = [];
+                this.totalRecords = 0;
                 SalonEase.toast(err.message || '載入失敗', 'error');
             }
         },
