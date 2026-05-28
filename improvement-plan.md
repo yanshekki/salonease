@@ -231,6 +231,7 @@
 - A118 已完成：reports.php 將 formatMoney 方法移入 reportsApp() 內部（JS 結構清理第九步）
 - A119 已完成：reports.php 將 getPaymentLabel 方法移入 reportsApp() 內部（JS 結構清理第十步）
 - A120 已完成：reports.php 將 loadStaffList 方法移入 reportsApp() 內部（JS 結構清理第十一步）
+- A121 已完成：reports.php 將 exportStaffRankingCSV 方法移入 reportsApp() 內部（JS 結構清理第十二步）
 
 ---
 
