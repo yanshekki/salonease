@@ -627,8 +627,14 @@
     }
 
     if (item.action === 'load-history-sale' && item.saleId) {
-      // 智能推薦中點擊歷史銷售
-      await loadItemsFromSale(item.saleId, resultsEl); // 重用之前的函式
+      // 智能推薦點擊歷史銷售 → 進入確認模式（支援部分選擇）
+      await enterLoadConfirmationMode('history', item.saleId, item.label);
+      return;
+    }
+
+    if (item.action === 'load-cart-template' && item.templateId) {
+      // 智能推薦或一般模板點擊 → 進入確認模式
+      await enterLoadConfirmationMode('template', item.templateId, item.label);
       return;
     }
 
@@ -1057,48 +1063,137 @@
     cancelBtn.onclick = () => updateResults('');
   }
 
-  async function loadItemsFromSale(saleId, container) {
-    container.innerHTML = `<div class="p-3 text-center text-muted small">正在載入銷售明細...</div>`;
+  // 新通用確認模式：支援從歷史銷售或常用組合中選擇性加入項目
+  async function enterLoadConfirmationMode(sourceType, sourceId, sourceLabel) {
+    if (!resultsEl) return;
+
+    resultsEl.innerHTML = `<div class="p-3 text-center text-muted small">正在載入項目明細...</div>`;
+
+    let items = [];
 
     try {
-      const res = await window.SalonEase.fetch(`/api/sales.php?action=get_items&sale_id=${saleId}`);
-      const items = res.data || [];
+      if (sourceType === 'history') {
+        const res = await window.SalonEase.fetch(`/api/sales.php?action=get_items&sale_id=${sourceId}`);
+        items = res.data || [];
+      } else if (sourceType === 'template') {
+        const res = await window.SalonEase.fetch(`/api/cart_templates.php?action=apply&id=${sourceId}`);
+        items = res.data.items || [];
+      }
 
       if (items.length === 0) {
-        container.innerHTML = `<div class="p-3 text-center text-muted small">此銷售單沒有項目</div>`;
+        resultsEl.innerHTML = `<div class="p-3 text-center text-muted small">沒有可加入的項目</div>`;
         return;
       }
 
-      const cart = window.SalonEase.POS.getCart ? window.SalonEase.POS.getCart() : [];
-      let shouldClear = true;
+      // 建立確認畫面
+      let html = `
+        <div class="px-3 py-3">
+          <div class="small fw-medium mb-2">選擇要加入的項目</div>
+          <div class="small text-muted mb-2">來源：${sourceLabel}</div>
+          <div style="max-height: 260px; overflow:auto; border: 1px solid #eee; border-radius: 6px; padding: 4px;">
+      `;
 
-      if (cart.length > 0) {
-        const choice = confirm(`目前購物車有 ${cart.length} 項。\n\n[確定] 清空後載入歷史項目\n[取消] 保留現有 + 加入歷史項目`);
-        shouldClear = choice;
-      }
+      items.forEach((item, index) => {
+        const displayName = item.name || item.label || '項目';
+        const price = item.unit_price || item.price || 0;
+        html += `
+          <div class="d-flex align-items-center p-2 border-bottom">
+            <input type="checkbox" class="form-check-input me-2 load-item-check" data-index="${index}" checked>
+            <div class="flex-grow-1 small">
+              ${displayName}
+              ${item.qty > 1 ? `<span class="text-muted">×${item.qty}</span>` : ''}
+            </div>
+            <div class="small text-end" style="min-width: 70px;">HK$ ${parseFloat(price).toFixed(0)}</div>
+          </div>
+        `;
+      });
 
-      if (shouldClear && window.SalonEase.POS.clearCart) {
-        window.SalonEase.POS.clearCart();
-      }
+      html += `
+          </div>
 
-      for (const item of items) {
-        if (window.addToCart) {
-          window.addToCart(item.item_type, item.ref_id, item.name, item.unit_price);
-          // 如果有 qty > 1，補加
-          for (let i = 1; i < (item.qty || 1); i++) {
-            window.addToCart(item.item_type, item.ref_id, item.name, item.unit_price);
+          <div class="d-flex gap-2 mt-3">
+            <button id="btn-load-selected" class="btn btn-success btn-sm flex-fill">加入選取項目</button>
+            <button id="btn-load-all" class="btn btn-outline-success btn-sm">加入全部</button>
+            <button id="btn-load-cancel" class="btn btn-outline-secondary btn-sm">取消</button>
+          </div>
+        </div>
+      `;
+
+      resultsEl.innerHTML = html;
+
+      const checkboxes = resultsEl.querySelectorAll('.load-item-check');
+      const btnSelected = resultsEl.querySelector('#btn-load-selected');
+      const btnAll = resultsEl.querySelector('#btn-load-all');
+      const btnCancel = resultsEl.querySelector('#btn-load-cancel');
+
+      btnSelected.onclick = async () => {
+        const selectedItems = [];
+        checkboxes.forEach(cb => {
+          if (cb.checked) {
+            selectedItems.push(items[parseInt(cb.dataset.index)]);
           }
-        }
-      }
+        });
+        await applySelectedItems(selectedItems, sourceLabel);
+      };
 
-      hide();
-      if (window.SalonEase && window.SalonEase.toast) {
-        window.SalonEase.toast(`已載入歷史銷售 #${saleId} 的項目`, 'success');
-      }
+      btnAll.onclick = async () => {
+        await applySelectedItems(items, sourceLabel);
+      };
+
+      btnCancel.onclick = () => {
+        updateResults(''); // 返回推薦列表
+      };
 
     } catch (err) {
-      container.innerHTML = `<div class="p-3 text-center text-danger small">載入失敗</div>`;
+      resultsEl.innerHTML = `<div class="p-3 text-center text-danger small">載入失敗</div>`;
     }
+  }
+
+  async function applySelectedItems(selectedItems, sourceLabel) {
+    if (!selectedItems || selectedItems.length === 0) {
+      if (window.SalonEase && window.SalonEase.toast) {
+        window.SalonEase.toast('請至少選擇一個項目', 'error');
+      }
+      return;
+    }
+
+    const cart = window.SalonEase.POS.getCart ? window.SalonEase.POS.getCart() : [];
+    let shouldClear = false;
+
+    if (cart.length > 0) {
+      shouldClear = confirm(`目前購物車有 ${cart.length} 項。\n\n[確定] 清空後加入選取項目\n[取消] 保留現有項目 + 加入`);
+    }
+
+    if (shouldClear && window.SalonEase.POS.clearCart) {
+      window.SalonEase.POS.clearCart();
+    }
+
+    for (const item of selectedItems) {
+      if (window.addToCart) {
+        const type = item.item_type || item.type;
+        const refId = item.ref_id || item.id;
+        const name = item.name;
+        const price = item.unit_price || item.price;
+
+        window.addToCart(type, refId, name, price);
+
+        // 處理 qty > 1
+        const qty = item.qty || 1;
+        for (let i = 1; i < qty; i++) {
+          window.addToCart(type, refId, name, price);
+        }
+      }
+    }
+
+    hide();
+    if (window.SalonEase && window.SalonEase.toast) {
+      window.SalonEase.toast(`已從「${sourceLabel}」加入 ${selectedItems.length} 項`, 'success');
+    }
+  }
+
+  async function loadItemsFromSale(saleId, container) {
+    // 保留舊函式以相容歷史模式，但引導到新確認模式
+    await enterLoadConfirmationMode('history', saleId, `歷史銷售 #${saleId}`);
   }
 
   // 載入常用組合到購物車
