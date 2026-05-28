@@ -424,18 +424,18 @@ function renderAppointments(list) {
     list.forEach(a => {
         const time = new Date(a.start_time).toLocaleString('zh-HK', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
         html += `
-            <tr class="hover:bg-[#F8F5F0] cursor-pointer" onclick="showDetailModal(${a.id})">
+            <tr class="cursor-pointer" onclick="showDetailModal(${a.id})" onmouseover="this.style.backgroundColor='#F8F5F0'" onmouseout="this.style.backgroundColor=''">
                 <td>${time}</td>
-                <td>${e(a.customer_name || '-')} <span class="text-xs text-muted">(${e(a.customer_phone || '')})</span></td>
+                <td>${e(a.customer_name || '-')} <span class="small text-muted">(${e(a.customer_phone || '')})</span></td>
                 <td>${e(a.staff_name || '-')}</td>
                 <td>${e(a.room_name || '不指定')}</td>
                 <td><span class="badge bg-secondary-subtle text-dark small">${statusMap[a.status] || a.status}</span></td>
-                <td class="text-right" onclick="event.stopImmediatePropagation()">
+                <td class="text-end" onclick="event.stopImmediatePropagation()">
                     <button onclick="showDetailModal(${a.id}); event.stopImmediatePropagation();" 
-                            class="text-[#8FA68F] hover:underline text-xs mr-2">詳情</button>
-                    <button onclick="changeStatus(${a.id}, 'confirmed'); event.stopImmediatePropagation();" class="text-[#8FA68F] hover:underline text-xs mr-1">確認</button>
-                    <button onclick="changeStatus(${a.id}, 'completed'); event.stopImmediatePropagation();" class="text-[#8FA68F] hover:underline text-xs mr-1">完成</button>
-                    <button onclick="changeStatus(${a.id}, 'cancelled'); event.stopImmediatePropagation();" class="text-red-500 hover:underline text-xs">取消</button>
+                            class="btn btn-link btn-sm text-success p-0 me-1">詳情</button>
+                    <button onclick="changeStatus(${a.id}, 'confirmed'); event.stopImmediatePropagation();" class="btn btn-link btn-sm text-success p-0 me-1">確認</button>
+                    <button onclick="changeStatus(${a.id}, 'completed'); event.stopImmediatePropagation();" class="btn btn-link btn-sm text-success p-0 me-1">完成</button>
+                    <button onclick="changeStatus(${a.id}, 'cancelled'); event.stopImmediatePropagation();" class="btn btn-link btn-sm text-danger p-0">取消</button>
                 </td>
             </tr>
         `;
@@ -658,19 +658,19 @@ async function showDetailModal(id) {
 
         container.innerHTML = `
             <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div><span class="text-[#5A5A5C]">客戶：</span><span class="font-medium">${e(a.customer_name || '-')}</span></div>
-                <div><span class="text-[#5A5A5C]">美容師：</span>${e(a.staff_name || '-')}</div>
-                <div><span class="text-[#5A5A5C]">時間：</span>${start.toLocaleString('zh-HK', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})} ~ ${end.toLocaleTimeString('zh-HK', {hour:'2-digit',minute:'2-digit'})}</div>
-                <div><span class="text-[#5A5A5C]">房間：</span>${e(a.room_name || '不指定')}</div>
-                <div class="col-span-2"><span class="text-[#5A5A5C]">狀態：</span> <span class="font-medium">${statusMap[a.status] || a.status}</span></div>
+                <div><span class="text-muted">客戶：</span><span class="fw-medium">${e(a.customer_name || '-')}</span></div>
+                <div><span class="text-muted">美容師：</span>${e(a.staff_name || '-')}</div>
+                <div><span class="text-muted">時間：</span>${start.toLocaleString('zh-HK', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})} ~ ${end.toLocaleTimeString('zh-HK', {hour:'2-digit',minute:'2-digit'})}</div>
+                <div><span class="text-muted">房間：</span>${e(a.room_name || '不指定')}</div>
+                <div class="col-span-2"><span class="text-muted">狀態：</span> <span class="fw-medium">${statusMap[a.status] || a.status}</span></div>
             </div>
 
-            <div class="pt-3 border-t">
-                <div class="text-[#5A5A5C] text-xs mb-1">服務項目</div>
+            <div class="pt-3 border-top">
+                <div class="text-muted small mb-1">服務項目</div>
                 ${servicesHtml}
             </div>
 
-            ${a.notes ? `<div class="pt-2"><div class="text-[#5A5A5C] text-xs mb-1">備註</div><div class="text-sm bg-gray-50 p-2 rounded">${e(a.notes)}</div></div>` : ''}
+            ${a.notes ? `<div class="pt-2"><div class="text-muted small mb-1">備註</div><div class="small bg-light p-2 rounded">${e(a.notes)}</div></div>` : ''}
         `;
     } catch (err) {
         container.innerHTML = `<div class="text-red-500">${err.message}</div>`;
@@ -981,7 +981,7 @@ async function loadTodaySchedule() {
             const min = minutes % 60;
             const timeLabel = `${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
 
-            html += `<div class="h-[28px] flex items-center justify-end pr-2 text-[#5A5A5C] border-b text-xs">${timeLabel}</div>`;
+            html += `<div class="h-[28px] d-flex align-items-center justify-content-end pe-2 text-muted border-bottom small">${timeLabel}</div>`;
         }
 
         html += `</div><div class="relative" style="height: ${totalSlots * 28}px;">`;
@@ -1047,7 +1047,7 @@ async function loadTodaySchedule() {
                      class="group absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
                      style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${statusColor}; z-index: ${10 + lane};">
                     <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
-                    <div class="text-[10px] text-[#555] truncate">${e(a.staff_name || '')}</div>
+                    <div class="small text-muted truncate">${e(a.staff_name || '')}</div>
                     ${actionsHtml}
                 </div>
             `;
@@ -1240,7 +1240,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
             const hour = startHour + Math.floor(minutes / 60);
             const min = minutes % 60;
             const timeLabel = `${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
-            html += `<div class="h-[28px] flex items-center justify-end pr-2 text-[#5A5A5C] border-b text-xs">${timeLabel}</div>`;
+            html += `<div class="h-[28px] d-flex align-items-center justify-content-end pe-2 text-muted border-bottom small">${timeLabel}</div>`;
         }
 
         html += `</div><div class="relative" style="height: ${totalSlots * 28}px;">`;
@@ -1319,7 +1319,7 @@ async function loadTodayScheduleForDate(targetDateStr) {
                      class="group absolute rounded-lg px-2 py-1 text-xs cursor-pointer shadow-sm border border-gray-200 flex flex-col justify-center hover:brightness-95 transition"
                      style="top: ${top}px; height: ${height}px; left: ${left}%; width: ${width}%; background-color: ${staffColor}; z-index: ${10 + lane};">
                     <div class="font-medium truncate">${e(a.customer_name || '客戶')}</div>
-                    <div class="flex justify-between text-[10px] text-[#555]">
+                    <div class="d-flex justify-content-between small text-muted">
                         <span class="truncate">${e(a.staff_name || '')}</span>
                         <span class="ml-1 flex-shrink-0">${durationText}</span>
                     </div>
@@ -1406,7 +1406,7 @@ function getStaffColor(name) {
 
             tooltip.innerHTML = `
                 <div class="font-medium">${e(a.customer_name || '客戶')}</div>
-                <div class="text-xs text-[#5A5A5C] mb-2">${e(a.staff_name || '')}</div>
+                <div class="small text-muted mb-2">${e(a.staff_name || '')}</div>
                 ${servicesHtml}
             `;
         } catch (err) {
