@@ -465,19 +465,49 @@
       });
 
       // 簡單交叉銷售
-      const topFrequentKeys = Object.keys(itemFrequency).sort((a,b) => itemFrequency[b]-itemFrequency[a]).slice(0,2);
+      // 更聰明的交叉銷售：根據此客戶歷史，找出常與高頻項目一起出現的搭配
+      const topFrequentKeys = Object.keys(itemFrequency).sort((a,b) => itemFrequency[b]-itemFrequency[a]).slice(0,3);
+
       topFrequentKeys.forEach(key => {
-        const [type] = key.split(':');
-        if (type === 'service') {
+        // 找出與這個 key 最常一起出現的其他項目
+        let bestPair = null;
+        let bestCount = 0;
+
+        Object.entries(pairFrequency).forEach(([pairKey, count]) => {
+          if (pairKey.includes(key) && count > bestCount) {
+            bestCount = count;
+            const [k1, k2] = pairKey.split('|');
+            bestPair = k1 === key ? k2 : k1;
+          }
+        });
+
+        if (bestPair) {
+          let mainName = '項目';
+          let pairName = '搭配項目';
+
+          for (const sale of recentSalesWithItems) {
+            const items = sale.items || [];
+            const foundMain = items.find(i => `${i.item_type}:${i.ref_id}` === key);
+            const foundPair = items.find(i => `${i.item_type}:${i.ref_id}` === bestPair);
+            if (foundMain) mainName = foundMain.name;
+            if (foundPair) pairName = foundPair.name;
+          }
+
+          const percentage = recentSales.length > 0 
+            ? Math.round((bestCount / recentSales.length) * 100) 
+            : 0;
+
           recommendations.push({
-            id: `cross-${key}`,
+            id: `cross-${key}-${bestPair}`,
             type: 'cross_sell',
-            label: `搭配推薦：護膚/保養產品`,
-            sublabel: `常與此服務一起購買`,
-            keywords: '搭配 推薦',
+            label: `搭配推薦：${pairName}`,
+            sublabel: `買過 ${mainName} 的客人，${percentage}% 會加購`,
+            suggestedReason: `根據此客戶歷史，購買「${mainName}」後有 ${percentage}% 機率會加購「${pairName}」`,
+            keywords: '搭配 推薦 交叉',
             icon: '✨',
-            action: 'load-history-sale',
-            priority: 10
+            action: 'quick-add-recommendation',
+            priority: 12,
+            suggestedItems: [{ type: bestPair.split(':')[0], ref_id: parseInt(bestPair.split(':')[1]), name: pairName }]
           });
         }
       });
@@ -1398,7 +1428,7 @@
     }
   }
 
-  // 從智能推薦直接一鍵加入（帶建議原因）
+  // 從智能推薦直接一鍵加入（帶建議原因，並自動記錄到銷售備註）
   async function quickAddRecommendedItems(recommendation) {
     const items = recommendation.suggestedItems || [];
     if (items.length === 0) {
@@ -1410,16 +1440,26 @@
 
     const reason = recommendation.suggestedReason || '系統推薦';
 
-    // 簡單處理：直接加入（不詢問清空，保持輕量）
+    // 直接加入項目
     for (const item of items) {
       if (window.addToCart) {
         window.addToCart(item.type, item.ref_id, item.name, item.unit_price || 0);
       }
     }
 
+    // 自動將建議原因記錄到銷售備註（方便之後追蹤）
+    const notesEl = document.getElementById('sale-notes');
+    if (notesEl) {
+      const currentNotes = notesEl.value.trim();
+      const newNote = `[推薦] ${reason}`;
+      if (!currentNotes.includes(reason)) {
+        notesEl.value = currentNotes ? `${currentNotes}\n${newNote}` : newNote;
+      }
+    }
+
     hide();
     if (window.SalonEase && window.SalonEase.toast) {
-      window.SalonEase.toast(`已加入推薦項目（${reason}）`, 'success', 2500);
+      window.SalonEase.toast(`已加入推薦項目（${reason}）`, 'success', 2800);
     }
   }
 
