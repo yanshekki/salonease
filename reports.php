@@ -218,7 +218,12 @@ include __DIR__ . '/includes/header.php';
     <!-- 銷售趨勢圖表（A125 起步） -->
     <div class="card mb-3">
         <div class="card-body">
-            <div class="fw-semibold mb-3">銷售趨勢</div>
+            <div class="fw-semibold mb-3 d-flex align-items-center">
+                銷售趨勢
+                <span class="badge ms-2 small" :class="getChangeClass(summary.total_sales, prevSummary.total_sales)">
+                    {{ getChangeText(summary.total_sales, prevSummary.total_sales) }}
+                </span>
+            </div>
             <canvas id="salesTrendChart" height="80"></canvas>
             <div class="small text-muted mt-2" style="font-size:0.65rem;">（隨日期範圍即時更新，後續版本將接入真實每日數據）</div>
         </div>
