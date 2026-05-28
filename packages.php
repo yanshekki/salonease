@@ -13,73 +13,76 @@ $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-semibold"><?= e($pageTitle) ?></h1>
-        <p class="text-[#5A5A5C] text-sm mt-1"><?= e($pageSubtitle) ?></p>
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+    <div class="mb-3 mb-md-0">
+        <h1 class="h4 fw-semibold mb-1"><?= e($pageTitle) ?></h1>
+        <p class="text-muted small mb-0"><?= e($pageSubtitle) ?></p>
     </div>
-    <button onclick="showAddModal()"
-            class="salon-btn salon-btn-primary flex items-center gap-x-2">
+    <button onclick="showAddModal()" class="btn btn-primary d-flex align-items-center gap-2">
         <span>+ 新增套票</span>
-        <span class="text-xs opacity-75">[N]</span>
+        <span class="small opacity-75">[N]</span>
     </button>
 </div>
 
-<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <table class="salon-table w-full">
-        <thead>
-            <tr>
-                <th>套票名稱</th>
-                <th>總次數</th>
-                <th>售價</th>
-                <th>有效期（天）</th>
-                <th>狀態</th>
-                <th class="text-right">操作</th>
-            </tr>
-        </thead>
-        <tbody id="packages-list">
-            <tr><td colspan="6" class="py-8 text-center text-[#8A8A8C]">載入中...</td></tr>
-        </tbody>
-    </table>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>套票名稱</th>
+                    <th>總次數</th>
+                    <th>售價</th>
+                    <th>有效期（天）</th>
+                    <th>狀態</th>
+                    <th class="text-end" style="width: 120px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="packages-list">
+                <tr><td colspan="6" class="py-5 text-center text-muted">載入中...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<!-- Modal -->
-<div id="package-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center" onclick="hidePackageModal()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4" onclick="event.stopImmediatePropagation()">
-        <div class="px-5 py-4 border-b flex items-center justify-between">
-            <div class="font-semibold text-lg" id="modal-title">新增套票</div>
-            <button onclick="hidePackageModal()" class="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
-        </div>
-
-        <div class="p-5 space-y-4">
-            <input type="hidden" id="package-id">
-
-            <div>
-                <label class="block text-sm font-medium mb-1">套票名稱 <span class="text-red-500">*</span></label>
-                <input type="text" id="package-name" class="salon-input" placeholder="經典面部護理 10 次卡">
+<!-- Modal (Bootstrap) -->
+<div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">新增套票</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">總次數 <span class="text-red-500">*</span></label>
-                    <input type="number" id="package-sessions" class="salon-input" value="10">
+            <div class="modal-body">
+                <input type="hidden" id="package-id">
+
+                <div class="mb-3">
+                    <label class="form-label">套票名稱 <span class="text-danger">*</span></label>
+                    <input type="text" id="package-name" class="form-control" placeholder="經典面部護理 10 次卡">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">售價（HK$） <span class="text-red-500">*</span></label>
-                    <input type="number" step="0.01" id="package-price" class="salon-input">
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">總次數 <span class="text-danger">*</span></label>
+                        <input type="number" id="package-sessions" class="form-control" value="10">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">售價（HK$） <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" id="package-price" class="form-control">
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">有效期（天）</label>
+                    <input type="number" id="package-validity" class="form-control" value="365">
+                    <div class="form-text">通常建議 365 天（一年）</div>
                 </div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium mb-1">有效期（天）</label>
-                <input type="number" id="package-validity" class="salon-input" value="365">
-                <p class="text-xs text-[#8A8A8C] mt-1">通常建議 365 天（一年）</p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" onclick="savePackage()" class="btn btn-primary" id="save-btn">新增套票</button>
             </div>
-        </div>
-
-        <div class="px-5 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-            <button onclick="hidePackageModal()" class="salon-btn salon-btn-secondary">取消</button>
-            <button onclick="savePackage()" class="salon-btn salon-btn-primary" id="save-btn">新增套票</button>
         </div>
     </div>
 </div>
@@ -150,9 +153,11 @@ function showAddModal() {
 
     document.getElementById('save-btn').textContent = '新增套票';
 
-    document.getElementById('package-modal').classList.remove('hidden');
-    document.getElementById('package-modal').classList.add('flex');
-    setTimeout(() => document.getElementById('package-name').focus(), 100);
+    const modalEl = document.getElementById('packageModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    setTimeout(() => document.getElementById('package-name').focus(), 400);
 }
 
 async function editPackage(id) {
@@ -170,17 +175,18 @@ async function editPackage(id) {
 
         document.getElementById('save-btn').textContent = '儲存變更';
 
-        document.getElementById('package-modal').classList.remove('hidden');
-        document.getElementById('package-modal').classList.add('flex');
+        const modalEl = document.getElementById('packageModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
     } catch (err) {
         SalonEase.toast(err.message, 'error');
     }
 }
 
 function hidePackageModal() {
-    const modal = document.getElementById('package-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalEl = document.getElementById('packageModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 async function savePackage() {
