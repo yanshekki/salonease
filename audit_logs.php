@@ -152,9 +152,19 @@ function auditLogs() {
         serverActionCounts: {},
 
         init() {
+            this.setDefaultDateRange();
             this.loadActions();
             this.loadStaff();
             this.loadLogs();
+        },
+
+        setDefaultDateRange() {
+            const today = new Date();
+            const fromDate = new Date(today);
+            fromDate.setDate(today.getDate() - 30);
+
+            this.to = today.toISOString().split('T')[0];
+            this.from = fromDate.toISOString().split('T')[0];
         },
 
         async loadActions() {
@@ -248,8 +258,7 @@ function auditLogs() {
         },
 
         resetFilters() {
-            this.from = '';
-            this.to = '';
+            this.setDefaultDateRange();
             this.selectedAction = '';
             this.selectedStaff = '';
             this.search = '';
