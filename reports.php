@@ -140,6 +140,15 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- A67：Phase 3 - 本月交易數 vs 上月（簡單摘要） -->
+    <div class="mb-3">
+        <div class="small text-muted mb-1">本月交易數 vs 上月</div>
+        <div class="d-flex align-items-baseline gap-2">
+            <span class="fw-medium" x-text="summary.total_transactions + ' 單'"></span>
+            <span class="small" :class="getChangeClass(summary.total_transactions, prevSummary.total_transactions)" x-text="getChangeText(summary.total_transactions, prevSummary.total_transactions)"></span>
+        </div>
+    </div>
+
     <!-- 簡單視覺圖表 -->
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-6">
