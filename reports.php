@@ -485,6 +485,13 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'F5') { e.preventDefault(); data.loadAll(); }
 });
 
+// TODO (Phase 3 JS 結構清理 - A108 開始):
+// 以下所有 async load*() 方法（loadSummary、loadPrevSummary、loadPaymentBreakdown 等）
+// 本應屬於 reportsApp() return object 內部，
+// 但因之前多次重複 search_replace 而變成 orphaned code，位於全域 scope。
+// 這是目前 reports.php 最大的結構問題，需逐步移返去正確位置。
+// 目前這些方法實際上不會被 Alpine component 正確呼叫。
+
 
         async loadSummary() {
             try {
