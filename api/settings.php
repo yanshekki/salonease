@@ -125,6 +125,7 @@ switch ($action) {
                     quick_restock_5 = ?,
                     quick_restock_10 = ?,
                     quick_restock_20 = ?,
+                    customer_portal_enabled = ?,
                     updated_at = NOW()
                 WHERE id = 1
             ");
@@ -135,7 +136,8 @@ switch ($action) {
                 $reminder_email_enabled, $reminder_from,
                 $reminder_sms_enabled, $twilio_sid, $twilio_token, $twilio_from,
                 $points_earn_rate, $points_redemption_rate,
-                $quick_restock_5, $quick_restock_10, $quick_restock_20
+                $quick_restock_5, $quick_restock_10, $quick_restock_20,
+                $customer_portal_enabled
             ]);
 
             if ($stmt->rowCount() === 0) {
@@ -148,8 +150,8 @@ switch ($action) {
                      reminder_email_enabled, reminder_from_email,
                      reminder_sms_enabled, twilio_account_sid, twilio_auth_token, twilio_from_number,
                      points_earn_rate, points_redemption_rate,
-                     quick_restock_5, quick_restock_10, quick_restock_20)
-                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     quick_restock_5, quick_restock_10, quick_restock_20, customer_portal_enabled)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         salon_name = VALUES(salon_name),
                         address = VALUES(address),
@@ -171,7 +173,8 @@ switch ($action) {
                         points_redemption_rate = VALUES(points_redemption_rate),
                         quick_restock_5 = VALUES(quick_restock_5),
                         quick_restock_10 = VALUES(quick_restock_10),
-                        quick_restock_20 = VALUES(quick_restock_20)
+                        quick_restock_20 = VALUES(quick_restock_20),
+                        customer_portal_enabled = VALUES(customer_portal_enabled)
                 ");
                 $stmt->execute([
                     $salon_name, $address, $phone, $printer_width,
@@ -180,7 +183,8 @@ switch ($action) {
                     $reminder_email_enabled, $reminder_from,
                     $reminder_sms_enabled, $twilio_sid, $twilio_token, $twilio_from,
                     $points_earn_rate, $points_redemption_rate,
-                    $quick_restock_5, $quick_restock_10, $quick_restock_20
+                    $quick_restock_5, $quick_restock_10, $quick_restock_20,
+                    $customer_portal_enabled
                 ]);
             }
 
