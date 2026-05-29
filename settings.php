@@ -310,6 +310,9 @@ include __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary me-2" @click="testEmail()">
+                        測試發送 Email
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-primary" @click="testSms()">
                         測試發送 SMS
                     </button>
@@ -317,6 +320,38 @@ include __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="small text-muted mt-1">目前為骨架模式，填入後可在 send_sms() 裡快速切換成真實發送。</div>
+            </div>
+
+            <!-- Phase 7 A: 提醒執行狀態與健康監控 -->
+            <div class="mt-3 border rounded p-3 bg-light">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="fw-semibold">提醒執行狀態</div>
+                    <button type="button" class="btn btn-sm btn-primary" @click="runFullReminderCheck()" :disabled="runningReminders">
+                        {{ runningReminders ? '執行中...' : '立即執行全量提醒檢查' }}
+                    </button>
+                </div>
+
+                <div class="row g-2 small">
+                    <div class="col-12 col-md-4">
+                        <div class="border bg-white rounded p-2">
+                            <div class="text-muted tiny">最後執行時間</div>
+                            <div class="fw-semibold" x-text="reminderStats?.last_run_at ? new Date(reminderStats.last_run_at).toLocaleString('zh-HK') : '尚未有記錄'"></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="border bg-white rounded p-2">
+                            <div class="text-muted tiny">待重試失敗記錄</div>
+                            <div class="fs-5 fw-bold" :class="reminderStats?.pending_retries > 0 ? 'text-danger' : 'text-success'" x-text="reminderStats?.pending_retries || 0"></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="border bg-white rounded p-2">
+                            <div class="text-muted tiny">最近 7 天成功率</div>
+                            <div class="fs-5 fw-bold" x-text="(reminderStats?.last_7_days?.success_rate || 100) + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tiny text-muted mt-1">執行全量檢查會觸發所有活躍計劃的提醒規則 + 自動重試失敗項目。</div>
             </div>
 
             <!-- Phase 5: 提醒發送統計 -->
@@ -617,6 +652,7 @@ function shopSettings() {
             twilio_from_number: '',
             points_earn_rate: 10,
             reminderStats: null,
+            runningReminders: false,
             points_redemption_rate: 10,
             quick_restock_5: 5,
             quick_restock_10: 10,
@@ -722,6 +758,48 @@ function shopSettings() {
                 SalonEase.toast(res.message || '測試 SMS 已發送');
             } catch (err) {
                 SalonEase.toast(err.message || '測試失敗', 'error');
+            }
+        },
+
+        async testEmail() {
+            const testEmailAddr = prompt('請輸入測試 Email 地址：');
+            if (!testEmailAddr) return;
+
+            try {
+                const res = await SalonEase.fetch('/api/settings.php?action=test_email', {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        csrf_token: window.CSRF_TOKEN,
+                        test_email: testEmailAddr
+                    })
+                });
+
+                SalonEase.toast(res.message || '測試 Email 已發送');
+            } catch (err) {
+                SalonEase.toast(err.message || '測試失敗', 'error');
+            }
+        },
+
+        // Phase 7 A：一鍵執行全量提醒檢查（含自動重試）
+        async runFullReminderCheck() {
+            if (!confirm('確定要立即執行一次全量提醒檢查嗎？\n這會檢查所有活躍計劃並發送該發送的提醒 + 重試失敗項目。')) return;
+
+            this.runningReminders = true;
+            try {
+                const res = await SalonEase.fetch('/api/plan_reminders.php?action=run_scheduled', {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        csrf_token: window.CSRF_TOKEN
+                    })
+                });
+
+                SalonEase.toast(res.message || '提醒檢查完成');
+                // 刷新統計
+                await this.loadReminderStats();
+            } catch (err) {
+                SalonEase.toast(err.message || '執行失敗', 'error');
+            } finally {
+                this.runningReminders = false;
             }
         },
 
