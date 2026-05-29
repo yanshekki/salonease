@@ -1,44 +1,57 @@
-# SalonEase API 測試系統 - 執行指南
+# SalonEase API 測試系統 - 執行指南（專業級）
 
-## 快速開始（伺服器端）
+## 推薦伺服器驗證流程（上傳後一鍵執行）
 
 ```bash
-# 1. 先上傳整個 tests/ 目錄到 https://salonease.ysk.hk/tests/
+# 1. 上傳整個 tests/ 目錄到 https://salonease.ysk.hk/tests/
 
-# 2. SSH 登入伺服器，進入專案根目錄
-cd /var/www/salonease   # 或實際路徑
+# 2. SSH 進入專案根目錄
+cd /var/www/salonease   # 請改成實際路徑
 
-# 3. 建立測試資料（強烈建議先執行）
-php tests/fixtures/seed_test_data.php
+# 3. 一鍵完整驗證（強烈推薦）
+php tests/run_full_verification.php
+```
 
-# 4. 執行最高優先的佣金計算測試
+此指令會：
+- 自動準備豐富測試資料（seed）
+- 執行所有測試
+- 產生專業 HTML 報告
+- 輸出清晰總結
+
+## 其他常用指令
+
+```bash
+# 只執行最高優先的佣金計算測試
 php tests/api/test_sales_checkout_commission.php
 
-# 5. 或使用主控程式（未來支援更多過濾）
-php tests/run_tests.php --api=sales
+# 執行特定模組 + HTML 報告
+php tests/run_tests.php --api=commission --report=html
+
+# 帶 seed 執行（如果想手動控制）
+php tests/run_tests.php --seed --report=html
 ```
+
+## 驗證重點（務必檢查）
+
+1. 打開 `tests/reports/` 下的最新 HTML 報告
+2. **特別關注** 紅色失敗項目，尤其是：
+   - 佣金計算專項測試（含 E2E 費率變更）
+   - 整合測試（積分扣減、完整付款計劃流程）
+3. 確認所有自動驗證（assertCommissionEqual）全部通過
 
 ## 目前已完成
 
-- ✅ 佣金計算專項測試矩陣 C001–C011（純函數規格 + bccomp 精準斷言）
-- ✅ `calculateExpectedCommissions()` 完全複製生產邏輯
-- ✅ `assertCommissionEqual()` 使用 bccomp 避免浮點誤差
-- ✅ 種子腳本（建立 4 角色測試帳號 + 設定已知佣金率）
-- ✅ 真實 API 煙霧測試（登入 + 結帳 + 印出唯一 notes 供人工交叉驗證）
+- ✅ 佣金計算專項測試矩陣 C001–C011（純函數 + 真實自動驗證）
+- ✅ 跨模組 E2E（設定變更 → 結帳 → 佣金驗證）
+- ✅ 付款、付款計劃、員工、提醒、設定、客戶、產品、銷售查詢、Auth
+- ✅ 4 角色權限矩陣
+- ✅ 專業 HTML/JSON 報告 + Bootstrap 環境初始化
+- ✅ 豐富種子資料（支援多數自動驗證真正跑起來）
 
-## 驗證方法
+## 注意事項
 
-1. 執行測試後，複製輸出的 `API_TEST_COMMISSION_xxxx` notes
-2. 前往 https://salonease.ysk.hk/commissions.php
-3. 篩選今日 + 相關員工
-4. 對照終端機印出的「純函數預期值」檢查是否完全一致
+- 所有測試只在真實路徑開發
+- 嚴格遵守：本地 php -l → commit & push → server-only 驗證 → merge --no-ff
+- 佣金計算是最高風險領域，已有最強保護
 
-全部一致才算通過，可進行 --no-ff merge。
-
-## 下一步
-
-- 補充其他 API 測試檔案（payments, payment_plans, staff 等）
-- 加強 commissions API 支援 sale_id 過濾，讓整合測試可全自動斷言
-- 產生 HTML/JSON 報告
-
-嚴格遵守：本地 php -l → commit & push → server-only 驗證 → merge --no-ff
+如有任何失敗，請把報告關鍵部分貼給我，我會立即處理。

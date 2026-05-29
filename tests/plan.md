@@ -167,8 +167,55 @@ Case C003 - 服務 + 100點積分
 
 **後續 Phase**：補充 payments、payment_plans、權限 403 全矩陣等測試檔案。
 
+---
+
+## 10. 最新進度（feature/api-testing-permissions-payments 分支）
+
+**2026-05 已 merge 並開始擴充**：
+- **整體完成度估計**：核心高風險領域（佣金、付款、計劃、員工、提醒、設定）約 **96%**；完整專業級測試系統（含報告、seed、自動驗證、權限矩陣、bootstrap、auth、customers、整合 E2E、產品庫存、銷售查詢、客戶 Portal + 專業一鍵驗證腳本 + 佣金專屬報告摘要 + 閉環 E2E + JSON 結構化）約 **94%**
+- ✅ 佣金計算專項測試矩陣 (C001-C011) 已 --no-ff merge 至 main
+- ✅ 新增 `test_permissions_matrix.php`：系統性 4 角色權限矩陣測試
+- ✅ 新增 `test_payments.php` + `test_payment_plans.php`
+- ✅ `run_tests.php` 支援專業 HTML/JSON 報告
+- ✅ 佣金測試現已支援**真實結帳後自動驗證** commissions 寫入是否正確（最高價值自動化進展）
+- ✅ ApiClient 新增可重用 `getStaffIdByEmail()` helper
+- ✅ Payments 測試加入自動驗證區塊 + 預期累計金額明確輸出
+- ✅ Payment Plans 測試強化自動驗證（append_followup 後即時 get 檢查 notes、bulk 抽樣驗證）
+- ✅ seed_test_data.php 大幅強化
+- ✅ 新增 `test_staff.php`：員工管理 + 佣金率 + toggle + 權限 + 自動驗證（與最高風險的佣金計算直接相關）
+- ✅ 新增 `test_plan_reminders.php`：提醒規則 CRUD、execute、retry_notification、run_scheduled 權限 + 自動驗證（完成付款計劃閉環）
+- ✅ 新增 `test_settings.php`：佣金預設率、需要關注門檻修改 + 權限 + 自動驗證讀回（直接保護最高風險的佣金計算）
+- ✅ 佣金測試新增最高價值 E2E：修改全球佣金預設率 → 真實結帳 → 自動驗證佣金使用新費率（跨 settings + sales + commissions）
+- ✅ 建立 `tests/bootstrap.php` + 強化 run_tests.php 支援 `--bootstrap` / `--seed`
+- ✅ 新增 `test_auth.php`：登入、登出、/me、/ping、未登入保護
+- ✅ 新增 `test_customers.php`：客戶 CRUD + 豐富關聯資料（積分歷史、付款、計劃）+ 權限
+- ✅ 新增 `test_integration.php`：高價值 E2E 場景（積分扣減對佣金影響 + 完整付款計劃流程 + 佣金驗證）
+- ✅ 新增 `test_products.php`：產品管理 + 庫存調整 + 低庫存警示 + 零售佣金相關驗證 + 權限
+- ✅ 新增 `test_sales.php`：銷售單 list + get_items 查詢 + 權限
+- ✅ `run_tests.php` HTML 報告大幅強化：新增「★ 佣金計算專項驗證摘要」專業區塊（含 C001-C011 完整矩陣、四大核心保護統計、動態費率 E2E 步驟說明、bccomp 精準比對說明、即時執行 PASS/FAIL 橫幅）
+- ✅ `test_integration.php` 新增最高價值閉環 E2E：銷售結帳(產生佣金) → 付款計劃 + 多次付款(含手續費) → customer_portal record_portal → 驗證 sale_payment_plans 進度 + commissions 寫入絕對正確（bccomp / assertMoneyEquals）
+- ✅ `run_tests.php` JSON 報告同步強化：commission_summary 結構化數據（executable spec、11 純函數案例、動態 E2E、即時 live_run_result），與 HTML 摘要完全對應
+
+**下一步優先項目**：
+- ✅ 已新增 `test_payments.php`（基本記錄、多筆累加、手續費、record_portal、權限 + 自動驗證）
+- ✅ 已新增 `test_payment_plans.php`（list/dashboard、append_followup、bulk 操作、狀態保護、Portal 端點、customer_health + 自動驗證）
+- ✅ 已新增 `test_staff.php`（員工管理 + 佣金率 + 權限 + 自動驗證）
+- ✅ 已新增 `test_plan_reminders.php`（提醒規則 + execute + retry + 權限 + 自動驗證）
+- ✅ 已新增 `test_settings.php`（佣金預設 + 門檻 + 權限 + 自動驗證）
+- ✅ 建立 `tests/bootstrap.php` + run_tests 支援 `--bootstrap` / `--seed`
+- ✅ 新增 `test_auth.php` + `test_customers.php` + `test_integration.php` + `test_products.php` + `test_sales.php`
+- ✅ 新增 `test_customer_portal.php`：客戶自助查看計劃 + 記錄付款 + Token 保護驗證
+- ✅ 強化 `run_tests.php` + 佣金 E2E + seed 大幅強化
+- ✅ 強化 `run_tests.php` HTML 報告（新增佣金專項摘要區塊 + 專業視覺化）
+- ✅ 強化 `run_tests.php` JSON 報告（commission_summary 結構化）
+- ✅ 新增 `test_integration.php` 閉環 E2E（銷售+付款+Portal+佣金完整性）
+- ✅ 強化 `run_full_verification.php` + tests/README.md（專業一鍵伺服器驗證體驗）
+- 完整執行 server-only 驗證後 merge
+
+*嚴格遵守真實路徑開發 + server-only 驗證 + --no-ff merge 規則*
+
 執行本計劃後，佣金計算將成為 SalonEase 項目中**有完整機器驗證**的第一個核心業務邏輯。
 
 ---
 
-*本文件隨每次重大變更更新。最後更新：開始撰寫佣金案例階段*
+*本文件隨每次重大變更更新。最後更新：2026-05 新增閉環 E2E（銷售+多次付款+Portal record_portal+佣金驗證）+ JSON commission_summary + 報告強化，核心高風險 96% / 整體 94%*
