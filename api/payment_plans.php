@@ -17,6 +17,68 @@ require_login();
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// Phase 8: 客戶自助 Portal 專用端點（token 保護，無需員工登入）
+if (in_array($action, ['list_by_customer_portal', 'get_portal'])) {
+    $portalToken = trim(get('token', ''));
+    $portalCustomer = validateCustomerPortalToken($portalToken);
+
+    if (!$portalCustomer) {
+        json_error('Portal 存取連結已失效或無效', 401);
+    }
+
+    if ($action === 'list_by_customer_portal') {
+        $sql = "
+            SELECT 
+                spp.*,
+                s.id as sale_id,
+                s.total as sale_total,
+                s.payment_status,
+                c.id as customer_id,
+                c.name as customer_name,
+                c.phone as customer_phone,
+                (SELECT COUNT(*) FROM payments WHERE plan_id = spp.id AND is_refund = 0) as payments_made
+            FROM sale_payment_plans spp
+            JOIN sales s ON spp.sale_id = s.id
+            JOIN customers c ON s.customer_id = c.id
+            WHERE c.id = ? AND spp.status = 'active'
+            ORDER BY spp.created_at DESC
+        ";
+        $plans = db_query($sql, [$portalCustomer['customer_id']]);
+
+        // 附加簡單進度資訊
+        foreach ($plans as &$p) {
+            $p['progress'] = $p['total_installments'] > 0 
+                ? round( ($p['payments_made'] / $p['total_installments']) * 100 ) 
+                : 0;
+        }
+
+        json_success($plans);
+        exit;
+    }
+
+    if ($action === 'get_portal') {
+        $planId = (int)get('id', 0);
+        if ($planId <= 0) json_error('缺少 plan id');
+
+        $plan = db_query_one("
+            SELECT spp.*, s.id as sale_id, s.total as sale_total, c.id as customer_id, c.name as customer_name
+            FROM sale_payment_plans spp
+            JOIN sales s ON spp.sale_id = s.id
+            JOIN customers c ON s.customer_id = c.id
+            WHERE spp.id = ? AND c.id = ?
+        ", [$planId, $portalCustomer['customer_id']]);
+
+        if (!$plan) json_error('找不到計劃或無權限');
+
+        $plan['payments'] = db_query("
+            SELECT * FROM payments WHERE plan_id = ? ORDER BY paid_at DESC
+        ", [$planId]);
+
+        json_success($plan);
+        exit;
+    }
+}
+
 switch ($action) {
 
     case 'summary':

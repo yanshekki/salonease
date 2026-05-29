@@ -340,6 +340,37 @@ switch ($action) {
         json_success($stats);
         break;
 
+    // Phase 8: 生成客戶 Portal 連結
+    case 'generate_portal_link':
+        if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
+
+        if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
+            json_error('只有管理員或店長可以生成連結', 403);
+        }
+
+        $customerId = (int)post('customer_id', 0);
+        $phone = trim(post('phone', ''));
+
+        if ($customerId <= 0 && empty($phone)) {
+            json_error('請提供客戶 ID 或電話');
+        }
+
+        if ($customerId <= 0 && $phone) {
+            $cust = db_query_one("SELECT id FROM customers WHERE phone = ? LIMIT 1", [$phone]);
+            if ($cust) $customerId = (int)$cust['id'];
+        }
+
+        if ($customerId <= 0) {
+            json_error('找不到該客戶');
+        }
+
+        $token = generateCustomerPortalToken($customerId, 45); // 45天有效
+        $link = "https://salonease.ysk.hk/customer_portal.php?token={$token}";
+
+        json_success(['link' => $link, 'customer_id' => $customerId]);
+        break;
+
     default:
         json_error('未知的操作', 400);
 }

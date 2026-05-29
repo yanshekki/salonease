@@ -373,6 +373,25 @@ include __DIR__ . '/includes/header.php';
                 <div class="tiny text-muted mt-1">執行全量檢查會觸發所有活躍計劃的提醒規則 + 自動重試失敗項目。</div>
             </div>
 
+            <!-- Phase 8: 客戶自助服務 Portal -->
+            <div class="mt-3 border rounded p-3 bg-light">
+                <div class="fw-semibold mb-2">客戶自助服務 Portal（Phase 8）</div>
+                <div class="small mb-2">客戶可透過安全連結自行查看計劃進度及記錄付款，大幅減少人工操作。</div>
+
+                <div class="d-flex flex-wrap gap-2 align-items-end">
+                    <div>
+                        <label class="form-label tiny text-muted mb-1">客戶電話或 ID</label>
+                        <input type="text" id="portal-customer-input" class="form-control form-control-sm" placeholder="電話或客戶ID" style="width:180px;">
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="generatePortalLink()">生成 Portal 連結</button>
+                </div>
+                <div id="portal-link-result" class="mt-2 small d-none">
+                    <div class="text-muted">連結（有效期約45天）：</div>
+                    <div class="font-mono small bg-white p-1 border rounded" id="portal-link-text" style="word-break:break-all;"></div>
+                    <button class="btn btn-sm btn-outline-secondary mt-1" onclick="copyPortalLink()">複製連結</button>
+                </div>
+            </div>
+
             <!-- Phase 7 A: 最近失敗記錄（快速重試） -->
             <div class="mt-3" x-show="reminderStats && reminderStats.recent_failed && reminderStats.recent_failed.length > 0">
                 <div class="fw-semibold mb-2">最近失敗記錄（可快速重試）</div>
@@ -874,6 +893,48 @@ function shopSettings() {
                 this.reminderStats = res.data;
             } catch (e) {
                 console.warn('載入提醒統計失敗', e);
+            }
+        },
+
+        // Phase 8: 生成客戶 Portal 連結
+        async generatePortalLink() {
+            const input = document.getElementById('portal-customer-input');
+            if (!input || !input.value.trim()) {
+                alert('請輸入客戶電話或 ID');
+                return;
+            }
+
+            const val = input.value.trim();
+            const body = new URLSearchParams({ csrf_token: window.CSRF_TOKEN });
+
+            if (/^\d+$/.test(val)) {
+                body.append('customer_id', val);
+            } else {
+                body.append('phone', val);
+            }
+
+            try {
+                const res = await SalonEase.fetch('/api/settings.php?action=generate_portal_link', {
+                    method: 'POST',
+                    body: body
+                });
+
+                const resultDiv = document.getElementById('portal-link-result');
+                const textEl = document.getElementById('portal-link-text');
+                textEl.textContent = res.data.link;
+                resultDiv.classList.remove('d-none');
+                window._lastPortalLink = res.data.link;
+
+            } catch (err) {
+                alert('生成失敗：' + (err.message || ''));
+            }
+        },
+
+        copyPortalLink() {
+            if (window._lastPortalLink) {
+                navigator.clipboard.writeText(window._lastPortalLink).then(() => {
+                    alert('已複製到剪貼簿');
+                });
             }
         },
 

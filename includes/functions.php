@@ -457,7 +457,7 @@ function executePaymentReminder(int $ruleId): array
 {
     $rule = db_query_one("
         SELECT r.*, p.status as plan_status, p.start_date, p.total_installments,
-               sa.id as sale_id, c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+               sa.id as sale_id, c.id as customer_id, c.name as customer_name, c.email as customer_email, c.phone as customer_phone
         FROM plan_reminder_rules r
         JOIN sale_payment_plans p ON p.id = r.plan_id
         JOIN sales sa ON sa.id = p.sale_id
@@ -523,11 +523,20 @@ function executePaymentReminder(int $ruleId): array
 
     $now = date('Y-m-d H:i:s');
     $subject = "付款計劃提醒 - 計劃 #{$rule['plan_id']}";
+
+    // Phase 8: 加入客戶自助 Portal 連結
+    $portalLink = '';
+    if (!empty($rule['customer_id'])) {
+        $portalToken = generateCustomerPortalToken($rule['customer_id']);
+        $portalLink = "\n\n查看你的付款計劃詳情及記錄付款：\nhttps://salonease.ysk.hk/customer_portal.php?token={$portalToken}";
+    }
+
     $message = "親愛的 {$rule['customer_name']}：\n\n";
     $message .= "您的付款計劃 #{$rule['plan_id']} ";
     $message .= ($rule['reminder_type'] === 'before_due' ? "即將到期" : "已逾期") . "。\n";
-    $message .= "請盡快安排付款。\n\n";
-    $message .= "SalonEase";
+    $message .= "請盡快安排付款。";
+    $message .= $portalLink;
+    $message .= "\n\nSalonEase";
 
     $anySuccess = false;
     $errors = [];
@@ -565,6 +574,10 @@ function executePaymentReminder(int $ruleId): array
         $smsMessage = "SalonEase 付款計劃提醒：計劃 #{$rule['plan_id']} " .
                       ($rule['reminder_type'] === 'before_due' ? "即將到期" : "已逾期") .
                       "，請盡快付款。";
+        if (!empty($rule['customer_id'])) {
+            $smsPortalToken = generateCustomerPortalToken($rule['customer_id']);
+            $smsMessage .= " 詳情：https://salonease.ysk.hk/customer_portal.php?token={$smsPortalToken}";
+        }
 
         if (send_sms($rule['customer_phone'] ?? '', $smsMessage)) {
             $anySuccess = true;
