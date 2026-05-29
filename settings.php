@@ -354,6 +354,30 @@ include __DIR__ . '/includes/header.php';
                 <div class="tiny text-muted mt-1">執行全量檢查會觸發所有活躍計劃的提醒規則 + 自動重試失敗項目。</div>
             </div>
 
+            <!-- Phase 7 A: 最近失敗記錄（快速重試） -->
+            <div class="mt-3" x-show="reminderStats && reminderStats.recent_failed && reminderStats.recent_failed.length > 0">
+                <div class="fw-semibold mb-2">最近失敗記錄（可快速重試）</div>
+                <div class="small border rounded p-2 bg-light" style="max-height: 140px; overflow-y: auto;">
+                    <template x-for="item in (reminderStats?.recent_failed || [])" :key="item.id">
+                        <div class="d-flex align-items-center justify-content-between mb-1 pb-1 border-bottom">
+                            <div class="text-truncate" style="max-width: 380px;">
+                                <span class="text-muted" x-text="new Date(item.sent_at).toLocaleString('zh-HK', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'})"></span>
+                                <span class="ms-1" x-text="item.channel.toUpperCase()"></span>
+                                <span class="ms-1" x-text="'#' + item.plan_id"></span>
+                                <span class="ms-1 text-muted" x-text="item.customer_name ? '(' + item.customer_name + ')' : ''"></span>
+                                <span class="badge bg-danger ms-1" x-text="item.retry_count > 0 ? '已重試 ' + item.retry_count + ' 次' : ''" x-show="item.retry_count > 0"></span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" 
+                                    @click="retryFromSettings(item.id)" 
+                                    :disabled="retryingId === item.id"
+                                    x-text="retryingId === item.id ? '重試中...' : '重試'">
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                <div class="tiny text-muted mt-1">點擊「重試」會即時嘗試重新發送，結果會更新上方統計。</div>
+            </div>
+
             <!-- Phase 5: 提醒發送統計 -->
             <div class="mt-3" x-show="reminderStats">
                 <div class="fw-semibold mb-2">提醒發送統計</div>
@@ -653,6 +677,7 @@ function shopSettings() {
             points_earn_rate: 10,
             reminderStats: null,
             runningReminders: false,
+            retryingId: null,
             points_redemption_rate: 10,
             quick_restock_5: 5,
             quick_restock_10: 10,
@@ -800,6 +825,27 @@ function shopSettings() {
                 SalonEase.toast(err.message || '執行失敗', 'error');
             } finally {
                 this.runningReminders = false;
+            }
+        },
+
+        // Phase 7 A：從設定頁快速重試單一失敗記錄
+        async retryFromSettings(notificationId) {
+            this.retryingId = notificationId;
+            try {
+                const res = await SalonEase.fetch('/api/plan_reminders.php?action=retry_notification', {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        id: notificationId,
+                        csrf_token: window.CSRF_TOKEN
+                    })
+                });
+
+                SalonEase.toast(res.message || '重試完成');
+                await this.loadReminderStats();   // 刷新統計 + 失敗列表
+            } catch (err) {
+                SalonEase.toast(err.message || '重試失敗', 'error');
+            } finally {
+                this.retryingId = null;
             }
         },
 
