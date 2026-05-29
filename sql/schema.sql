@@ -420,3 +420,52 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- 完成提示
 -- 執行本檔後，請繼續執行 seeds.sql 插入測試資料
 -- =====================================================
+
+-- =====================================================
+-- Phase 5: 付款計劃提醒系統
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `plan_reminder_rules` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `plan_id` INT UNSIGNED NOT NULL,
+    `reminder_type` ENUM('before_due', 'after_due') NOT NULL DEFAULT 'before_due',
+    `offset_days` TINYINT UNSIGNED NOT NULL DEFAULT 3,
+    `channel` ENUM('email','sms','both') NOT NULL DEFAULT 'email',
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `last_sent_at` DATETIME DEFAULT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_rule_plan` (`plan_id`),
+    INDEX `idx_rule_active` (`is_active`),
+    CONSTRAINT `fk_reminder_rule_plan` FOREIGN KEY (`plan_id`) REFERENCES `sale_payment_plans`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='付款計劃提醒規則（Phase 5）';
+
+CREATE TABLE IF NOT EXISTS `plan_notifications` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `plan_id` INT UNSIGNED NOT NULL,
+    `reminder_rule_id` INT UNSIGNED DEFAULT NULL,
+    `channel` ENUM('email','sms') NOT NULL,
+    `sent_at` DATETIME NOT NULL,
+    `status` ENUM('sent','failed') NOT NULL DEFAULT 'sent',
+    `subject` VARCHAR(255) DEFAULT NULL,
+    `content` TEXT,
+    `error_message` TEXT,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_notify_plan` (`plan_id`),
+    INDEX `idx_notify_sent` (`sent_at`),
+    CONSTRAINT `fk_notification_plan` FOREIGN KEY (`plan_id`) REFERENCES `sale_payment_plans`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_notification_rule` FOREIGN KEY (`reminder_rule_id`) REFERENCES `plan_reminder_rules`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='付款計劃提醒發送記錄（Phase 5）';
+
+-- Phase 5: 提醒 Email 設定
+ALTER TABLE settings 
+    ADD COLUMN IF NOT EXISTS `reminder_email_enabled` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否啟用實際寄送付款計劃提醒',
+    ADD COLUMN IF NOT EXISTS `reminder_from_email` VARCHAR(100) DEFAULT NULL COMMENT '提醒郵件寄件者 Email';
+
+-- Phase 5: Twilio SMS 設定
+ALTER TABLE settings 
+    ADD COLUMN IF NOT EXISTS `twilio_account_sid`   VARCHAR(64) DEFAULT NULL COMMENT 'Twilio Account SID',
+    ADD COLUMN IF NOT EXISTS `twilio_auth_token`    VARCHAR(64) DEFAULT NULL COMMENT 'Twilio Auth Token',
+    ADD COLUMN IF NOT EXISTS `twilio_from_number`   VARCHAR(20) DEFAULT NULL COMMENT 'Twilio 發送號碼',
+    ADD COLUMN IF NOT EXISTS `reminder_sms_enabled` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否啟用實際發送 SMS 提醒';

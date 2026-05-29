@@ -34,6 +34,12 @@ switch ($action) {
                 'default_low_stock_threshold' => 5,
                 'needs_attention_days_threshold' => 45,
                 'needs_attention_progress_threshold' => 30,
+                'reminder_email_enabled' => 0,
+                'reminder_from_email' => '',
+                'reminder_sms_enabled' => 0,
+                'twilio_account_sid' => '',
+                'twilio_auth_token' => '',
+                'twilio_from_number' => '',
                 'points_earn_rate' => 10,
                 'points_redemption_rate' => 10,
                 'quick_restock_5' => 5,
@@ -71,6 +77,16 @@ switch ($action) {
         $needs_days = max(7, min(365, (int)post('needs_attention_days_threshold', 45)));
         $needs_progress = max(5, min(90, (int)post('needs_attention_progress_threshold', 30)));
 
+        // Phase 5：提醒 Email 設定
+        $reminder_email_enabled = (int)post('reminder_email_enabled', 0);
+        $reminder_from = trim(post('reminder_from_email', ''));
+
+        // Phase 5：Twilio SMS 設定
+        $reminder_sms_enabled = (int)post('reminder_sms_enabled', 0);
+        $twilio_sid   = trim(post('twilio_account_sid', ''));
+        $twilio_token = trim(post('twilio_auth_token', ''));
+        $twilio_from  = trim(post('twilio_from_number', ''));
+
         // 忠誠度積分率（A18）
         $points_earn_rate = max(1, min(100, (int)post('points_earn_rate', 10)));
         $points_redemption_rate = max(1, min(100, (int)post('points_redemption_rate', 10)));
@@ -98,6 +114,12 @@ switch ($action) {
                     default_low_stock_threshold = ?,
                     needs_attention_days_threshold = ?,
                     needs_attention_progress_threshold = ?,
+                    reminder_email_enabled = ?,
+                    reminder_from_email = ?,
+                    reminder_sms_enabled = ?,
+                    twilio_account_sid = ?,
+                    twilio_auth_token = ?,
+                    twilio_from_number = ?,
                     points_earn_rate = ?,
                     points_redemption_rate = ?,
                     quick_restock_5 = ?,
@@ -110,6 +132,8 @@ switch ($action) {
                 $salon_name, $address, $phone, $printer_width,
                 $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
                 $needs_days, $needs_progress,
+                $reminder_email_enabled, $reminder_from,
+                $reminder_sms_enabled, $twilio_sid, $twilio_token, $twilio_from,
                 $points_earn_rate, $points_redemption_rate,
                 $quick_restock_5, $quick_restock_10, $quick_restock_20
             ]);
@@ -121,9 +145,11 @@ switch ($action) {
                     (id, salon_name, address, phone, printer_width, 
                      default_commission_service, default_commission_retail, default_commission_open, default_low_stock_threshold,
                      needs_attention_days_threshold, needs_attention_progress_threshold,
+                     reminder_email_enabled, reminder_from_email,
+                     reminder_sms_enabled, twilio_account_sid, twilio_auth_token, twilio_from_number,
                      points_earn_rate, points_redemption_rate,
                      quick_restock_5, quick_restock_10, quick_restock_20)
-                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         salon_name = VALUES(salon_name),
                         address = VALUES(address),
@@ -135,6 +161,12 @@ switch ($action) {
                         default_low_stock_threshold = VALUES(default_low_stock_threshold),
                         needs_attention_days_threshold = VALUES(needs_attention_days_threshold),
                         needs_attention_progress_threshold = VALUES(needs_attention_progress_threshold),
+                        reminder_email_enabled = VALUES(reminder_email_enabled),
+                        reminder_from_email = VALUES(reminder_from_email),
+                        reminder_sms_enabled = VALUES(reminder_sms_enabled),
+                        twilio_account_sid = VALUES(twilio_account_sid),
+                        twilio_auth_token = VALUES(twilio_auth_token),
+                        twilio_from_number = VALUES(twilio_from_number),
                         points_earn_rate = VALUES(points_earn_rate),
                         points_redemption_rate = VALUES(points_redemption_rate),
                         quick_restock_5 = VALUES(quick_restock_5),
@@ -145,6 +177,8 @@ switch ($action) {
                     $salon_name, $address, $phone, $printer_width,
                     $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
                     $needs_days, $needs_progress,
+                    $reminder_email_enabled, $reminder_from,
+                    $reminder_sms_enabled, $twilio_sid, $twilio_token, $twilio_from,
                     $points_earn_rate, $points_redemption_rate,
                     $quick_restock_5, $quick_restock_10, $quick_restock_20
                 ]);
@@ -159,6 +193,93 @@ switch ($action) {
         } catch (Exception $e) {
             json_error('儲存失敗：' . $e->getMessage());
         }
+        break;
+
+    case 'test_sms':
+        if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
+
+        if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
+            json_error('只有管理員或店長可以測試 SMS', 403);
+        }
+
+        $testPhone = trim(post('test_phone'));
+        if (empty($testPhone)) {
+            json_error('請輸入測試手機號碼');
+        }
+
+        $testMessage = "【SalonEase 測試】這是一則 SMS 測試訊息。時間：" . date('Y-m-d H:i:s');
+
+        $success = send_sms($testPhone, $testMessage);
+
+        if ($success) {
+            json_success(null, '測試 SMS 已發送（請檢查手機）');
+        } else {
+            json_error('SMS 發送失敗，請檢查 Twilio 設定或錯誤日誌');
+        }
+        break;
+
+    case 'reminder_stats':
+        if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
+            json_error('權限不足', 403);
+        }
+
+        $stats = [
+            'last_7_days' => [
+                'email_sent' => 0,
+                'email_failed' => 0,
+                'sms_sent' => 0,
+                'sms_failed' => 0,
+                'total' => 0
+            ],
+            'last_30_days' => [
+                'email_sent' => 0,
+                'email_failed' => 0,
+                'sms_sent' => 0,
+                'sms_failed' => 0,
+                'total' => 0
+            ]
+        ];
+
+        // Last 7 days
+        $rows7 = db_query("
+            SELECT channel, status, COUNT(*) as cnt
+            FROM plan_notifications
+            WHERE sent_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            GROUP BY channel, status
+        ");
+        foreach ($rows7 as $row) {
+            $ch = $row['channel'];
+            $st = $row['status'];
+            $key = "{$ch}_{$st}";
+            if (isset($stats['last_7_days'][$key])) {
+                $stats['last_7_days'][$key] = (int)$row['cnt'];
+            }
+        }
+        $stats['last_7_days']['total'] = 
+            $stats['last_7_days']['email_sent'] + $stats['last_7_days']['email_failed'] +
+            $stats['last_7_days']['sms_sent'] + $stats['last_7_days']['sms_failed'];
+
+        // Last 30 days
+        $rows30 = db_query("
+            SELECT channel, status, COUNT(*) as cnt
+            FROM plan_notifications
+            WHERE sent_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY channel, status
+        ");
+        foreach ($rows30 as $row) {
+            $ch = $row['channel'];
+            $st = $row['status'];
+            $key = "{$ch}_{$st}";
+            if (isset($stats['last_30_days'][$key])) {
+                $stats['last_30_days'][$key] = (int)$row['cnt'];
+            }
+        }
+        $stats['last_30_days']['total'] = 
+            $stats['last_30_days']['email_sent'] + $stats['last_30_days']['email_failed'] +
+            $stats['last_30_days']['sms_sent'] + $stats['last_30_days']['sms_failed'];
+
+        json_success($stats);
         break;
 
     default:

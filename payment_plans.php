@@ -32,6 +32,9 @@ $extraJs = 'hotkeys.js';
         <button onclick="showCreatePlanModal()" class="btn btn-primary">
             <span>+ 新增計劃</span>
         </button>
+        <button onclick="runScheduledReminders()" class="btn btn-outline-warning" title="手動執行一次全量提醒檢查">
+            執行全量提醒檢查
+        </button>
     </div>
 </div>
 
@@ -480,6 +483,47 @@ $extraJs = 'hotkeys.js';
                     編輯此計劃
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Phase 5: 新增提醒規則 Modal -->
+<div class="modal fade" id="addReminderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增提醒規則</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="reminder-plan-id">
+
+                <div class="mb-3">
+                    <label class="form-label small">提醒時機</label>
+                    <select id="reminder-type" class="form-select">
+                        <option value="before_due">到期前提醒</option>
+                        <option value="after_due">逾期後提醒</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small">提前 / 延後天數</label>
+                    <input type="number" id="reminder-offset-days" class="form-control" value="3" min="1" max="90">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small">通知管道</label>
+                    <select id="reminder-channel" class="form-select">
+                        <option value="email">Email</option>
+                        <option value="sms">SMS</option>
+                        <option value="both">Email + SMS</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveNewReminderRule()">儲存提醒規則</button>
             </div>
         </div>
     </div>
@@ -3073,6 +3117,29 @@ async function showPlanDetail(planId) {
             </div>
 
             ${renderFollowUpHistory(p.notes)}
+
+            <hr class="my-3">
+
+            <!-- Phase 5: 提醒設定 -->
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold small">提醒設定</div>
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="showAddReminderModal(${p.id})">
+                        + 新增提醒
+                    </button>
+                </div>
+                <div id="reminder-rules-list">
+                    <div class="text-muted small">載入中...</div>
+                </div>
+            </div>
+
+            <!-- Phase 5: 已發送提醒記錄 -->
+            <div class="mt-3">
+                <div class="fw-semibold small mb-2">已發送提醒記錄</div>
+                <div id="reminder-notifications-list">
+                    <div class="text-muted small">載入中...</div>
+                </div>
+            </div>
         `;
 
         // 如果目前有客戶篩選，顯示「繼續為這位客戶新增計劃」按鈕
@@ -3100,6 +3167,12 @@ async function showPlanDetail(planId) {
 
         // 儲存目前詳情計劃資料，供「編輯此計劃」按鈕快速使用
         window.currentPlanForDetail = p;
+
+        // Phase 5: 載入提醒規則
+        loadReminderRulesForDetail(p.id);
+
+        // Phase 5: 載入已發送提醒記錄
+        loadReminderNotificationsForDetail(p.id);
     } catch (err) {
         body.innerHTML = `<div class="text-danger">載入詳情失敗：${e(err.message)}</div>`;
     }
@@ -4256,6 +4329,257 @@ document.addEventListener('DOMContentLoaded', () => {
 // 簡單的 e() 轉義（與其他頁面一致）
 function e(str) {
     return str ? str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
+}
+
+/* ==================== Phase 5: 付款計劃提醒設定 UI ==================== */
+
+async function loadReminderRulesForDetail(planId) {
+    const container = document.getElementById('reminder-rules-list');
+    if (!container) return;
+
+    try {
+        const res = await SalonEase.fetch(`/api/plan_reminders.php?action=list&plan_id=${planId}`);
+        const rules = res.data || [];
+        renderReminderRules(rules, container, planId);
+    } catch (err) {
+        container.innerHTML = `<div class="text-danger small">載入提醒規則失敗</div>`;
+    }
+}
+
+function renderReminderRules(rules, container, planId) {
+    if (!rules.length) {
+        container.innerHTML = `<div class="text-muted small">尚未設定提醒規則</div>`;
+        return;
+    }
+
+    let html = '';
+    rules.forEach(rule => {
+        const typeText = rule.reminder_type === 'before_due' ? '到期前' : '逾期後';
+        const channelText = rule.channel === 'email' ? 'Email' : rule.channel === 'sms' ? 'SMS' : 'Email + SMS';
+        const activeBadge = rule.is_active 
+            ? '<span class="badge bg-success ms-1">啟用</span>' 
+            : '<span class="badge bg-secondary ms-1">停用</span>';
+
+        let lastSentHtml = '';
+        if (rule.last_sent_at) {
+            const sentDate = new Date(rule.last_sent_at);
+            const formatted = sentDate.toLocaleDateString('zh-HK') + ' ' + sentDate.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' });
+            lastSentHtml = `<div class="tiny text-muted">最後發送：${formatted}</div>`;
+        } else {
+            lastSentHtml = `<div class="tiny text-muted">尚未發送過</div>`;
+        }
+
+        html += `
+            <div class="border rounded px-2 py-1 mb-1 small">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>${typeText} ${rule.offset_days} 天</strong> 
+                        <span class="text-muted">(${channelText})</span>
+                        ${activeBadge}
+                        ${lastSentHtml}
+                    </div>
+                    <div class="btn-group btn-group-sm flex-shrink-0 ms-2">
+                        <button type="button" class="btn btn-outline-primary py-0 px-2" onclick="executeReminder(${rule.id}, ${planId})" title="手動測試執行此提醒">
+                            測試
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary py-0 px-2" onclick="toggleReminderRule(${rule.id}, ${planId}, ${!rule.is_active})">
+                            ${rule.is_active ? '停用' : '啟用'}
+                        </button>
+                        <button type="button" class="btn btn-outline-danger py-0 px-2" onclick="deleteReminderRule(${rule.id}, ${planId})">
+                            刪除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+async function loadReminderNotificationsForDetail(planId) {
+    const container = document.getElementById('reminder-notifications-list');
+    if (!container) return;
+
+    try {
+        const res = await SalonEase.fetch(`/api/plan_reminders.php?action=list_notifications&plan_id=${planId}`);
+        const notifications = res.data || [];
+        renderReminderNotifications(notifications, container);
+    } catch (err) {
+        container.innerHTML = `<div class="text-danger small">載入發送記錄失敗</div>`;
+    }
+}
+
+function renderReminderNotifications(notifications, container) {
+    if (!notifications.length) {
+        container.innerHTML = `<div class="text-muted small">尚未有任何提醒發送記錄</div>`;
+        return;
+    }
+
+    let html = '<div class="small border rounded p-2 bg-light" style="max-height: 160px; overflow-y: auto;">';
+    notifications.forEach(n => {
+        const sentTime = new Date(n.sent_at).toLocaleString('zh-HK', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const statusBadge = n.status === 'sent' 
+            ? '<span class="badge bg-success ms-1">成功</span>' 
+            : '<span class="badge bg-danger ms-1">失敗</span>';
+
+        html += `
+            <div class="mb-1 pb-1 border-bottom">
+                <div>
+                    <span class="text-muted">${sentTime}</span>
+                    <span class="ms-1">${n.channel.toUpperCase()}</span>
+                    ${statusBadge}
+                </div>
+                <div class="text-truncate" style="max-width: 420px;" title="${e(n.content || '')}">
+                    ${e(n.content || n.subject || '無內容')}
+                </div>
+                ${n.error_message ? `<div class="tiny text-danger">錯誤：${e(n.error_message)}</div>` : ''}
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+async function executeReminder(ruleId, planId) {
+    if (!confirm('確定要手動測試執行這條提醒嗎？')) return;
+
+    try {
+        const res = await SalonEase.fetch('/api/plan_reminders.php?action=execute', {
+            method: 'POST',
+            body: new URLSearchParams({
+                id: ruleId,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        alert(res.message || '提醒執行成功！');
+
+        loadReminderRulesForDetail(planId);
+
+    } catch (err) {
+        alert('執行提醒失敗：' + err.message);
+    }
+}
+
+async function runScheduledReminders() {
+    if (!confirm('確定要手動執行一次全量提醒檢查嗎？這會檢查所有計劃並發送該發送的提醒。')) return;
+
+    try {
+        const res = await SalonEase.fetch('/api/plan_reminders.php?action=run_scheduled', {
+            method: 'POST',
+            body: new URLSearchParams({
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        let msg = `執行完成！成功：${res.data.success} 筆，跳過：${res.data.skipped} 筆`;
+        if (res.data.errors && res.data.errors.length > 0) {
+            msg += '\n\n錯誤：\n' + res.data.errors.join('\n');
+        }
+        alert(msg);
+
+        // 刷新頁面以更新所有 last_sent_at
+        location.reload();
+
+    } catch (err) {
+        alert('執行失敗：' + err.message);
+    }
+}
+
+function showAddReminderModal(planId) {
+    document.getElementById('reminder-plan-id').value = planId;
+    document.getElementById('reminder-type').value = 'before_due';
+    document.getElementById('reminder-offset-days').value = 3;
+    document.getElementById('reminder-channel').value = 'email';
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('addReminderModal'));
+    modal.show();
+}
+
+async function saveNewReminderRule() {
+    const planId = document.getElementById('reminder-plan-id').value;
+    const reminderType = document.getElementById('reminder-type').value;
+    const offsetDays = document.getElementById('reminder-offset-days').value;
+    const channel = document.getElementById('reminder-channel').value;
+
+    if (!planId) return alert('缺少計劃 ID');
+
+    try {
+        await SalonEase.fetch('/api/plan_reminders.php?action=create', {
+            method: 'POST',
+            body: new URLSearchParams({
+                plan_id: planId,
+                reminder_type: reminderType,
+                offset_days: offsetDays,
+                channel: channel,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        // 關閉 Modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addReminderModal'));
+        if (modal) modal.hide();
+
+        // 重新載入提醒列表
+        loadReminderRulesForDetail(planId);
+    } catch (err) {
+        alert('新增提醒規則失敗：' + err.message);
+    }
+}
+
+async function addReminderRule(planId, reminderType, offsetDays, channel) {
+    try {
+        await SalonEase.fetch('/api/plan_reminders.php?action=create', {
+            method: 'POST',
+            body: new URLSearchParams({
+                plan_id: planId,
+                reminder_type: reminderType,
+                offset_days: offsetDays,
+                channel: channel,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        // 重新載入提醒列表
+        loadReminderRulesForDetail(planId);
+    } catch (err) {
+        alert('新增提醒規則失敗：' + err.message);
+    }
+}
+
+async function toggleReminderRule(ruleId, planId, newActive) {
+    try {
+        await SalonEase.fetch('/api/plan_reminders.php?action=update', {
+            method: 'POST',
+            body: new URLSearchParams({
+                id: ruleId,
+                is_active: newActive ? 1 : 0,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+        loadReminderRulesForDetail(planId);
+    } catch (err) {
+        alert('更新失敗：' + err.message);
+    }
+}
+
+async function deleteReminderRule(ruleId, planId) {
+    if (!confirm('確定要刪除這條提醒規則嗎？')) return;
+
+    try {
+        await SalonEase.fetch('/api/plan_reminders.php?action=delete', {
+            method: 'POST',
+            body: new URLSearchParams({
+                id: ruleId,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+        loadReminderRulesForDetail(planId);
+    } catch (err) {
+        alert('刪除失敗：' + err.message);
+    }
 }
 </script>
 
