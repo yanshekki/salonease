@@ -149,6 +149,26 @@ class ApiClient
     }
 
     /**
+     * 根據 email 查找對應的 staff_id（測試常用）
+     */
+    public function getStaffIdByEmail(string $email): ?int
+    {
+        try {
+            $resp = $this->get('/api/staff.php?action=list&search=' . urlencode($email));
+            if (!empty($resp['success']) && is_array($resp['data'] ?? null)) {
+                foreach ($resp['data'] as $s) {
+                    if (strtolower($s['email'] ?? '') === strtolower($email)) {
+                        return (int)$s['id'];
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            // 測試環境容錯
+        }
+        return null;
+    }
+
+    /**
      * 清理 cookie 檔案
      */
     public function __destruct()

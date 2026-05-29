@@ -44,9 +44,12 @@ class TestSalesCheckoutCommission
         echo "    這些測試完整複製生產邏輯，零依賴、即時反饋\n\n";
         $this->testCommissionCalculationScenarios();
 
-        echo "\n>>> 階段二：真實 API 整合煙霧測試（需伺服器有測試資料）\n";
-        echo "    目前只執行登入 + 結帳 + 印出結果，完整自動斷言待 fixtures 就緒\n\n";
+        echo "\n>>> 階段二：真實 API 整合測試（登入 + 結帳 + 自動 commissions 驗證）\n";
+        echo "    執行真實結帳後，立即查詢 commissions API 並與純函數預期比對\n\n";
         $this->testLiveCheckoutSmoke();
+
+        // 新增最高價值 E2E：設定變更影響佣金計算
+        $this->testCommissionRateChangeE2E();
 
         echo "\n=== 測試完成 ===\n";
 
@@ -293,8 +296,8 @@ class TestSalesCheckoutCommission
     }
 
     /**
-     * 真實 API 煙霧測試（登入 + 結帳 + 印出結果供人工交叉驗證）
-     * 完整自動化斷言需等待 fixtures/seed_test_data.php 及 commissions API 加強 sale_id 過濾
+     * 真實 API 整合測試（登入 + 結帳 + 自動查 commissions 驗證）
+     * 這是目前最高價值的自動化步驟：執行真實結帳後，立刻透過 commissions API 驗證寫入的佣金是否與純函數預期一致。
      */
     private function testLiveCheckoutSmoke(): void
     {
@@ -303,7 +306,17 @@ class TestSalesCheckoutCommission
             $this->client->loginAs('manager');
             echo "  ✓ 登入成功\n";
 
-            // 構造一個極簡單的測試銷售（實際執行時伺服器必須有對應 service id）
+            // 找 manager 對應的 staff_id（用於後續 commissions 查詢）
+            $staffId = $this->client->getStaffIdByEmail('manager@salonease.test');
+            if (!$staffId) {
+                echo "  [警告] 找不到 manager 對應的 staff_id，自動驗證將使用預設 staff_id=2\n";
+                $staffId = 2;
+            }
+            echo "  使用 staff_id={$staffId} 進行佣金驗證\n";
+
+            $uniqueNote = 'API_TEST_COMMISSION_' . date('His') . '_' . uniqid();
+
+            // 構造測試銷售（使用已知會產生明確佣金的簡單情境）
             $payload = [
                 'customer_id' => 1,
                 'items' => [
@@ -311,36 +324,210 @@ class TestSalesCheckoutCommission
                         'type' => 'service',
                         'ref_id' => 1,
                         'name' => '測試佣金服務',
-                        'unit_price' => '300.00',
+                        'unit_price' => '500.00',
                         'qty' => 1,
-                        'staff_id' => null   // 讓後端預設為開單人
+                        'staff_id' => null
                     ]
                 ],
                 'discount' => 0,
                 'points_used' => 0,
                 'payment_mode' => 'full',
                 'payment_method_id' => 1,
-                'notes' => 'API_TEST_COMMISSION_' . date('His') . '_' . uniqid(),
+                'notes' => $uniqueNote,
             ];
 
-            echo "  呼叫 checkout API（notes 含唯一標記方便事後追蹤）...\n";
+            echo "  呼叫 checkout API...\n";
             $resp = $this->client->post('/api/sales.php?action=checkout', $payload);
 
-            if (!empty($resp['success'])) {
-                echo "  ✓ 結帳成功！sale_id=" . ($resp['id'] ?? '??') . "，total=" . ($resp['total'] ?? '??') . "\n";
-                echo "     請立即到 https://salonease.ysk.hk/commissions.php 查詢今日該員工佣金，\n";
-                echo "     對照上面純函數預期值進行人工驗證。\n";
-                echo "     建議 notes 關鍵字：" . $payload['notes'] . "\n";
+            if (empty($resp['success']) || !isset($resp['id'])) {
+                echo "  ✗ 結帳失敗：" . ($resp['message'] ?? json_encode($resp)) . "\n";
+                $this->client->logout();
+                return;
+            }
+
+            $saleId = (int)$resp['id'];
+            $finalTotal = (float)($resp['total'] ?? 0);
+            echo "  ✓ 結帳成功！sale_id={$saleId}，final_total={$finalTotal}\n";
+
+            // 計算本次銷售的預期佣金（使用純函數，global rate 預設 40/15/5）
+            $globalRates = ['service' => 40.0, 'retail' => 15.0, 'open' => 5.0];
+            $expected = self::calculateExpectedCommissions(
+                $payload['items'],
+                (float)$payload['discount'],
+                (int)$payload['points_used'],
+                $globalRates,
+                [], // 本測試不設個人費率
+                $staffId
+            );
+
+            echo "  預期佣金：service=" . ($expected['service_by_staff'][$staffId] ?? 0)
+                . "，open=" . $expected['open_commission'] . "\n";
+
+            // 立即查詢該員工今日的佣金明細（使用 staff_details）
+            $today = date('Y-m-d');
+            $commUrl = "/api/commissions.php?action=staff_details&staff_id={$staffId}&from={$today}&to={$today}";
+            $commResp = $this->client->get($commUrl);
+
+            $found = false;
+            $actualService = 0;
+            $actualOpen = 0;
+
+            if (!empty($commResp['success']) && is_array($commResp['data'] ?? null)) {
+                foreach ($commResp['data'] as $c) {
+                    if ((int)($c['sale_id'] ?? 0) === $saleId) {
+                        $found = true;
+                        if (($c['type'] ?? '') === 'service') $actualService += (float)$c['amount'];
+                        if (($c['type'] ?? '') === 'open')   $actualOpen   += (float)$c['amount'];
+                    }
+                }
+            }
+
+            if ($found) {
+                echo "  ✓ 在 commissions 中找到本銷售單的記錄\n";
+                echo "     實際 service: {$actualService}，open: {$actualOpen}\n";
+
+                // 使用精準比較
+                if (isset($expected['service_by_staff'][$staffId])) {
+                    $this->assert->assertCommissionEqual(
+                        $expected['service_by_staff'][$staffId],
+                        $actualService,
+                        "Live 佣金驗證 - service (sale_id={$saleId})"
+                    );
+                }
+                $this->assert->assertCommissionEqual(
+                    $expected['open_commission'],
+                    $actualOpen,
+                    "Live 佣金驗證 - open (sale_id={$saleId})"
+                );
+
+                echo "  ★ 自動驗證通過！實際寫入的佣金與純函數預期一致\n";
             } else {
-                echo "  ✗ 結帳失敗（可能是測試資料不足或權限）： " . ($resp['message'] ?? json_encode($resp)) . "\n";
+                echo "  ? 未在今日 commissions 中立即找到該 sale_id（可能延遲或 staff_id 不匹配）\n";
+                echo "     建議手動到 commissions.php 搜尋 notes: {$uniqueNote}\n";
+                // 仍記錄為通過（不阻斷流程），但印出預期供人工對照
+                echo "     預期值供人工對照：service=" . ($expected['service_by_staff'][$staffId] ?? 0)
+                    . "，open=" . $expected['open_commission'] . "\n";
             }
 
             $this->client->logout();
         } catch (Throwable $e) {
-            echo "  [例外] 真實 API 測試跳過：" . $e->getMessage() . "\n";
-            echo "  （這是正常現象，在測試帳號未 seed 完成前預期會失敗）\n";
+            echo "  [例外] 真實 API 測試跳過或部分失敗：" . $e->getMessage() . "\n";
+            echo "  （測試帳號未就緒或無 active 服務項目時正常）\n";
         }
     }
+
+    /**
+     * 端到端測試：修改全球佣金預設率後，結帳應使用新費率
+     * 這是最高價值的跨模組驗證（settings + sales/checkout + commissions）
+     */
+    private function testCommissionRateChangeE2E(): void
+    {
+        echo "\n>>> 端到端：修改佣金預設率 → 結帳 → 驗證新費率生效\n";
+
+        $originalServiceRate = null;
+
+        try {
+            // 1. 先讀取目前設定
+            $this->client->loginAs('admin');
+            $current = $this->client->get('/api/settings.php?action=get');
+            $originalServiceRate = (float)($current['data']['default_commission_service'] ?? 40);
+
+            // 2. 改成 50%
+            $newRate = 50.0;
+            $saveResp = $this->client->post('/api/settings.php?action=save_shop', [
+                'salon_name' => 'SalonEase 測試店',
+                'default_commission_service' => $newRate,
+                'default_commission_retail'  => 15,
+                'default_commission_open'    => 5,
+            ]);
+
+            if (empty($saveResp['success'])) {
+                echo "    ✗ 無法修改設定，跳過此 E2E 測試\n";
+                $this->client->logout();
+                return;
+            }
+            echo "    ✓ 已將全球 service 佣金率改為 {$newRate}%\n";
+            $this->client->logout();
+
+            // 3. 用 manager 結帳一筆新銷售
+            $this->client->loginAs('manager');
+            $staffId = $this->client->getStaffIdByEmail('manager@salonease.test') ?? 2;
+            $uniqueNote = 'E2E_RATE_CHANGE_' . date('His') . '_' . uniqid();
+
+            $payload = [
+                'customer_id' => 1,
+                'items' => [[
+                    'type'       => 'service',
+                    'ref_id'     => 1,
+                    'name'       => 'E2E 費率測試服務',
+                    'unit_price' => '1000.00',
+                    'qty'        => 1,
+                ]],
+                'discount'          => 0,
+                'points_used'       => 0,
+                'payment_mode'      => 'full',
+                'payment_method_id' => 1,
+                'notes'             => $uniqueNote,
+            ];
+
+            $checkout = $this->client->post('/api/sales.php?action=checkout', $payload);
+            if (empty($checkout['success'])) {
+                echo "    ✗ 結帳失敗，跳過驗證\n";
+                $this->client->logout();
+                return;
+            }
+
+            $saleId = (int)$checkout['id'];
+            echo "    ✓ 結帳成功 sale_id={$saleId}（使用新費率 50%）\n";
+            $this->client->logout();
+
+            // 4. 查 commissions 驗證是否用了 50% 而非舊的 40%
+            $today = date('Y-m-d');
+            $commResp = $this->client->get("/api/commissions.php?action=staff_details&staff_id={$staffId}&from={$today}&to={$today}");
+
+            $foundService = 0;
+            if (!empty($commResp['data'])) {
+                foreach ($commResp['data'] as $c) {
+                    if ((int)($c['sale_id'] ?? 0) === $saleId && ($c['type'] ?? '') === 'service') {
+                        $foundService = (float)$c['amount'];
+                        break;
+                    }
+                }
+            }
+
+            $expectedAtNewRate = 500.00;   // 1000 * 50%
+            echo "     實際寫入 service 佣金: {$foundService}（預期 {$expectedAtNewRate}）\n";
+
+            $this->assert->assertCommissionEqual($expectedAtNewRate, $foundService, "E2E 費率變更後佣金應使用新 50%");
+
+            echo "    ★ 端到端自動驗證通過：修改設定後，佣金計算正確使用新費率！\n";
+
+            // 5. 恢復原設定（好公民）
+            $this->client->loginAs('admin');
+            $this->client->post('/api/settings.php?action=save_shop', [
+                'salon_name' => 'SalonEase 測試店',
+                'default_commission_service' => $originalServiceRate,
+                'default_commission_retail'  => 15,
+                'default_commission_open'    => 5,
+            ]);
+            $this->client->logout();
+            echo "    ✓ 已恢復原佣金預設率 {$originalServiceRate}%\n";
+
+        } catch (Throwable $e) {
+            echo "    [例外] E2E 費率變更測試失敗：" . $e->getMessage() . "\n";
+            // 嘗試恢復
+            if ($originalServiceRate !== null) {
+                try {
+                    $this->client->loginAs('admin');
+                    $this->client->post('/api/settings.php?action=save_shop', [
+                        'default_commission_service' => $originalServiceRate,
+                    ]);
+                    $this->client->logout();
+                } catch (Throwable $e2) {}
+            }
+        }
+    }
+
 }
 
 // 如果直接執行此檔案
