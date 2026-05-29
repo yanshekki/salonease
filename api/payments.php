@@ -227,6 +227,104 @@ switch ($action) {
         }
         break;
 
+    // Phase 8: 客戶自助 Portal 記錄付款（token 保護）
+    case 'record_portal':
+        if (!is_post()) json_error('只接受 POST 請求', 405);
+
+        $portalToken = trim(post('token', ''));
+        $planId = (int)post('plan_id');
+        $paymentMethodId = (int)post('payment_method_id');
+        $amount = (float)post('amount');
+        $notes = sanitize_string(post('notes', ''), 500);
+
+        if (empty($portalToken)) json_error('缺少存取 token', 401);
+        if ($planId <= 0) json_error('缺少計劃 ID');
+        if ($amount <= 0) json_error('付款金額必須大於 0');
+
+        $portalCustomer = validateCustomerPortalToken($portalToken);
+        if (!$portalCustomer) {
+            json_error('Portal 存取連結已失效或無效', 401);
+        }
+
+        // 驗證計劃屬於該客戶
+        $plan = db_query_one("
+            SELECT spp.id, spp.sale_id, s.customer_id, spp.installment_amount
+            FROM sale_payment_plans spp
+            JOIN sales s ON spp.sale_id = s.id
+            WHERE spp.id = ? AND s.customer_id = ?
+        ", [$planId, $portalCustomer['customer_id']]);
+
+        if (!$plan) {
+            json_error('找不到該計劃或無權限');
+        }
+
+        $saleId = (int)$plan['sale_id'];
+
+        // 如果沒選付款方式，用第一個活躍的（現金或預設）
+        if ($paymentMethodId <= 0) {
+            $defaultMethod = db_query_one("SELECT id FROM payment_methods WHERE is_active = 1 ORDER BY id LIMIT 1");
+            $paymentMethodId = $defaultMethod ? (int)$defaultMethod['id'] : 1;
+        }
+
+        // 驗證銷售單
+        $sale = db_query_one("SELECT id, total, amount_paid, payment_status FROM sales WHERE id = ?", [$saleId]);
+        if (!$sale) json_error('銷售單不存在');
+
+        try {
+            $result = db_transaction(function($pdo) use ($saleId, $paymentMethodId, $amount, $notes, $planId, $portalCustomer) {
+                // 插入付款記錄（staff_id 留空或用 0 表示 Portal 自助）
+                $pdo->prepare("
+                    INSERT INTO payments (sale_id, payment_method_id, amount, fee_amount, fee_borne_by, paid_at, staff_id, ref_number, notes, plan_id)
+                    VALUES (?, ?, ?, 0, 'merchant', NOW(), NULL, ?, ?, ?)
+                ")->execute([
+                    $saleId,
+                    $paymentMethodId,
+                    $amount,
+                    'Portal-' . date('YmdHis'),
+                    $notes ?: '客戶自助 Portal 記錄',
+                    $planId
+                ]);
+
+                $paymentId = (int)$pdo->lastInsertId();
+
+                // 更新 sales
+                $saleInfo = $pdo->query("SELECT amount_paid, total FROM sales WHERE id = $saleId FOR UPDATE")->fetch();
+                $newAmountPaid = (float)$saleInfo['amount_paid'] + $amount;
+                $total = (float)$saleInfo['total'];
+
+                $newStatus = 'partial';
+                if ($newAmountPaid >= $total) {
+                    $newStatus = ($newAmountPaid > $total) ? 'overpaid' : 'paid';
+                }
+
+                $pdo->prepare("
+                    UPDATE sales 
+                    SET amount_paid = ?, payment_status = ?, primary_payment_method_id = ?
+                    WHERE id = ?
+                ")->execute([$newAmountPaid, $newStatus, $paymentMethodId, $saleId]);
+
+                log_activity('payment.recorded_via_portal', $paymentId, 'payment', [
+                    'sale_id' => $saleId,
+                    'plan_id' => $planId,
+                    'amount' => $amount,
+                    'customer_id' => $portalCustomer['customer_id'],
+                    'via' => 'customer_portal'
+                ]);
+
+                return [
+                    'payment_id' => $paymentId,
+                    'new_amount_paid' => $newAmountPaid,
+                    'new_payment_status' => $newStatus
+                ];
+            });
+
+            json_success($result, '付款已成功記錄，感謝！');
+
+        } catch (Throwable $e) {
+            json_error('記錄付款失敗：' . $e->getMessage());
+        }
+        break;
+
     default:
         json_error('未知的操作', 400);
 }
