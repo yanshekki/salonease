@@ -4490,13 +4490,13 @@ async function loadReminderNotificationsForDetail(planId) {
     try {
         const res = await SalonEase.fetch(`/api/plan_reminders.php?action=list_notifications&plan_id=${planId}`);
         const notifications = res.data || [];
-        renderReminderNotifications(notifications, container);
+        renderReminderNotifications(notifications, container, planId);
     } catch (err) {
         container.innerHTML = `<div class="text-danger small">載入發送記錄失敗</div>`;
     }
 }
 
-function renderReminderNotifications(notifications, container) {
+function renderReminderNotifications(notifications, container, planId = 0) {
     if (!notifications.length) {
         container.innerHTML = `<div class="text-muted small">尚未有任何提醒發送記錄</div>`;
         return;
@@ -4509,17 +4509,25 @@ function renderReminderNotifications(notifications, container) {
             ? '<span class="badge bg-success ms-1">成功</span>' 
             : '<span class="badge bg-danger ms-1">失敗</span>';
 
+        const retryBtn = (n.status === 'failed' && planId > 0) 
+            ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 ms-1" style="font-size:0.68rem;" onclick="retryFailedNotification(${n.id}, ${planId}, this)">重試</button>` 
+            : '';
+
         html += `
             <div class="mb-1 pb-1 border-bottom">
-                <div>
-                    <span class="text-muted">${sentTime}</span>
-                    <span class="ms-1">${n.channel.toUpperCase()}</span>
-                    ${statusBadge}
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted">${sentTime}</span>
+                        <span class="ms-1">${n.channel.toUpperCase()}</span>
+                        ${statusBadge}
+                    </div>
+                    ${retryBtn}
                 </div>
                 <div class="text-truncate" style="max-width: 420px;" title="${e(n.content || '')}">
                     ${e(n.content || n.subject || '無內容')}
                 </div>
                 ${n.error_message ? `<div class="tiny text-danger">錯誤：${e(n.error_message)}</div>` : ''}
+                ${n.retry_count > 0 ? `<div class="tiny text-muted">已重試 ${n.retry_count} 次</div>` : ''}
             </div>
         `;
     });
@@ -4546,6 +4554,47 @@ async function executeReminder(ruleId, planId) {
 
     } catch (err) {
         alert('執行提醒失敗：' + err.message);
+    }
+}
+
+/**
+ * Phase 7 A：手動重試單一失敗提醒記錄（即時零刷新）
+ */
+async function retryFailedNotification(notificationId, planId, btnEl) {
+    if (!confirm('確定要重試這次失敗的提醒嗎？')) return;
+
+    const originalText = btnEl ? btnEl.textContent : '';
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = '重試中...';
+    }
+
+    try {
+        const res = await SalonEase.fetch('/api/plan_reminders.php?action=retry_notification', {
+            method: 'POST',
+            body: new URLSearchParams({
+                id: notificationId,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        // 成功或失敗都刷新列表
+        await loadReminderNotificationsForDetail(planId);
+
+        if (res && res.success) {
+            // 可選小提示
+            console.log('重試成功');
+        } else {
+            alert('重試失敗：' + (res.message || '請稍後再試'));
+        }
+
+    } catch (err) {
+        alert('重試操作失敗：' + err.message);
+        // 還原按鈕
+        if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.textContent = originalText || '重試';
+        }
     }
 }
 

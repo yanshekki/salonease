@@ -608,6 +608,88 @@ function executePaymentReminder(int $ruleId): array
     ];
 }
 
+/**
+ * Phase 7 A：重試單一失敗的提醒記錄
+ * 會使用儲存的 content/subject 重新發送，並更新 retry_count 及 last_retry_at
+ */
+function retryNotification(int $notificationId): array
+{
+    $n = db_query_one("
+        SELECT pn.*, 
+               c.name as customer_name, c.email as customer_email, c.phone as customer_phone,
+               p.id as plan_id
+        FROM plan_notifications pn
+        LEFT JOIN sale_payment_plans p ON p.id = pn.plan_id
+        LEFT JOIN sales s ON s.id = p.sale_id
+        LEFT JOIN customers c ON c.id = s.customer_id
+        WHERE pn.id = ?
+    ", [$notificationId]);
+
+    if (!$n) {
+        return ['success' => false, 'message' => '找不到通知記錄'];
+    }
+
+    if ($n['status'] !== 'failed') {
+        return ['success' => false, 'message' => '只有失敗的記錄才能重試'];
+    }
+
+    $retryCount = (int)($n['retry_count'] ?? 0);
+    if ($retryCount >= 3) {
+        return ['success' => false, 'message' => '已達到最大重試次數（3）'];
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $success = false;
+    $errorMsg = '';
+
+    if ($n['channel'] === 'email') {
+        $subject = $n['subject'] ?: '付款計劃提醒';
+        $body = $n['content'] ?: '';
+        if (empty($n['customer_email'])) {
+            $errorMsg = '客戶沒有 Email';
+        } elseif (send_email($n['customer_email'], $subject, $body)) {
+            $success = true;
+        } else {
+            $errorMsg = 'Email 重試發送失敗';
+        }
+    } else { // sms
+        $smsBody = $n['content'] ?: '';
+        if (empty($n['customer_phone'])) {
+            $errorMsg = '客戶沒有電話';
+        } elseif (send_sms($n['customer_phone'], $smsBody)) {
+            $success = true;
+        } else {
+            $errorMsg = 'SMS 重試發送失敗';
+        }
+    }
+
+    $newRetryCount = $retryCount + 1;
+    $newStatus = $success ? 'sent' : 'failed';
+    $newError = $success ? null : (($n['error_message'] ? $n['error_message'] . '；' : '') . $errorMsg);
+
+    db_exec("
+        UPDATE plan_notifications 
+        SET status = ?, 
+            retry_count = ?, 
+            last_retry_at = ?, 
+            error_message = ?
+        WHERE id = ?
+    ", [$newStatus, $newRetryCount, $now, $newError, $notificationId]);
+
+    log_activity('plan_reminder.retried', $n['plan_id'] ?? 0, 'plan_notification', [
+        'notification_id' => $notificationId,
+        'success' => $success,
+        'retry_count' => $newRetryCount
+    ]);
+
+    return [
+        'success' => $success,
+        'message' => $success ? '重試發送成功' : $errorMsg,
+        'new_status' => $newStatus,
+        'retry_count' => $newRetryCount
+    ];
+}
+
 /* ==================== Phase 6: 付款計劃進階分析與預測 ==================== */
 
 /**
