@@ -162,13 +162,83 @@ $lastMonthTxCount = db_query_one("
 $thisMonthAvgTicket = $thisMonthTxCount['cnt'] > 0 ? round($thisMonthTotal / $thisMonthTxCount['cnt'], 0) : 0;
 $lastMonthAvgTicket = $lastMonthTxCount['cnt'] > 0 ? round($lastMonthTotal / $lastMonthTxCount['cnt'], 0) : 0;
 $avgTicketDiff = $thisMonthAvgTicket - $lastMonthAvgTicket;
+
+// Phase 4 A：付款計劃入口整合 - Dashboard 專區數據
+$planDashboard = [
+    'active_plans' => 0,
+    'needs_attention' => 0,
+    'upcoming_30_days' => 0,
+    'oldest_active' => null,
+    'most_concerning_customer' => null
+];
+try {
+    // Phase 4 A：讀取可調門檻
+    $th = db_query_one("SELECT 
+        COALESCE(needs_attention_days_threshold, 45) as days_th,
+        COALESCE(needs_attention_progress_threshold, 30) as prog_th 
+        FROM settings WHERE id = 1");
+    $daysTh = (int)($th['days_th'] ?? 45);
+    $progTh = (int)($th['prog_th'] ?? 30) / 100.0;
+
+    // 重用 payment_plans API 的 dashboard 邏輯（輕量查詢）
+    $planDashboard = db_query_one("
+        SELECT 
+            SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_plans,
+            (SELECT COUNT(*) FROM sale_payment_plans spp
+             JOIN sales s ON spp.sale_id = s.id
+             LEFT JOIN (SELECT plan_id, COUNT(*) as paid_count FROM payments WHERE is_refund = 0 GROUP BY plan_id) p ON p.plan_id = spp.id
+             WHERE spp.status = 'active'
+               AND (p.paid_count IS NULL OR (p.paid_count * 1.0 / spp.total_installments) < ?)
+               AND DATEDIFF(CURDATE(), spp.created_at) > ?
+            ) as needs_attention
+        FROM sale_payment_plans
+    ", [$progTh, $daysTh]) ?: $planDashboard;
+
+    $planDashboard['upcoming_30_days'] = 0; // 先簡單顯示，後續可強化
+
+    // 最老活躍計劃
+    $oldest = db_query_one("
+        SELECT spp.id, spp.created_at, c.name as customer_name, c.id as customer_id,
+               (SELECT COUNT(*) FROM payments WHERE plan_id = spp.id AND is_refund = 0) as payments_made,
+               spp.total_installments
+        FROM sale_payment_plans spp
+        JOIN sales s ON spp.sale_id = s.id
+        JOIN customers c ON s.customer_id = c.id
+        WHERE spp.status = 'active'
+        ORDER BY spp.created_at ASC
+        LIMIT 1
+    ");
+    if ($oldest) {
+        $planDashboard['oldest_active'] = $oldest;
+    }
+
+    // 最需關注客戶（活躍計劃最多 + 進度最低）
+    $concerning = db_query_one("
+        SELECT c.id, c.name, c.phone,
+               COUNT(spp.id) as active_plans_count,
+               MIN( (SELECT COUNT(*) FROM payments WHERE plan_id = spp.id AND is_refund = 0) / NULLIF(spp.total_installments, 0) ) as worst_progress
+        FROM sale_payment_plans spp
+        JOIN sales s ON spp.sale_id = s.id
+        JOIN customers c ON s.customer_id = c.id
+        WHERE spp.status = 'active'
+        GROUP BY c.id
+        ORDER BY active_plans_count DESC, worst_progress ASC
+        LIMIT 1
+    ");
+    if ($concerning) {
+        $planDashboard['most_concerning_customer'] = $concerning;
+    }
+} catch (Throwable $e) {
+    // 容錯：payment_plans 表尚未就緒或查詢失敗時不影響其他 Dashboard 內容
+    $planDashboard = ['active_plans' => 0, 'needs_attention' => 0, 'upcoming_30_days' => 0, 'oldest_active' => null, 'most_concerning_customer' => null];
+}
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<!-- 系統狀態提示 -->
+<!-- 系統狀態提示（Phase 4 入口整合進行中） -->
 <div class="alert alert-info border-0 mb-4" style="background-color: #F8F5F0; color: #5A5A5C; border-radius: 1rem;">
-    目前系統已進入 <span class="fw-medium text-dark">維護階段</span>。
-    核心功能已完成，未來會以穩定性及小優化為主。如有新需求，歡迎提出。
+    目前正進行 <span class="fw-medium text-dark">Phase 4 - 入口整合</span>。
+    付款計劃功能已深入 Dashboard、客戶頁等日常入口，持續打通流程中。
 </div>
 
 <!-- 四大統計卡片 -->
@@ -377,6 +447,62 @@ $avgTicketDiff = $thisMonthAvgTicket - $lastMonthAvgTicket;
         </div>
         <div class="small text-muted mt-1">較上月</div>
         <a href="/reports.php" class="small text-muted text-decoration-none d-inline-block mt-2">查看完整報表 →</a>
+    </div>
+</div>
+
+<!-- Phase 4 A：付款計劃關注入口（Dashboard 整合） -->
+<div class="card mb-4 border-0" style="background: linear-gradient(90deg, #fff5f5 0%, #fff 100%);">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div>
+                <span class="fw-semibold fs-5">💳 付款計劃關注</span>
+                <a href="/payment_plans.php?strict=1" class="badge bg-danger ms-2 text-white text-decoration-none" title="點擊進入嚴格模式，只顯示完全未跟進的計劃"> <?= (int)($planDashboard['needs_attention'] ?? 0) ?> 筆需跟進</a>
+            </div>
+            <a href="/payment_plans.php" class="btn btn-sm btn-outline-danger">管理所有計劃 →</a>
+        </div>
+        <div class="small text-muted mb-2" style="font-size: 0.8rem;">門檻可在「系統設定」自訂，改變後 Dashboard 與計劃頁即時生效。</div>
+
+        <div class="row g-2">
+            <!-- 最老活躍計劃 -->
+            <div class="col-12 col-md-5">
+                <div class="small text-muted mb-1">最老活躍計劃</div>
+                <?php if (!empty($planDashboard['oldest_active'])): 
+                    $o = $planDashboard['oldest_active'];
+                    $days = $o['created_at'] ? floor((time() - strtotime($o['created_at'])) / 86400) : 0;
+                    $prog = ($o['total_installments'] ?? 1) > 0 ? round(($o['payments_made'] ?? 0) / $o['total_installments'] * 100) : 0;
+                ?>
+                    <a href="/payment_plans.php" class="text-decoration-none fw-medium d-block">
+                        #<?= (int)$o['id'] ?>（客戶 <?= e($o['customer_name']) ?>，已 <?= $days ?> 天，進度 <?= $prog ?>%）
+                    </a>
+                    <div class="tiny text-muted">👑 目前所有活躍計劃中最老的一筆</div>
+                <?php else: ?>
+                    <div class="small text-muted">暫無活躍計劃</div>
+                <?php endif; ?>
+            </div>
+
+            <!-- 最需關注客戶 -->
+            <div class="col-12 col-md-4">
+                <div class="small text-muted mb-1">最需關注客戶</div>
+                <?php if (!empty($planDashboard['most_concerning_customer'])): 
+                    $c = $planDashboard['most_concerning_customer'];
+                ?>
+                    <a href="/payment_plans.php?customer_id=<?= (int)$c['id'] ?>" class="text-decoration-none fw-medium d-block">
+                        <?= e($c['name']) ?>（<?= (int)$c['active_plans_count'] ?> 個活躍計劃）
+                    </a>
+                    <div class="tiny text-muted">點擊可直接篩選該客戶所有計劃</div>
+                <?php else: ?>
+                    <div class="small text-muted">暫無高風險客戶</div>
+                <?php endif; ?>
+            </div>
+
+            <!-- 快速提示 -->
+            <div class="col-12 col-md-3 d-flex align-items-center">
+                <div class="small">
+                    <a href="/payment_plans.php" class="text-danger fw-medium">前往完整指揮中心</a><br>
+                    <span class="text-muted" style="font-size: 11px;">含今日處理中 + 主動建議 + 批量行動</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

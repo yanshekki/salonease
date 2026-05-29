@@ -230,6 +230,41 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Phase 4 A：付款計劃「需要關注」門檻可調 -->
+    <div class="card mb-4 border-0" style="background-color: #fff5f5;">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div class="fw-semibold">💳 付款計劃需要關注門檻</div>
+                    <div class="small text-muted">自訂「需要關注」計劃的條件（影響 Dashboard、計劃管理頁、record_payment 入口）</div>
+                </div>
+                <div class="badge bg-danger text-white small">即時生效</div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small">計劃建立超過多少天視為「老計劃」</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" x-model.number="form.needs_attention_days_threshold" 
+                               step="1" min="7" max="365" class="form-control">
+                        <span class="input-group-text">天</span>
+                    </div>
+                    <div class="small text-muted mt-1">預設 45 天</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">已付期數低於多少 % 視為「進度低」</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" x-model.number="form.needs_attention_progress_threshold" 
+                               step="1" min="5" max="90" class="form-control">
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="small text-muted mt-1">預設 30%，即已付少於 30% 的活躍老計劃會被標記需要關注</div>
+                </div>
+            </div>
+            <div class="small text-danger mt-2">修改後，Dashboard「付款計劃關注」卡片、計劃管理頁及 record_payment 頁的「需要關注」計算會立即使用新門檻。<br>建議調整後即去 <a href="/payment_plans.php" class="text-danger fw-medium">付款計劃管理頁</a> 驗證效果。</div>
+        </div>
+    </div>
+
     <!-- 管理功能快速入口 -->
     <div class="row g-3">
         <div class="col-md-6 col-lg-4">
@@ -472,6 +507,8 @@ function shopSettings() {
             default_commission_retail: 15,
             default_commission_open: 5,
             default_low_stock_threshold: 5,
+            needs_attention_days_threshold: 45,
+            needs_attention_progress_threshold: 30,
             points_earn_rate: 10,
             points_redemption_rate: 10,
             quick_restock_5: 5,
@@ -499,6 +536,8 @@ function shopSettings() {
                     this.form.default_commission_retail  = parseFloat(d.default_commission_retail) || 15;
                     this.form.default_commission_open    = parseFloat(d.default_commission_open) || 5;
                     this.form.default_low_stock_threshold = parseInt(d.default_low_stock_threshold) || 5;
+                    this.form.needs_attention_days_threshold = parseInt(d.needs_attention_days_threshold) || 45;
+                    this.form.needs_attention_progress_threshold = parseInt(d.needs_attention_progress_threshold) || 30;
                     this.form.points_earn_rate = parseInt(d.points_earn_rate) || 10;
                     this.form.points_redemption_rate = parseInt(d.points_redemption_rate) || 10;
                     this.form.quick_restock_5  = parseInt(d.quick_restock_5) || 5;
@@ -527,6 +566,8 @@ function shopSettings() {
                         default_commission_retail: this.form.default_commission_retail,
                         default_commission_open: this.form.default_commission_open,
                         default_low_stock_threshold: this.form.default_low_stock_threshold,
+                        needs_attention_days_threshold: this.form.needs_attention_days_threshold,
+                        needs_attention_progress_threshold: this.form.needs_attention_progress_threshold,
                         points_earn_rate: this.form.points_earn_rate,
                         points_redemption_rate: this.form.points_redemption_rate,
                         quick_restock_5: this.form.quick_restock_5,

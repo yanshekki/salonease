@@ -71,9 +71,10 @@ SELECT '預設登入帳號：admin@salonease.hk / admin123' AS login_info;
 -- 10. 店舖基本資訊 + 打印與佣金預設
 INSERT INTO `settings` 
 (`id`, `salon_name`, `address`, `phone`, `printer_width`, 
- `default_commission_service`, `default_commission_retail`, `default_commission_open`, `default_low_stock_threshold`) 
+ `default_commission_service`, `default_commission_retail`, `default_commission_open`, `default_low_stock_threshold`,
+ `needs_attention_days_threshold`, `needs_attention_progress_threshold`) 
 VALUES 
-(1, 'SalonEase 美容中心', '香港九龍尖沙咀彌敦道 100 號 8 樓', '2123 4567', '58', 40.00, 15.00, 5.00, 5)
+(1, 'SalonEase 美容中心', '香港九龍尖沙咀彌敦道 100 號 8 樓', '2123 4567', '58', 40.00, 15.00, 5.00, 5, 45, 30)
 ON DUPLICATE KEY UPDATE 
     salon_name = VALUES(salon_name),
     address = VALUES(address),
@@ -82,4 +83,6 @@ ON DUPLICATE KEY UPDATE
     default_commission_service = VALUES(default_commission_service),
     default_commission_retail = VALUES(default_commission_retail),
     default_commission_open = VALUES(default_commission_open),
-    default_low_stock_threshold = VALUES(default_low_stock_threshold);
+    default_low_stock_threshold = VALUES(default_low_stock_threshold),
+    needs_attention_days_threshold = VALUES(needs_attention_days_threshold),
+    needs_attention_progress_threshold = VALUES(needs_attention_progress_threshold);

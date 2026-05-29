@@ -391,7 +391,7 @@ include __DIR__ . '/includes/header.php';
         <div class="col-12 col-lg-6">
             <div class="card h-100">
                 <div class="card-body">
-                    <div class="fw-semibold mb-3">分期計劃進度</div>
+                    <div class="fw-semibold mb-3">付款計劃進度</div>
                     <div x-show="installmentOverview.length > 0">
                         <template x-for="plan in installmentOverview" :key="plan.plan_id">
                             <div class="d-flex justify-content-between align-items-center small py-1 border-bottom">
@@ -407,7 +407,7 @@ include __DIR__ . '/includes/header.php';
                         </template>
                     </div>
                     <div x-show="installmentOverview.length === 0" class="text-muted small py-4 text-center">
-                        查詢期間暫無分期計劃
+                        查詢期間暫無付款計劃
                     </div>
                 </div>
             </div>

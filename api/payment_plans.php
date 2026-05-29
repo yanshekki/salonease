@@ -53,7 +53,15 @@ switch ($action) {
             JOIN sales s ON spp.sale_id = s.id
         ");
 
-        // 需要關注：活躍但進度低（已付期數 < 30% 且計劃已存在超過45天）
+        // Phase 4 A：讀取可調門檻
+        $thresholds = db_query_one("SELECT 
+            COALESCE(needs_attention_days_threshold, 45) as days_th,
+            COALESCE(needs_attention_progress_threshold, 30) as progress_th 
+            FROM settings WHERE id = 1");
+        $daysTh = (int)($thresholds['days_th'] ?? 45);
+        $progTh = (int)($thresholds['progress_th'] ?? 30) / 100.0;
+
+        // 需要關注：活躍但進度低（已付期數 < 設定百分比 且 計劃已存在超過設定天數）
         $needsAttention = db_query_one("
             SELECT COUNT(*) as count
             FROM sale_payment_plans spp
@@ -65,9 +73,9 @@ switch ($action) {
                 GROUP BY plan_id
             ) p ON p.plan_id = spp.id
             WHERE spp.status = 'active'
-              AND (p.paid_count IS NULL OR (p.paid_count * 1.0 / spp.total_installments) < 0.3)
-              AND DATEDIFF(CURDATE(), spp.created_at) > 45
-        ");
+              AND (p.paid_count IS NULL OR (p.paid_count * 1.0 / spp.total_installments) < ?)
+              AND DATEDIFF(CURDATE(), spp.created_at) > ?
+        ", [$progTh, $daysTh]);
 
         json_success([
             'active_plans' => (int)($dashboard['active_plans'] ?? 0),
@@ -165,7 +173,7 @@ switch ($action) {
             WHERE spp.id = ?
         ", [$id]);
 
-        if (!$plan) json_error('找不到該分期計劃');
+        if (!$plan) json_error('找不到該付款計劃');
 
         // 取得已付款記錄
         $payments = db_query("
@@ -237,10 +245,10 @@ switch ($action) {
                 return $newPlanId;
             });
 
-            json_success(['plan_id' => $planId], '分期計劃建立成功');
+            json_success(['plan_id' => $planId], '付款計劃建立成功');
 
         } catch (Throwable $e) {
-            json_error('建立分期計劃失敗：' . $e->getMessage());
+            json_error('建立付款計劃失敗：' . $e->getMessage());
         }
         break;
 
@@ -260,6 +268,21 @@ switch ($action) {
             json_error('狀態無效');
         }
 
+        // Phase 4 A 刪除保護：已有付款記錄的計劃，禁止從非 active 改回 active（防止破壞歷史）
+        $paidCount = (int)db_query_one("SELECT COUNT(*) as cnt FROM payments WHERE plan_id = ? AND is_refund = 0", [$planId])['cnt'] ?? 0;
+        $current = db_query_one("SELECT status FROM sale_payment_plans WHERE id = ?", [$planId]);
+        $currentStatus = $current['status'] ?? '';
+
+        if ($paidCount > 0 && $newStatus === 'active' && $currentStatus !== 'active') {
+            json_error('此計劃已有付款記錄，禁止改回「進行中」（資料保護）');
+        }
+
+        // 若取消已有付款的計劃，記錄保護性備註
+        $cancelNote = '';
+        if ($newStatus === 'cancelled' && $paidCount > 0) {
+            $cancelNote = "\n\n[系統保護 " . date('Y-m-d H:i') . "] 此計劃已有 {$paidCount} 筆已付款記錄，取消後不再追蹤。";
+        }
+
         $affected = db_exec("
             UPDATE sale_payment_plans 
             SET status = ? 
@@ -270,8 +293,14 @@ switch ($action) {
             json_error('找不到該計劃或狀態未改變');
         }
 
+        // 若有保護性備註，自動 append
+        if ($cancelNote) {
+            db_exec("UPDATE sale_payment_plans SET notes = COALESCE(notes, '') || ? WHERE id = ?", [$cancelNote, $planId]);
+        }
+
         log_activity('payment_plan.status_updated', $planId, 'sale_payment_plan', [
-            'new_status' => $newStatus
+            'new_status' => $newStatus,
+            'had_payments' => $paidCount > 0
         ]);
 
         json_success(null, '計劃狀態已更新');
@@ -494,6 +523,20 @@ switch ($action) {
         $allowedStatus = ['active', 'completed', 'cancelled'];
         if (!in_array($newStatus, $allowedStatus)) {
             json_error('狀態無效');
+        }
+
+        // Phase 4 A 批量刪除保護
+        $protectedIds = [];
+        foreach ($planIds as $pid) {
+            $pid = (int)$pid;
+            $paid = (int)db_query_one("SELECT COUNT(*) as cnt FROM payments WHERE plan_id = ? AND is_refund = 0", [$pid])['cnt'] ?? 0;
+            $cur = db_query_one("SELECT status FROM sale_payment_plans WHERE id = ?", [$pid]);
+            if ($paid > 0 && $newStatus === 'active' && ($cur['status'] ?? '') !== 'active') {
+                $protectedIds[] = $pid;
+            }
+        }
+        if (!empty($protectedIds)) {
+            json_error('以下計劃已有付款記錄，禁止改回進行中：' . implode(', ', $protectedIds));
         }
 
         $successCount = 0;
