@@ -291,6 +291,58 @@ switch ($action) {
         json_success($result);
         break;
 
+    case 'reminder_report':
+        // Phase 5: 付款計劃提醒發送報表
+        $channel = trim(get('channel', ''));
+        $status = trim(get('status', ''));
+
+        $where = "pn.sent_at BETWEEN ? AND ?";
+        $params = [$from, $to];
+
+        if ($channel) {
+            $where .= " AND pn.channel = ?";
+            $params[] = $channel;
+        }
+        if ($status) {
+            $where .= " AND pn.status = ?";
+            $params[] = $status;
+        }
+
+        // Summary
+        $summary = db_query_one("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN channel = 'email' THEN 1 ELSE 0 END) as email_total,
+                SUM(CASE WHEN channel = 'sms' THEN 1 ELSE 0 END) as sms_total
+            FROM plan_notifications pn
+            WHERE $where
+        ", $params);
+
+        // List (最近 200 筆)
+        $list = db_query("
+            SELECT 
+                pn.*,
+                spp.id as plan_id,
+                c.name as customer_name,
+                c.phone as customer_phone,
+                c.email as customer_email
+            FROM plan_notifications pn
+            JOIN sale_payment_plans spp ON spp.id = pn.plan_id
+            JOIN sales sa ON sa.id = spp.sale_id
+            JOIN customers c ON c.id = sa.customer_id
+            WHERE $where
+            ORDER BY pn.sent_at DESC
+            LIMIT 200
+        ", $params);
+
+        json_success([
+            'summary' => $summary,
+            'list' => $list
+        ]);
+        break;
+
     case 'installment_overview':
         // Phase 3: 分期計劃概覽報表
         $staffId = (int)($_GET['staff_id'] ?? 0);

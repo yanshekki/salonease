@@ -299,3 +299,288 @@ function log_error(string $context, string $message, array $extra = []): void
     );
     error_log($log);
 }
+
+/**
+ * Phase 5：簡單 Email 發送函式（骨架）
+ * 目前先使用 PHP 內建 mail()，未來可替換成 PHPMailer / SMTP 等。
+ *
+ * @return bool 是否成功嘗試發送（不保證一定到達）
+ */
+function send_email(string $to, string $subject, string $body, ?string $from = null): bool
+{
+    $settings = db_query_one("SELECT reminder_email_enabled, reminder_from_email, email FROM settings WHERE id = 1");
+
+    // 如果未啟用實際寄送，只記錄 log
+    if (empty($settings['reminder_email_enabled'])) {
+        $logMessage = sprintf(
+            "[EMAIL - DISABLED] To: %s | Subject: %s\nBody:\n%s\n",
+            $to, $subject, $body
+        );
+        error_log($logMessage);
+        return true; // 視為成功（不影響流程）
+    }
+
+    if (empty($to) || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        log_error('email', 'Invalid recipient email', ['to' => $to]);
+        return false;
+    }
+
+    $from = $from ?: ($settings['reminder_from_email'] ?: $settings['email'] ?: 'no-reply@salonease.hk');
+
+    $headers  = "From: {$from}\r\n";
+    $headers .= "Reply-To: {$from}\r\n";
+    $headers .= "Return-Path: {$from}\r\n";
+    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+    $headers .= "MIME-Version: 1.0\r\n";
+
+    $result = @mail($to, $subject, $body, $headers);
+
+    if (!$result) {
+        log_error('email', 'mail() returned false', [
+            'to'      => $to,
+            'subject' => $subject,
+            'from'    => $from
+        ]);
+    }
+
+    return $result;
+}
+
+/**
+ * Phase 5：簡單 SMS 發送函式（骨架）
+ * 目前為記錄模式，方便測試。正式上線時請替換成真實 SMS 供應商。
+ *
+ * 推薦供應商（香港/國際）：
+ * - Twilio
+ * - MessageBird
+ * - Nexmo (Vonage)
+ * - 香港本地：MessageMedia、亞馬遜 SNS + SNS SMS
+ *
+ * @param string $phone  手機號碼（建議帶 +852）
+ * @param string $message 訊息內容
+ * @return bool 是否成功嘗試發送
+ */
+function send_sms(string $phone, string $message): bool
+{
+    $phone = preg_replace('/[^0-9+]/', '', $phone);
+
+    if (empty($phone)) {
+        log_error('sms', 'Invalid phone number', ['phone' => $phone]);
+        return false;
+    }
+
+    $settings = db_query_one("
+        SELECT reminder_sms_enabled, twilio_account_sid, twilio_auth_token, twilio_from_number 
+        FROM settings WHERE id = 1
+    ");
+
+    // 如果未啟用 SMS 實際發送，則只記錄
+    if (empty($settings['reminder_sms_enabled'])) {
+        $logMessage = sprintf(
+            "[SMS - DISABLED] To: %s\nMessage:\n%s\n",
+            $phone, $message
+        );
+        error_log($logMessage);
+        return true;
+    }
+
+    // 如果有完整設定 Twilio，就真正發送
+    if (!empty($settings['twilio_account_sid']) && !empty($settings['twilio_auth_token']) && !empty($settings['twilio_from_number'])) {
+
+        if (!class_exists('\Twilio\Rest\Client')) {
+            log_error('sms', 'Twilio SDK not installed. Please run: composer require twilio/sdk');
+            error_log("[SMS] Twilio SDK not found.");
+            return false;
+        }
+
+        try {
+            $sid   = $settings['twilio_account_sid'];
+            $token = $settings['twilio_auth_token'];
+            $from  = $settings['twilio_from_number'];
+
+            $client = new \Twilio\Rest\Client($sid, $token);
+            $client->messages->create($phone, [
+                'from' => $from,
+                'body' => $message
+            ]);
+
+            return true;
+        } catch (Exception $e) {
+            log_error('sms', 'Twilio send failed', ['error' => $e->getMessage()]);
+            error_log("[SMS] Twilio Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // 沒有設定 Twilio → 維持骨架模式
+    $logMessage = sprintf(
+        "[SMS - SKELETON] To: %s\nMessage:\n%s\n",
+        $phone, $message
+    );
+    error_log($logMessage);
+
+    return true;
+}
+
+/**
+ * Phase 5：執行單一付款計劃提醒規則
+ * 會根據規則判斷是否需要發送，並寫入通知記錄
+ *
+ * @param int $ruleId
+ * @return array ['success' => bool, 'message' => string, 'notification_id' => ?int]
+ */
+function executePaymentReminder(int $ruleId): array
+{
+    $rule = db_query_one("
+        SELECT r.*, p.status as plan_status, p.start_date, p.total_installments,
+               sa.id as sale_id, c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+        FROM plan_reminder_rules r
+        JOIN sale_payment_plans p ON p.id = r.plan_id
+        JOIN sales sa ON sa.id = p.sale_id
+        JOIN customers c ON c.id = sa.customer_id
+        WHERE r.id = ?
+    ", [$ruleId]);
+
+    if (!$rule) {
+        return ['success' => false, 'message' => '找不到提醒規則'];
+    }
+
+    if ($rule['plan_status'] !== 'active') {
+        return ['success' => false, 'message' => '該計劃已非進行中狀態'];
+    }
+
+    // 計算今天是否應該發送
+    $today = new DateTime();
+    $startDate = new DateTime($rule['start_date']);
+    $totalInstallments = (int)$rule['total_installments'];
+
+    // 簡易判斷：假設每月一期（後續可根據 frequency 加強）
+    $monthsPassed = ($today->format('Y') - $startDate->format('Y')) * 12 + ($today->format('n') - $startDate->format('n'));
+    $currentInstallment = $monthsPassed + 1;
+
+    if ($currentInstallment < 1 || $currentInstallment > $totalInstallments) {
+        return ['success' => false, 'message' => '目前不在提醒範圍內'];
+    }
+
+    // 計算目標日期
+    $targetDate = clone $startDate;
+    $targetDate->modify("+{$currentInstallment} month");
+
+    $offset = (int)$rule['offset_days'];
+    $shouldSend = false;
+
+    if ($rule['reminder_type'] === 'before_due') {
+        $reminderDate = clone $targetDate;
+        $reminderDate->modify("-{$offset} days");
+        if ($today->format('Y-m-d') === $reminderDate->format('Y-m-d')) {
+            $shouldSend = true;
+        }
+    } else { // after_due
+        $reminderDate = clone $targetDate;
+        $reminderDate->modify("+{$offset} days");
+        if ($today->format('Y-m-d') === $reminderDate->format('Y-m-d')) {
+            $shouldSend = true;
+        }
+    }
+
+    if (!$shouldSend) {
+        return ['success' => false, 'message' => '今天不需要發送此提醒'];
+    }
+
+    // 檢查今天是否已經發送過（避免重複）
+    $alreadySent = db_query_one("
+        SELECT id FROM plan_notifications 
+        WHERE plan_id = ? AND reminder_rule_id = ? AND DATE(sent_at) = CURDATE()
+    ", [$rule['plan_id'], $ruleId]);
+
+    if ($alreadySent) {
+        return ['success' => false, 'message' => '今天已經發送過此提醒'];
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $subject = "付款計劃提醒 - 計劃 #{$rule['plan_id']}";
+    $message = "親愛的 {$rule['customer_name']}：\n\n";
+    $message .= "您的付款計劃 #{$rule['plan_id']} ";
+    $message .= ($rule['reminder_type'] === 'before_due' ? "即將到期" : "已逾期") . "。\n";
+    $message .= "請盡快安排付款。\n\n";
+    $message .= "SalonEase";
+
+    $anySuccess = false;
+    $errors = [];
+
+    // === 發送 Email ===
+    if (in_array($rule['channel'], ['email', 'both'])) {
+        if (empty($rule['customer_email'])) {
+            $errors[] = '客戶沒有 Email';
+        } else {
+            if (send_email($rule['customer_email'], $subject, $message)) {
+                $anySuccess = true;
+
+                db_exec("
+                    INSERT INTO plan_notifications 
+                    (plan_id, reminder_rule_id, channel, sent_at, status, subject, content, created_at)
+                    VALUES (?, ?, 'email', ?, 'sent', ?, ?, NOW())
+                ", [
+                    $rule['plan_id'], $ruleId, $now, $subject, $message
+                ]);
+            } else {
+                $errors[] = 'Email 發送失敗';
+                db_exec("
+                    INSERT INTO plan_notifications 
+                    (plan_id, reminder_rule_id, channel, sent_at, status, subject, content, error_message, created_at)
+                    VALUES (?, ?, 'email', ?, 'failed', ?, ?, ?, NOW())
+                ", [
+                    $rule['plan_id'], $ruleId, $now, $subject, $message, 'Email 發送失敗'
+                ]);
+            }
+        }
+    }
+
+    // === 發送 SMS ===
+    if (in_array($rule['channel'], ['sms', 'both'])) {
+        $smsMessage = "SalonEase 付款計劃提醒：計劃 #{$rule['plan_id']} " .
+                      ($rule['reminder_type'] === 'before_due' ? "即將到期" : "已逾期") .
+                      "，請盡快付款。";
+
+        if (send_sms($rule['customer_phone'] ?? '', $smsMessage)) {
+            $anySuccess = true;
+
+            db_exec("
+                INSERT INTO plan_notifications 
+                (plan_id, reminder_rule_id, channel, sent_at, status, content, created_at)
+                VALUES (?, ?, 'sms', ?, 'sent', ?, NOW())
+            ", [
+                $rule['plan_id'], $ruleId, $now, $smsMessage
+            ]);
+        } else {
+            $errors[] = 'SMS 發送失敗';
+            db_exec("
+                INSERT INTO plan_notifications 
+                (plan_id, reminder_rule_id, channel, sent_at, status, content, error_message, created_at)
+                VALUES (?, ?, 'sms', ?, 'failed', ?, ?, NOW())
+            ", [
+                $rule['plan_id'], $ruleId, $now, $smsMessage, 'SMS 發送失敗'
+            ]);
+        }
+    }
+
+    // 更新 last_sent_at（只要有任何一個管道成功就更新）
+    if ($anySuccess) {
+        db_exec("UPDATE plan_reminder_rules SET last_sent_at = ? WHERE id = ?", [$now, $ruleId]);
+    }
+
+    log_activity('plan_reminder.executed', $rule['plan_id'], 'sale_payment_plan', [
+        'rule_id'       => $ruleId,
+        'type'          => 'scheduled',
+        'channels'      => $rule['channel'],
+        'any_success'   => $anySuccess
+    ]);
+
+    return [
+        'success' => $anySuccess,
+        'message' => $anySuccess 
+            ? '提醒已發送' 
+            : (implode('；', $errors) ?: '發送失敗'),
+    ];
+}
+

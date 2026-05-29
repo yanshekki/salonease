@@ -262,6 +262,106 @@ include __DIR__ . '/includes/header.php';
                 </div>
             </div>
             <div class="small text-danger mt-2">修改後，Dashboard「付款計劃關注」卡片、計劃管理頁及 record_payment 頁的「需要關注」計算會立即使用新門檻。<br>建議調整後即去 <a href="/payment_plans.php" class="text-danger fw-medium">付款計劃管理頁</a> 驗證效果。</div>
+
+            <hr class="my-3">
+
+            <div>
+                <div class="fw-semibold mb-2">提醒 Email 發送設定</div>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" x-model="form.reminder_email_enabled" id="reminder_email_enabled" value="1">
+                            <label class="form-check-label small" for="reminder_email_enabled">
+                                啟用實際寄送提醒
+                            </label>
+                        </div>
+                        <div class="small text-muted">關閉時只會記錄，不會真的寄信（建議測試時先關）</div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small">提醒寄件者 Email</label>
+                        <input type="email" x-model="form.reminder_from_email" class="form-control form-control-sm" placeholder="留空則使用店舖 Email">
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-2">
+
+            <div>
+                <div class="fw-semibold mb-2">SMS 提醒設定（Twilio）</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" x-model="form.reminder_sms_enabled" id="reminder_sms_enabled" value="1">
+                            <label class="form-check-label small" for="reminder_sms_enabled">啟用實際發送 SMS</label>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small">Twilio Account SID</label>
+                        <input type="text" x-model="form.twilio_account_sid" class="form-control form-control-sm" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxx">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Twilio Auth Token</label>
+                        <input type="password" x-model="form.twilio_auth_token" class="form-control form-control-sm" placeholder="••••••••">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Twilio From Number（+852...）</label>
+                        <input type="text" x-model="form.twilio_from_number" class="form-control form-control-sm" placeholder="+85298765432">
+                    </div>
+                </div>
+
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" @click="testSms()">
+                        測試發送 SMS
+                    </button>
+                    <span class="small text-muted ms-2">（需先儲存設定）</span>
+                </div>
+
+                <div class="small text-muted mt-1">目前為骨架模式，填入後可在 send_sms() 裡快速切換成真實發送。</div>
+            </div>
+
+            <!-- Phase 5: 提醒發送統計 -->
+            <div class="mt-3" x-show="reminderStats">
+                <div class="fw-semibold mb-2">提醒發送統計</div>
+                <div class="row g-2">
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-2 text-center">
+                            <div class="small text-muted">最近 7 天</div>
+                            <div class="fs-5 fw-semibold" x-text="reminderStats?.last_7_days?.total || 0"></div>
+                            <div class="tiny text-muted">總發送</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-2 text-center">
+                            <div class="small text-muted">Email (7天)</div>
+                            <div class="fs-6">
+                                <span class="text-success" x-text="reminderStats?.last_7_days?.email_sent || 0"></span>
+                                /
+                                <span class="text-danger" x-text="reminderStats?.last_7_days?.email_failed || 0"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-2 text-center">
+                            <div class="small text-muted">SMS (7天)</div>
+                            <div class="fs-6">
+                                <span class="text-success" x-text="reminderStats?.last_7_days?.sms_sent || 0"></span>
+                                /
+                                <span class="text-danger" x-text="reminderStats?.last_7_days?.sms_failed || 0"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-2 text-center">
+                            <div class="small text-muted">最近 30 天</div>
+                            <div class="fs-5 fw-semibold" x-text="reminderStats?.last_30_days?.total || 0"></div>
+                            <div class="tiny text-muted">總發送</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-end mt-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" @click="loadReminderStats()">刷新</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -509,7 +609,14 @@ function shopSettings() {
             default_low_stock_threshold: 5,
             needs_attention_days_threshold: 45,
             needs_attention_progress_threshold: 30,
+            reminder_email_enabled: 0,
+            reminder_from_email: '',
+            reminder_sms_enabled: 0,
+            twilio_account_sid: '',
+            twilio_auth_token: '',
+            twilio_from_number: '',
             points_earn_rate: 10,
+            reminderStats: null,
             points_redemption_rate: 10,
             quick_restock_5: 5,
             quick_restock_10: 10,
@@ -521,6 +628,7 @@ function shopSettings() {
         init() {
             this.loadShop();
             this.loadHealth();   // A146 自動載入健康狀態
+            this.loadReminderStats();
         },
 
         async loadShop() {
@@ -538,6 +646,12 @@ function shopSettings() {
                     this.form.default_low_stock_threshold = parseInt(d.default_low_stock_threshold) || 5;
                     this.form.needs_attention_days_threshold = parseInt(d.needs_attention_days_threshold) || 45;
                     this.form.needs_attention_progress_threshold = parseInt(d.needs_attention_progress_threshold) || 30;
+                    this.form.reminder_email_enabled = parseInt(d.reminder_email_enabled) || 0;
+                    this.form.reminder_from_email = d.reminder_from_email || '';
+                    this.form.reminder_sms_enabled = parseInt(d.reminder_sms_enabled) || 0;
+                    this.form.twilio_account_sid = d.twilio_account_sid || '';
+                    this.form.twilio_auth_token = d.twilio_auth_token || '';
+                    this.form.twilio_from_number = d.twilio_from_number || '';
                     this.form.points_earn_rate = parseInt(d.points_earn_rate) || 10;
                     this.form.points_redemption_rate = parseInt(d.points_redemption_rate) || 10;
                     this.form.quick_restock_5  = parseInt(d.quick_restock_5) || 5;
@@ -568,6 +682,12 @@ function shopSettings() {
                         default_low_stock_threshold: this.form.default_low_stock_threshold,
                         needs_attention_days_threshold: this.form.needs_attention_days_threshold,
                         needs_attention_progress_threshold: this.form.needs_attention_progress_threshold,
+                        reminder_email_enabled: this.form.reminder_email_enabled,
+                        reminder_from_email: this.form.reminder_from_email,
+                        reminder_sms_enabled: this.form.reminder_sms_enabled,
+                        twilio_account_sid: this.form.twilio_account_sid,
+                        twilio_auth_token: this.form.twilio_auth_token,
+                        twilio_from_number: this.form.twilio_from_number,
                         points_earn_rate: this.form.points_earn_rate,
                         points_redemption_rate: this.form.points_redemption_rate,
                         quick_restock_5: this.form.quick_restock_5,
@@ -583,6 +703,34 @@ function shopSettings() {
                 SalonEase.toast(err.message || '儲存失敗', 'error');
             } finally {
                 this.saving = false;
+            }
+        },
+
+        async testSms() {
+            const testPhone = prompt('請輸入測試手機號碼（例如 +85298765432）：');
+            if (!testPhone) return;
+
+            try {
+                const res = await SalonEase.fetch('/api/settings.php?action=test_sms', {
+                    method: 'POST',
+                    body: {
+                        csrf_token: '<?= csrf_token() ?>',
+                        test_phone: testPhone
+                    }
+                });
+
+                SalonEase.toast(res.message || '測試 SMS 已發送');
+            } catch (err) {
+                SalonEase.toast(err.message || '測試失敗', 'error');
+            }
+        },
+
+        async loadReminderStats() {
+            try {
+                const res = await SalonEase.fetch('/api/settings.php?action=reminder_stats');
+                this.reminderStats = res.data;
+            } catch (e) {
+                console.warn('載入提醒統計失敗', e);
             }
         },
 

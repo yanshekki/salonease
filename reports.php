@@ -413,6 +413,106 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
 
+        <!-- Phase 5: 付款計劃提醒發送報表 -->
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="fw-semibold">付款計劃提醒發送報表</div>
+                        <button @click="exportReminderCSV()" class="btn btn-sm btn-outline-secondary">匯出 CSV</button>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label small">渠道</label>
+                            <select x-model="reminderFilterChannel" @change="filterReminderReport()" class="form-select form-select-sm">
+                                <option value="">全部</option>
+                                <option value="email">Email</option>
+                                <option value="sms">SMS</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">狀態</label>
+                            <select x-model="reminderFilterStatus" @change="filterReminderReport()" class="form-select form-select-sm">
+                                <option value="">全部</option>
+                                <option value="sent">成功</option>
+                                <option value="failed">失敗</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3" x-show="reminderReport.summary">
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">總發送</div>
+                                <div class="fs-4 fw-semibold" x-text="reminderReport.summary?.total || 0"></div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">Email</div>
+                                <div class="fs-5">
+                                    <span class="text-success" x-text="reminderReport.summary?.email_sent || 0"></span> / 
+                                    <span class="text-danger" x-text="reminderReport.summary?.email_failed || 0"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">SMS</div>
+                                <div class="fs-5">
+                                    <span class="text-success" x-text="reminderReport.summary?.sms_sent || 0"></span> / 
+                                    <span class="text-danger" x-text="reminderReport.summary?.sms_failed || 0"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">成功率</div>
+                                <div class="fs-5 fw-semibold" x-text="reminderReport.summary?.total > 0 ? Math.round((reminderReport.summary.sent / reminderReport.summary.total) * 100) + '%' : '0%'"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 320px;">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>時間</th>
+                                    <th>計劃</th>
+                                    <th>客戶</th>
+                                    <th>渠道</th>
+                                    <th>狀態</th>
+                                    <th>內容</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="row in (reminderReport.list || [])" :key="row.id">
+                                    <tr>
+                                        <td class="small" x-text="row.sent_at ? row.sent_at.replace('T',' ') : ''"></td>
+                                        <td>
+                                            <a :href="`/payment_plans.php?plan_id=${row.plan_id}`" class="text-decoration-none">#<span x-text="row.plan_id"></span></a>
+                                        </td>
+                                        <td x-text="row.customer_name || '-'"></td>
+                                        <td><span class="badge bg-secondary" x-text="row.channel"></span></td>
+                                        <td>
+                                            <span :class="row.status === 'sent' ? 'text-success' : 'text-danger'" x-text="row.status"></span>
+                                        </td>
+                                        <td class="small text-truncate" style="max-width: 300px;" :title="row.content || row.subject">
+                                            <span x-text="(row.content || row.subject || '').substring(0, 60)"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="!reminderReport.list || reminderReport.list.length === 0">
+                                    <td colspan="6" class="text-muted text-center py-3">此期間無提醒發送記錄</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Phase 3: 手續費成本統計 -->
         <div class="col-12 col-lg-6">
             <div class="card h-100">
@@ -579,6 +679,9 @@ function reportsApp() {
         packageRedemptions: [],
         installmentOverview: [],  // Phase 3
         feeCostBreakdown: [],     // Phase 3
+        reminderReport: { summary: null, list: [] },  // Phase 5
+        reminderFilterChannel: '',
+        reminderFilterStatus: '',
 
         init() {
             this.loadStaffList();
@@ -601,7 +704,8 @@ function reportsApp() {
                     this.loadStockoutTrend(),     // A143
                     this.loadStaffPerformanceTrend(), // A144
                     this.loadInstallmentOverview(),  // Phase 3
-                    this.loadFeeCostBreakdown()        // Phase 3
+                    this.loadFeeCostBreakdown(),       // Phase 3
+                    this.loadReminderReport()          // Phase 5
                 ]);
             } finally {
                 this.loading = false;
@@ -688,6 +792,46 @@ function reportsApp() {
             } catch (e) {
                 this.feeCostBreakdown = [];
             }
+        },
+
+        // Phase 5: 付款計劃提醒發送報表
+        async loadReminderReport() {
+            try {
+                let url = `/api/reports.php?action=reminder_report&from=${this.from}&to=${this.to}`;
+                if (this.reminderFilterChannel) url += `&channel=${this.reminderFilterChannel}`;
+                if (this.reminderFilterStatus) url += `&status=${this.reminderFilterStatus}`;
+
+                const res = await SalonEase.fetch(url);
+                this.reminderReport = res.data || { summary: null, list: [] };
+            } catch (e) {
+                console.warn('載入提醒發送報表失敗', e);
+                this.reminderReport = { summary: null, list: [] };
+            }
+        },
+
+        filterReminderReport() {
+            this.loadReminderReport();
+        },
+
+        exportReminderCSV() {
+            const list = this.reminderReport.list || [];
+            if (list.length === 0) {
+                alert('沒有資料可匯出');
+                return;
+            }
+
+            let csv = '時間,計劃ID,客戶,渠道,狀態,內容\n';
+            list.forEach(row => {
+                const time = (row.sent_at || '').replace('T', ' ');
+                const content = (row.content || row.subject || '').replace(/"/g, '""');
+                csv += `"${time}","${row.plan_id}","${row.customer_name || ''}","${row.channel}","${row.status}","${content}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `reminder_report_${this.from}_${this.to}.csv`;
+            link.click();
         },
 
         // A62：載入上期數據以計算「較上期」百分比

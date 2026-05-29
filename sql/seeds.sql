@@ -86,3 +86,19 @@ ON DUPLICATE KEY UPDATE
     default_low_stock_threshold = VALUES(default_low_stock_threshold),
     needs_attention_days_threshold = VALUES(needs_attention_days_threshold),
     needs_attention_progress_threshold = VALUES(needs_attention_progress_threshold);
+
+-- Phase 5: 提醒 Email 預設設定
+UPDATE settings 
+SET 
+    reminder_email_enabled = 0,
+    reminder_from_email = NULL
+WHERE id = 1;
+
+-- Phase 5: Twilio SMS 預設設定
+UPDATE settings 
+SET 
+    twilio_account_sid = NULL,
+    twilio_auth_token = NULL,
+    twilio_from_number = NULL,
+    reminder_sms_enabled = 0
+WHERE id = 1;
