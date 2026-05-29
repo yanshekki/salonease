@@ -69,6 +69,19 @@ $pageSubtitle = '為已開立的銷售單補錄付款（支援一單多付）';
                             <label class="form-label">備註（可選）</label>
                             <input type="text" id="payment-notes" class="form-control" placeholder="例如：客戶補款">
                         </div>
+
+                        <!-- Phase 3: 連結分期計劃 -->
+                        <div class="col-12" id="plan-selection-area" style="display: none;">
+                            <label class="form-label">連結分期計劃（可選）</label>
+                            <select id="plan-id" class="form-select" onchange="toggleInstallmentField()">
+                                <option value="">不連結計劃</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6" id="installment-area" style="display: none;">
+                            <label class="form-label">這是第幾期</label>
+                            <input type="number" id="installment-no" class="form-control" min="1" placeholder="例如：2">
+                        </div>
                     </div>
 
                     <div class="mt-3 d-flex gap-2">
@@ -95,6 +108,16 @@ $pageSubtitle = '為已開立的銷售單補錄付款（支援一單多付）';
 window.CSRF_TOKEN = '<?= csrf_token() ?>';
 
 let currentSale = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Phase 3 C1: 支援從 URL 自動載入銷售單 (e.g. ?sale_id=123)
+    const urlParams = new URLSearchParams(window.location.search);
+    const saleIdFromUrl = urlParams.get('sale_id');
+    if (saleIdFromUrl) {
+        document.getElementById('sale-id-input').value = saleIdFromUrl;
+        loadSale();
+    }
+});
 
 async function loadSale() {
     const saleId = document.getElementById('sale-id-input').value.trim();
@@ -123,6 +146,9 @@ async function loadSale() {
 
         // 載入最近付款記錄
         await loadRecentPayments(saleId);
+
+        // Phase 3: 載入該銷售單的分期計劃
+        await loadPlansForSale(saleId);
 
     } catch (err) {
         alert('載入失敗：' + err.message);
@@ -177,48 +203,6 @@ async function loadRecentPayments(saleId) {
     }
 }
 
-async function recordPayment() {
-    if (!currentSale) {
-        alert('請先載入銷售單');
-        return;
-    }
-
-    const amount = parseFloat(document.getElementById('payment-amount').value);
-    if (!amount || amount <= 0) {
-        alert('請輸入有效的付款金額');
-        return;
-    }
-
-    const payload = {
-        sale_id: currentSale.id,
-        payment_method_id: parseInt(document.getElementById('payment-method-id').value),
-        amount: amount,
-        ref_number: document.getElementById('ref-number').value.trim(),
-        notes: document.getElementById('payment-notes').value.trim(),
-        csrf_token: window.CSRF_TOKEN
-    };
-
-    try {
-        const res = await SalonEase.fetch('/api/payments.php?action=record', {
-            method: 'POST',
-            body: payload
-        });
-
-        alert('付款記錄成功！');
-        // 重新載入銷售單資訊
-        document.getElementById('sale-id-input').value = currentSale.id;
-        await loadSale();
-
-        // 清空表單
-        document.getElementById('payment-amount').value = '';
-        document.getElementById('ref-number').value = '';
-        document.getElementById('payment-notes').value = '';
-
-    } catch (err) {
-        alert('記錄失敗：' + err.message);
-    }
-}
-
 function clearForm() {
     document.getElementById('payment-amount').value = '';
     document.getElementById('ref-number').value = '';
@@ -241,6 +225,92 @@ function getStatusBadgeClass(status) {
     if (status === 'partial') return 'bg-warning text-dark';
     if (status === 'unpaid') return 'bg-danger';
     return 'bg-secondary';
+}
+
+// ===== Phase 3: 分期計劃相關 =====
+let currentPlans = [];
+
+async function loadPlansForSale(saleId) {
+    const planSelect = document.getElementById('plan-id');
+    const planArea = document.getElementById('plan-selection-area');
+    const installmentArea = document.getElementById('installment-area');
+
+    planSelect.innerHTML = '<option value="">不連結計劃</option>';
+    currentPlans = [];
+
+    try {
+        const res = await SalonEase.fetch(`/api/payment_plans.php?action=list_by_sale&sale_id=${saleId}`);
+        currentPlans = res.data || [];
+
+        if (currentPlans.length > 0) {
+            currentPlans.forEach(plan => {
+                const opt = document.createElement('option');
+                opt.value = plan.id;
+                opt.textContent = `${plan.plan_type === 'installment' ? '分期' : '周期性'} - ${plan.total_installments}期 × ${plan.installment_amount} (狀態: ${plan.status})`;
+                planSelect.appendChild(opt);
+            });
+            planArea.style.display = '';
+        } else {
+            planArea.style.display = 'none';
+            installmentArea.style.display = 'none';
+        }
+    } catch (err) {
+        console.warn('載入分期計劃失敗', err);
+        planArea.style.display = 'none';
+    }
+}
+
+function toggleInstallmentField() {
+    const planId = document.getElementById('plan-id').value;
+    const installmentArea = document.getElementById('installment-area');
+    installmentArea.style.display = planId ? '' : 'none';
+}
+
+async function recordPayment() {
+    if (!currentSale) {
+        alert('請先載入銷售單');
+        return;
+    }
+
+    const amount = parseFloat(document.getElementById('payment-amount').value);
+    if (!amount || amount <= 0) {
+        alert('請輸入有效的付款金額');
+        return;
+    }
+
+    const payload = {
+        sale_id: currentSale.id,
+        payment_method_id: parseInt(document.getElementById('payment-method-id').value),
+        amount: amount,
+        ref_number: document.getElementById('ref-number').value.trim(),
+        notes: document.getElementById('payment-notes').value.trim(),
+        plan_id: document.getElementById('plan-id').value ? parseInt(document.getElementById('plan-id').value) : null,
+        installment_no: document.getElementById('installment-no').value ? parseInt(document.getElementById('installment-no').value) : null,
+        csrf_token: window.CSRF_TOKEN
+    };
+
+    try {
+        const res = await SalonEase.fetch('/api/payments.php?action=record', {
+            method: 'POST',
+            body: payload
+        });
+
+        alert('付款記錄成功！');
+        // 重新載入銷售單資訊
+        document.getElementById('sale-id-input').value = currentSale.id;
+        await loadSale();
+
+        // 清空表單
+        document.getElementById('payment-amount').value = '';
+        document.getElementById('ref-number').value = '';
+        document.getElementById('payment-notes').value = '';
+        document.getElementById('plan-id').value = '';
+        document.getElementById('installment-no').value = '';
+        document.getElementById('installment-area').style.display = 'none';
+
+    } catch (err) {
+        alert('記錄失敗：' + err.message);
+    }
 }
 </script>
 

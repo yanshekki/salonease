@@ -251,6 +251,98 @@ switch ($action) {
         json_success($result);
         break;
 
+    case 'fee_cost_breakdown':
+        // Phase 3: 手續費成本統計（商戶實際承擔）
+        $staffId = (int)($_GET['staff_id'] ?? 0);
+        $where = "s.sale_date BETWEEN ? AND ?";
+        $params = [$from, $to];
+
+        if ($staffId > 0) {
+            $where .= " AND s.staff_id = ?";
+            $params[] = $staffId;
+        }
+
+        $rows = db_query("
+            SELECT 
+                pm.name as method,
+                COUNT(*) as count,
+                COALESCE(SUM(p.fee_amount), 0) as total_fee,
+                COALESCE(SUM(CASE WHEN p.fee_borne_by = 'merchant' THEN p.fee_amount ELSE 0 END), 0) as merchant_fee,
+                COALESCE(SUM(CASE WHEN p.fee_borne_by = 'customer' THEN p.fee_amount ELSE 0 END), 0) as customer_fee
+            FROM payments p
+            JOIN payment_methods pm ON p.payment_method_id = pm.id
+            JOIN sales s ON p.sale_id = s.id
+            WHERE $where
+              AND p.is_refund = 0
+            GROUP BY pm.id, pm.name
+            ORDER BY merchant_fee DESC
+        ", $params);
+
+        $result = [];
+        foreach ($rows as $r) {
+            $result[] = [
+                'method' => $r['method'],
+                'count' => (int)$r['count'],
+                'total_fee' => (float)$r['total_fee'],
+                'merchant_fee' => (float)$r['merchant_fee'],
+                'customer_fee' => (float)$r['customer_fee']
+            ];
+        }
+        json_success($result);
+        break;
+
+    case 'installment_overview':
+        // Phase 3: 分期計劃概覽報表
+        $staffId = (int)($_GET['staff_id'] ?? 0);
+        $where = "s.sale_date BETWEEN ? AND ?";
+        $params = [$from, $to];
+
+        if ($staffId > 0) {
+            $where .= " AND s.staff_id = ?";
+            $params[] = $staffId;
+        }
+
+        $rows = db_query("
+            SELECT 
+                spp.id as plan_id,
+                spp.plan_type,
+                spp.total_installments,
+                spp.installment_amount,
+                spp.status,
+                s.id as sale_id,
+                s.total as sale_total,
+                COALESCE(SUM(CASE WHEN p.is_refund = 0 THEN p.amount ELSE 0 END), 0) as paid_amount,
+                COUNT(CASE WHEN p.is_refund = 0 THEN 1 END) as payments_made
+            FROM sale_payment_plans spp
+            JOIN sales s ON spp.sale_id = s.id
+            LEFT JOIN payments p ON p.plan_id = spp.id
+            WHERE $where
+            GROUP BY spp.id, s.id
+            ORDER BY spp.created_at DESC
+        ", $params);
+
+        $result = [];
+        foreach ($rows as $r) {
+            $paid = (float)$r['paid_amount'];
+            $expected = (float)$r['installment_amount'] * (int)$r['total_installments'];
+            $progress = $expected > 0 ? round(($paid / $expected) * 100, 1) : 0;
+
+            $result[] = [
+                'plan_id' => (int)$r['plan_id'],
+                'sale_id' => (int)$r['sale_id'],
+                'plan_type' => $r['plan_type'],
+                'total_installments' => (int)$r['total_installments'],
+                'installment_amount' => (float)$r['installment_amount'],
+                'status' => $r['status'],
+                'paid_amount' => $paid,
+                'payments_made' => (int)$r['payments_made'],
+                'progress_percent' => $progress,
+                'remaining_amount' => max(0, $expected - $paid)
+            ];
+        }
+        json_success($result);
+        break;
+
     case 'top_services':
         $limit = max(1, min(20, (int)($_GET['limit'] ?? 5)));
         $rows = db_query("

@@ -76,6 +76,7 @@ switch ($action) {
         $refNumber = sanitize_string(post('ref_number', ''), 120);
         $notes = sanitize_string(post('notes', ''), 500);
         $installmentNo = post('installment_no') ? (int)post('installment_no') : null;
+        $planId = post('plan_id') ? (int)post('plan_id') : null;
 
         if ($saleId <= 0) json_error('缺少 sale_id');
         if ($paymentMethodId <= 0) json_error('缺少付款方法');
@@ -99,8 +100,8 @@ switch ($action) {
             $result = db_transaction(function($pdo) use ($saleId, $paymentMethodId, $amount, $feeAmount, $feeBorneBy, $refNumber, $notes, $installmentNo, $sale) {
                 // 插入付款記錄
                 $pdo->prepare("
-                    INSERT INTO payments (sale_id, payment_method_id, amount, fee_amount, fee_borne_by, paid_at, staff_id, ref_number, notes, installment_no)
-                    VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?)
+                    INSERT INTO payments (sale_id, payment_method_id, amount, fee_amount, fee_borne_by, paid_at, staff_id, ref_number, notes, installment_no, plan_id)
+                    VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?)
                 ")->execute([
                     $saleId,
                     $paymentMethodId,
@@ -110,7 +111,8 @@ switch ($action) {
                     $_SESSION['staff_id'],
                     $refNumber ?: null,
                     $notes ?: null,
-                    $installmentNo
+                    $installmentNo,
+                    $planId
                 ]);
 
                 $paymentId = (int)$pdo->lastInsertId();
@@ -133,13 +135,17 @@ switch ($action) {
                 log_activity('payment.recorded', $paymentId, 'payment', [
                     'sale_id' => $saleId,
                     'amount' => $amount,
-                    'payment_method_id' => $paymentMethodId
+                    'payment_method_id' => $paymentMethodId,
+                    'plan_id' => $planId,
+                    'installment_no' => $installmentNo
                 ]);
 
                 return [
                     'payment_id' => $paymentId,
                     'new_amount_paid' => $newAmountPaid,
-                    'new_payment_status' => $newStatus
+                    'new_payment_status' => $newStatus,
+                    'plan_id' => $planId,
+                    'installment_no' => $installmentNo
                 ];
             });
 

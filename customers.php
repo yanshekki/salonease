@@ -74,6 +74,8 @@ $extraJs = 'hotkeys.js';
                     <th class="text-end">累計消費</th>
                     <th class="text-center">積分</th>
                     <th class="text-center">到訪次數</th>
+                    <th class="text-center">最近付款</th>
+                    <th class="text-center">活躍計劃</th>
                     <th class="text-end" style="width: 90px;">操作</th>
                 </tr>
             </thead>
@@ -142,6 +144,20 @@ $extraJs = 'hotkeys.js';
                         <a href="/loyalty.php" class="text-muted text-decoration-none">查看完整歷史 →</a>
                     </div>
                 </div>
+
+                <!-- Phase 3: 最近付款歷史 -->
+                <div id="payments-history-section" class="mt-3 d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small text-muted mb-0">付款歷史</label>
+                        <div id="payments-summary" class="small text-muted"></div>
+                    </div>
+                    <div id="payments-history-list" class="small border rounded p-2 bg-light" style="max-height: 140px; overflow-y: auto; font-size: 0.75rem;">
+                        <!-- JS 動態填入 -->
+                    </div>
+                    <div class="small mt-1">
+                        <a href="/record_payment.php" class="text-muted text-decoration-none">記錄補款 →</a>
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -198,7 +214,7 @@ async function loadCustomers() {
 function renderCustomersTable(list) {
     const tbody = document.getElementById('customers-list');
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="py-5 text-center text-muted">沒有符合的客戶</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="py-5 text-center text-muted">沒有符合的客戶</td></tr>`;
         return;
     }
 
@@ -208,6 +224,23 @@ function renderCustomersTable(list) {
         const spent = parseFloat(c.total_spent || 0).toFixed(0);
 
         const points = c.points || 0;
+
+        // Phase 3 C10: 根據 active_plan_summary 嘅「已付 X/Y」計算進度，動態轉色
+        let planBadgeClass = 'bg-primary';
+        if (c.active_plans_count > 0 && c.active_plan_summary) {
+            const m = c.active_plan_summary.match(/已付\s*(\d+)\s*\/\s*(\d+)/);
+            if (m) {
+                const paid = parseInt(m[1], 10);
+                const total = parseInt(m[2], 10);
+                if (total > 0) {
+                    const pct = (paid / total) * 100;
+                    if (pct >= 80) planBadgeClass = 'bg-success';
+                    else if (pct >= 40) planBadgeClass = 'bg-warning text-dark';
+                    else planBadgeClass = 'bg-danger';
+                }
+            }
+        }
+
         html += `
             <tr>
                 <td class="fw-medium">${e(c.name)}</td>
@@ -219,6 +252,22 @@ function renderCustomersTable(list) {
                     <span class="badge ${points > 0 ? 'bg-success' : 'bg-secondary'}">${points}</span>
                 </td>
                 <td class="text-center">${c.visit_count || 0}</td>
+                <td class="text-center small text-muted">
+                    ${c.last_payment_at ? formatDate(c.last_payment_at) : '-'}
+                </td>
+                <td class="text-center"
+                    ${c.active_plans_count > 0 
+                        ? `style="cursor:pointer;" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top"
+                           data-bs-html="true"
+                           title="${c.active_plan_summary || '有活躍計劃'}"
+                           onclick="showCustomerActivePlans(${c.id}, event)"`
+                        : ''}>
+                    ${c.active_plans_count > 0 
+                        ? `<span class="badge ${planBadgeClass}">${c.active_plans_count}</span>` 
+                        : '<span class="text-muted">0</span>'}
+                </td>
                 <td class="text-end">
                     <button onclick="editCustomer(${c.id})" class="btn btn-link btn-sm text-success p-0">編輯</button>
                 </td>
@@ -226,11 +275,154 @@ function renderCustomersTable(list) {
         `;
     });
     tbody.innerHTML = html;
+
+    // Phase 3 C11: 初始化 tooltips（而家係整個 <td> 做 trigger，click/hover 範圍更大；C9 豐富內容處理保留）
+    const tooltipTriggerList = [].slice.call(tbody.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        // C9 額外：把「已付進度」拆成第二行，同時突出每期金額，讓 hover 更易讀
+        const raw = tooltipTriggerEl.getAttribute('title') || '';
+        if (raw.includes(' (已付 ')) {
+            tooltipTriggerEl.setAttribute('title', raw.replace(' (已付 ', '<br><small class="text-muted">已付進度</small> '));
+        }
+        new bootstrap.Tooltip(tooltipTriggerEl, { html: true });
+    });
 }
 
 function formatDate(dt) {
     const d = new Date(dt);
     return d.toLocaleDateString('zh-HK', { month: '2-digit', day: '2-digit' });
+}
+
+// Phase 3 C1: 跳轉到 record_payment.php 並預載銷售單
+function goToRecordPayment(saleId) {
+    window.location.href = `/record_payment.php?sale_id=${saleId}`;
+}
+
+// Phase 3 C3: 在 Modal 內展開更多付款歷史
+async function loadMoreCustomerPayments(customerId, linkElement) {
+    const paymentsList = document.getElementById('payments-history-list');
+    if (!paymentsList) return;
+
+    linkElement.innerHTML = '載入中...';
+    linkElement.style.pointerEvents = 'none';
+
+    try {
+        const res = await SalonEase.fetch(`/api/customers.php?action=get&id=${customerId}&payments_limit=30`);
+        const c = res.data;
+
+        const payments = c.recent_payments || [];
+        const totalCount = c.payments_total_count || 0;
+
+        let html = '<table class="table table-sm mb-0" style="font-size:0.7rem;"><tbody>';
+        payments.forEach(p => {
+            const isRefund = p.is_refund == 1;
+            const sign = isRefund ? '-' : '';
+            const amountClass = isRefund ? 'text-danger' : 'fw-medium';
+
+            let feeHtml = '';
+            if (p.fee_amount && parseFloat(p.fee_amount) > 0) {
+                const feeSign = p.fee_borne_by === 'customer' ? '' : '商戶承擔 ';
+                feeHtml = `<span class="text-muted" style="font-size:0.6rem;">(${feeSign}手續費 ${sign}HK$ ${parseFloat(p.fee_amount).toFixed(0)})</span>`;
+            }
+
+            let planHtml = '';
+            if (p.plan_type) {
+                const planLabel = p.plan_type === 'installment' ? '分期' : '周期性';
+                planHtml = ` <span class="badge bg-info-subtle text-info" style="font-size:0.55rem;">${planLabel}</span>`;
+                if (p.installment_no && p.total_installments) {
+                    planHtml += ` <span class="text-muted" style="font-size:0.6rem;">#${p.installment_no}/${p.total_installments}</span>`;
+                } else if (p.installment_no) {
+                    planHtml += ` <span class="text-muted" style="font-size:0.6rem;">#${p.installment_no}</span>`;
+                }
+            }
+
+            const refundBadge = isRefund 
+                ? `<span class="badge bg-danger-subtle text-danger ms-1" style="font-size:0.55rem;">退款</span>` 
+                : '';
+
+            html += `
+                <tr style="cursor:pointer;" onclick="goToRecordPayment(${p.sale_id})">
+                    <td class="text-nowrap">${p.paid_at ? p.paid_at.substring(0,16).replace('T',' ') : p.sale_date}</td>
+                    <td class="${amountClass}">${sign}HK$ ${parseFloat(p.amount).toFixed(0)} ${feeHtml}</td>
+                    <td class="text-muted small">${p.payment_method_name}${refundBadge}</td>
+                    <td>${planHtml}</td>
+                </tr>`;
+        });
+        html += '</tbody></table>';
+        html += `<div class="small text-muted mt-1">...共 ${totalCount} 筆 <a href="/record_payment.php" class="text-muted text-decoration-none">記錄補款 →</a></div>`;
+        paymentsList.innerHTML = html;
+
+    } catch (err) {
+        linkElement.innerHTML = '載入失敗，請重試';
+        linkElement.style.pointerEvents = 'auto';
+        console.error(err);
+    }
+}
+
+// Phase 3 C6: 點擊活躍計劃數，彈出該客戶目前所有活躍計劃清單
+async function showCustomerActivePlans(customerId, event) {
+    event.stopImmediatePropagation();
+
+    const modalId = 'activePlansModal';
+    let modalEl = document.getElementById(modalId);
+
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = modalId;
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title">該客戶活躍計劃</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="active-plans-body" style="max-height: 300px; overflow-y: auto;">
+                        載入中...
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+
+    try {
+        const res = await SalonEase.fetch(`/api/customers.php?action=get_active_plans&customer_id=${customerId}`);
+        const plans = res.data || [];
+
+        const body = modalEl.querySelector('#active-plans-body');
+
+        if (plans.length === 0) {
+            body.innerHTML = '<div class="text-muted small">沒有活躍計劃</div>';
+            return;
+        }
+
+        let html = '<ul class="list-unstyled mb-0 small">';
+        plans.forEach(plan => {
+            const progress = plan.sale_total > 0 ? Math.round((plan.paid_amount / plan.sale_total) * 100) : 0;
+            html += `
+                <li class="mb-2 p-2 border rounded" 
+                    style="cursor:pointer;" 
+                    onclick="goToRecordPayment(${plan.sale_id})">
+                    <div><strong>銷售單 #${plan.sale_id}</strong> (${plan.plan_type})</div>
+                    <div class="text-muted">每期 HK$ ${parseFloat(plan.installment_amount).toFixed(0)} × ${plan.total_installments} 期</div>
+                    <div>已付 HK$ ${parseFloat(plan.paid_amount).toFixed(0)} 
+                        <span class="text-muted">(${progress}%)</span>
+                    </div>
+                    <div class="small text-primary mt-1">點擊補錄下一期 →</div>
+                </li>
+            `;
+        });
+        html += '</ul>';
+        body.innerHTML = html;
+
+    } catch (err) {
+        const body = modalEl.querySelector('#active-plans-body');
+        body.innerHTML = `<div class="text-danger small">載入失敗：${err.message}</div>`;
+    }
 }
 
 function showAddModal() {
@@ -248,6 +440,9 @@ function showAddModal() {
     // A36：新增模式隱藏積分歷史
     const historySection = document.getElementById('points-history-section');
     if (historySection) historySection.classList.add('d-none');
+
+    const paymentsSection = document.getElementById('payments-history-section');
+    if (paymentsSection) paymentsSection.classList.add('d-none');
 
     const modalEl = document.getElementById('customerModal');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -312,6 +507,88 @@ async function editCustomer(id) {
                 html += '</tbody></table>';
                 html += `<div class="small text-muted mt-1">...共 ${history.length} 筆 <a href="/loyalty.php" class="text-muted text-decoration-none">查看完整 →</a></div>`;
                 historyList.innerHTML = html;
+            }
+        }
+
+        // Phase 3: 顯示最近付款歷史 + 摘要
+        const paymentsSection = document.getElementById('payments-history-section');
+        const paymentsList = document.getElementById('payments-history-list');
+        const paymentsSummary = document.getElementById('payments-summary');
+
+        if (paymentsSection && paymentsList) {
+            paymentsSection.classList.remove('d-none');
+
+            const summary = c.payment_summary || {};
+            const totalPaid = parseFloat(summary.total_paid || 0);
+            const activePlans = summary.active_plans || 0;
+            const totalPlans = summary.total_plans || 0;
+
+            if (paymentsSummary) {
+                let summaryText = `總付 HK$ ${totalPaid.toFixed(0)}`;
+                if (totalPlans > 0) {
+                    summaryText += ` ｜ 計劃 ${activePlans}/${totalPlans}`;
+                }
+                paymentsSummary.innerHTML = `<span class="text-muted">${summaryText}</span>`;
+            }
+
+            paymentsList.innerHTML = '<div class="text-muted">載入中...</div>';
+
+            const payments = c.recent_payments || [];
+            const totalCount = c.payments_total_count || 0;
+
+            if (payments.length === 0) {
+                paymentsList.innerHTML = '<div class="text-muted small">尚無付款記錄<br>可點擊下方「記錄補款 →」補錄</div>';
+            } else {
+                let html = '<table class="table table-sm mb-0" style="font-size:0.7rem;"><tbody>';
+                payments.forEach(p => {
+                    const isRefund = p.is_refund == 1;
+                    const sign = isRefund ? '-' : '';
+                    const amountClass = isRefund ? 'text-danger' : 'fw-medium';
+
+                    let feeHtml = '';
+                    if (p.fee_amount && parseFloat(p.fee_amount) > 0) {
+                        const feeSign = p.fee_borne_by === 'customer' ? '' : '商戶承擔 ';
+                        feeHtml = `<span class="text-muted" style="font-size:0.6rem;">(${feeSign}手續費 ${sign}HK$ ${parseFloat(p.fee_amount).toFixed(0)})</span>`;
+                    }
+
+                    let planHtml = '';
+                    if (p.plan_type) {
+                        const planLabel = p.plan_type === 'installment' ? '分期' : '周期性';
+                        planHtml = ` <span class="badge bg-info-subtle text-info" style="font-size:0.55rem;">${planLabel}</span>`;
+                        if (p.installment_no && p.total_installments) {
+                            planHtml += ` <span class="text-muted" style="font-size:0.6rem;">#${p.installment_no}/${p.total_installments}</span>`;
+                        } else if (p.installment_no) {
+                            planHtml += ` <span class="text-muted" style="font-size:0.6rem;">#${p.installment_no}</span>`;
+                        }
+                    }
+
+                    const refundBadge = isRefund 
+                        ? `<span class="badge bg-danger-subtle text-danger ms-1" style="font-size:0.55rem;">退款</span>` 
+                        : '';
+
+                    html += `
+                        <tr style="cursor:pointer;" onclick="goToRecordPayment(${p.sale_id})">
+                            <td class="text-nowrap">${p.paid_at ? p.paid_at.substring(0,16).replace('T',' ') : p.sale_date}</td>
+                            <td class="${amountClass}">${sign}HK$ ${parseFloat(p.amount).toFixed(0)} ${feeHtml}</td>
+                            <td class="text-muted small">${p.payment_method_name}${refundBadge}</td>
+                            <td>${planHtml}</td>
+                        </tr>`;
+                });
+                html += '</tbody></table>';
+
+                // C3: 可展開更多
+                if (totalCount > payments.length) {
+                    html += `
+                        <div class="small text-muted mt-1 text-center">
+                            <a href="javascript:void(0)" onclick="loadMoreCustomerPayments(${c.id}, this)" class="text-muted text-decoration-none">
+                                查看更多（共 ${totalCount} 筆）→
+                            </a>
+                        </div>`;
+                } else {
+                    html += `<div class="small text-muted mt-1">...共 ${payments.length} 筆 <a href="/record_payment.php" class="text-muted text-decoration-none">記錄補款 →</a></div>`;
+                }
+
+                paymentsList.innerHTML = html;
             }
         }
 
