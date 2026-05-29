@@ -39,6 +39,16 @@ $pageSubtitle = '為已開立的銷售單補錄付款（支援一單多付）';
                         狀態：<span id="sale-status" class="badge"></span>
                     </div>
                 </div>
+
+                <!-- Phase 4 A：此銷售單的付款計劃入口整合 -->
+                <div id="sale-plans-summary" class="d-none mt-3 border rounded p-2 bg-white">
+                    <div class="small fw-semibold mb-1" title="此銷售單目前所有活躍的分期或周期性付款計劃">此銷售單的付款計劃</div>
+                    <div id="sale-plans-list" class="small"></div>
+                    <div class="mt-1 small text-muted" style="font-size: 0.75rem;">記錄付款後會自動更新進度。如需跟進或調整計劃，請使用快速行動按鈕。</div>
+                    <div class="mt-2">
+                        <a href="/payment_plans.php" class="small text-decoration-none">去計劃管理頁 →</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -72,7 +82,7 @@ $pageSubtitle = '為已開立的銷售單補錄付款（支援一單多付）';
 
                         <!-- Phase 3: 連結分期計劃 -->
                         <div class="col-12" id="plan-selection-area" style="display: none;">
-                            <label class="form-label">連結分期計劃（可選）</label>
+                            <label class="form-label">連結付款計劃（可選）</label>
                             <select id="plan-id" class="form-select" onchange="toggleInstallmentField()">
                                 <option value="">不連結計劃</option>
                             </select>
@@ -234,6 +244,8 @@ async function loadPlansForSale(saleId) {
     const planSelect = document.getElementById('plan-id');
     const planArea = document.getElementById('plan-selection-area');
     const installmentArea = document.getElementById('installment-area');
+    const summaryCard = document.getElementById('sale-plans-summary');
+    const summaryList = document.getElementById('sale-plans-list');
 
     planSelect.innerHTML = '<option value="">不連結計劃</option>';
     currentPlans = [];
@@ -242,6 +254,7 @@ async function loadPlansForSale(saleId) {
         const res = await SalonEase.fetch(`/api/payment_plans.php?action=list_by_sale&sale_id=${saleId}`);
         currentPlans = res.data || [];
 
+        // 1. 供「記錄付款時連結計劃」使用
         if (currentPlans.length > 0) {
             currentPlans.forEach(plan => {
                 const opt = document.createElement('option');
@@ -254,9 +267,41 @@ async function loadPlansForSale(saleId) {
             planArea.style.display = 'none';
             installmentArea.style.display = 'none';
         }
+
+        // 2. Phase 4 A：右側顯眼總結（只顯示活躍計劃，方便日常操作）
+        const activePlans = currentPlans.filter(p => p.status === 'active');
+        if (activePlans.length > 0 && summaryCard && summaryList) {
+            let html = '';
+            activePlans.forEach(plan => {
+                const made = parseInt(plan.payments_made || 0);
+                const total = parseInt(plan.total_installments || 1);
+                const progress = total > 0 ? Math.round((made / total) * 100) : 0;
+                const planId = plan.id;
+
+                html += `
+                    <div class="border rounded p-2 mb-2 bg-light">
+                        <div>
+                            <strong>#${planId}</strong> ${plan.plan_type === 'installment' ? '分期' : '周期性'}
+                            <span class="badge bg-secondary ms-1">${made}/${total} (${progress}%)</span>
+                        </div>
+                        <div class="btn-group btn-group-sm mt-1">
+                            <button type="button" class="btn btn-outline-primary" 
+                                    onclick="quickFollowupFromRecord(${planId}, this)">快速跟進</button>
+                            <button type="button" class="btn btn-outline-success" 
+                                    onclick="window.location.href='/payment_plans.php'">管理計劃</button>
+                        </div>
+                    </div>
+                `;
+            });
+            summaryList.innerHTML = html;
+            summaryCard.classList.remove('d-none');
+        } else if (summaryCard) {
+            summaryCard.classList.add('d-none');
+        }
     } catch (err) {
-        console.warn('載入分期計劃失敗', err);
+        console.warn('載入付款計劃失敗', err);
         planArea.style.display = 'none';
+        if (summaryCard) summaryCard.classList.add('d-none');
     }
 }
 
@@ -264,6 +309,40 @@ function toggleInstallmentField() {
     const planId = document.getElementById('plan-id').value;
     const installmentArea = document.getElementById('installment-area');
     installmentArea.style.display = planId ? '' : 'none';
+}
+
+// Phase 4 A：從 record_payment 頁快速跟進計劃（入口整合）
+async function quickFollowupFromRecord(planId, btnElement) {
+    const originalText = btnElement.textContent;
+    btnElement.disabled = true;
+    btnElement.textContent = '處理中...';
+
+    try {
+        await SalonEase.fetch('/api/payment_plans.php?action=append_followup', {
+            method: 'POST',
+            body: new URLSearchParams({
+                plan_id: planId,
+                note: 'record_payment 頁快速跟進',
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        btnElement.textContent = '已跟進 ✓';
+        btnElement.classList.remove('btn-outline-primary');
+        btnElement.classList.add('btn-success');
+
+        // 刷新計劃總結（零刷新）
+        setTimeout(async () => {
+            if (currentSale && currentSale.id) {
+                await loadPlansForSale(currentSale.id);
+            }
+        }, 600);
+
+    } catch (err) {
+        alert('快速跟進失敗：' + err.message);
+        btnElement.textContent = originalText;
+        btnElement.disabled = false;
+    }
 }
 
 async function recordPayment() {

@@ -106,6 +106,9 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                         <a class="nav-link <?= $currentPage === 'reports' ? 'active fw-medium' : '' ?>" href="/reports.php">報表</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?= $currentPage === 'payment_plans' ? 'active fw-medium' : '' ?>" href="/payment_plans.php">付款計劃</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?= $currentPage === 'commissions' ? 'active fw-medium' : '' ?>" href="/commissions.php">佣金</a>
                     </li>
                     <li class="nav-item">
@@ -168,7 +171,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                     <a class="nav-link py-2" href="/payment_methods.php">付款方法管理</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link py-2" href="/payment_plans.php">分期計劃管理</a>
+                    <a class="nav-link py-2" href="/payment_plans.php">付款計劃</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link py-2 text-danger" href="/logout.php" onclick="return confirm('確定要登出嗎？')">登出</a>

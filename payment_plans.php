@@ -14,8 +14,8 @@ if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/csrf.php';
 
-$pageTitle = '分期計劃管理';
-$pageSubtitle = '查看所有分期與周期性付款計劃、進度及狀態管理（僅限管理員 / 店長）';
+$pageTitle = '付款計劃管理';
+$pageSubtitle = '查看所有付款計劃、進度及狀態管理（僅限管理員 / 店長）';
 $extraJs = 'hotkeys.js';
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
@@ -33,6 +33,11 @@ $extraJs = 'hotkeys.js';
             <span>+ 新增計劃</span>
         </button>
     </div>
+</div>
+
+<!-- Phase 4 A 小提示 -->
+<div class="alert alert-light py-2 px-3 small mb-3 border-0" style="background-color: #f8f1e3;">
+    需要關注門檻（天數 / 進度）可在 <a href="/settings.php" class="fw-medium">系統設定</a> 自訂，調整後 Dashboard 及本頁即時生效。
 </div>
 
 <!-- 統計卡片 -->
@@ -496,12 +501,13 @@ $extraJs = 'hotkeys.js';
                 </div>
                 <div>
                     <label class="form-label">新狀態 <span class="text-danger">*</span></label>
-                    <select id="status-new" class="form-select">
+                    <select id="status-new" class="form-select" onchange="updateStatusWarning()">
                         <option value="active">進行中 (active)</option>
                         <option value="completed">已完成</option>
                         <option value="cancelled">已取消</option>
                     </select>
-                    <div class="form-text text-danger small">注意：狀態變更會影響後續付款記錄，建議謹慎操作。</div>
+                    <div id="status-warning" class="form-text small mt-1" style="display:none; color:#dc3545;"></div>
+                    <div class="form-text text-danger small mt-1">注意：已有付款的計劃受保護，禁止不安全操作。</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -3100,15 +3106,47 @@ async function showPlanDetail(planId) {
 }
 
 let currentPlanIdForStatus = null;
+let currentPlanForStatus = null;  // Phase 4 A：存計劃資料，用於保護警告
 
 function showStatusModal(planId, currentStatus) {
     currentPlanIdForStatus = planId;
+    currentPlanForStatus = currentPlansData.find(p => p.id == planId) || null;
+
     document.getElementById('status-plan-id').value = planId;
     document.getElementById('status-current').innerHTML = getStatusBadge(currentStatus);
     document.getElementById('status-new').value = currentStatus;
 
+    // 立即顯示保護警告（如果適用）
+    setTimeout(updateStatusWarning, 50);
+
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('statusModal'));
     modal.show();
+}
+
+function updateStatusWarning() {
+    const warningEl = document.getElementById('status-warning');
+    const newStatus = document.getElementById('status-new').value;
+    if (!warningEl || !currentPlanForStatus) {
+        if (warningEl) warningEl.style.display = 'none';
+        return;
+    }
+
+    const made = parseInt(currentPlanForStatus.payments_made || 0);
+    const total = parseInt(currentPlanForStatus.total_installments || 1);
+    let msg = '';
+
+    if (made > 0 && newStatus === 'active' && currentPlanForStatus.status !== 'active') {
+        msg = '⚠️ 此計劃已有 ' + made + ' 筆付款，禁止改回「進行中」（資料保護）';
+    } else if (made > 0 && newStatus === 'cancelled') {
+        msg = '⚠️ 此計劃已有 ' + made + ' 筆付款，取消後將自動記錄保護備註，不再追蹤。';
+    }
+
+    if (msg) {
+        warningEl.innerHTML = msg;
+        warningEl.style.display = 'block';
+    } else {
+        warningEl.style.display = 'none';
+    }
 }
 
 async function confirmStatusChange() {
@@ -4204,6 +4242,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (urlCustomerId > 0) {
         currentCustomerFilter = { id: urlCustomerId, name: '', phone: '' };
         updateCustomerFilterBanner();
+    }
+
+    // Phase 4 A：支援 ?strict=1 直接進入嚴格需要關注模式（Dashboard 連結用）
+    if (urlParams.get('strict') === '1') {
+        isNeedsAttentionView = true;
+        strictNeedsAttentionOnly = true;
     }
 
     loadPlans();

@@ -24,6 +24,8 @@ CREATE TABLE `settings` (
   `default_commission_retail` DECIMAL(5,2) NOT NULL DEFAULT 15.00 COMMENT '零售佣金預設百分比',
   `default_commission_open` DECIMAL(5,2) NOT NULL DEFAULT 5.00 COMMENT '開單佣金預設百分比',
   `default_low_stock_threshold` INT NOT NULL DEFAULT 5 COMMENT '低庫存警示預設門檻',
+  `needs_attention_days_threshold` INT NOT NULL DEFAULT 45 COMMENT '付款計劃需要關注：建立超過 N 天 + 進度低',
+  `needs_attention_progress_threshold` INT NOT NULL DEFAULT 30 COMMENT '付款計劃需要關注：已付期數低於 N% 視為進度低',
   `business_hours` JSON DEFAULT NULL COMMENT '營業時間 JSON',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -31,8 +33,8 @@ CREATE TABLE `settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='美容院全域設定';
 
 -- 插入預設設定
-INSERT INTO `settings` (`id`, `salon_name`, `address`, `phone`, `printer_width`, `default_low_stock_threshold`) VALUES
-(1, 'SalonEase 美容中心', '香港九龍尖沙咀彌敦道 100 號 8 樓', '2123 4567', '58', 5);
+INSERT INTO `settings` (`id`, `salon_name`, `address`, `phone`, `printer_width`, `default_low_stock_threshold`, `needs_attention_days_threshold`, `needs_attention_progress_threshold`) VALUES
+(1, 'SalonEase 美容中心', '香港九龍尖沙咀彌敦道 100 號 8 樓', '2123 4567', '58', 5, 45, 30);
 
 -- =====================================================
 -- 2. staff - 員工帳號與佣金設定

@@ -32,6 +32,8 @@ switch ($action) {
                 'default_commission_retail' => 15.00,
                 'default_commission_open' => 5.00,
                 'default_low_stock_threshold' => 5,
+                'needs_attention_days_threshold' => 45,
+                'needs_attention_progress_threshold' => 30,
                 'points_earn_rate' => 10,
                 'points_redemption_rate' => 10,
                 'quick_restock_5' => 5,
@@ -65,6 +67,10 @@ switch ($action) {
         $open_rate    = max(0, min(100, (float)post('default_commission_open', 5)));
         $low_stock_threshold = max(0, (int)post('default_low_stock_threshold', 5));
 
+        // Phase 4 A：付款計劃需要關注門檻
+        $needs_days = max(7, min(365, (int)post('needs_attention_days_threshold', 45)));
+        $needs_progress = max(5, min(90, (int)post('needs_attention_progress_threshold', 30)));
+
         // 忠誠度積分率（A18）
         $points_earn_rate = max(1, min(100, (int)post('points_earn_rate', 10)));
         $points_redemption_rate = max(1, min(100, (int)post('points_redemption_rate', 10)));
@@ -90,6 +96,8 @@ switch ($action) {
                     default_commission_retail = ?,
                     default_commission_open = ?,
                     default_low_stock_threshold = ?,
+                    needs_attention_days_threshold = ?,
+                    needs_attention_progress_threshold = ?,
                     points_earn_rate = ?,
                     points_redemption_rate = ?,
                     quick_restock_5 = ?,
@@ -101,6 +109,7 @@ switch ($action) {
             $stmt->execute([
                 $salon_name, $address, $phone, $printer_width,
                 $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
+                $needs_days, $needs_progress,
                 $points_earn_rate, $points_redemption_rate,
                 $quick_restock_5, $quick_restock_10, $quick_restock_20
             ]);
@@ -111,9 +120,10 @@ switch ($action) {
                     INSERT INTO settings 
                     (id, salon_name, address, phone, printer_width, 
                      default_commission_service, default_commission_retail, default_commission_open, default_low_stock_threshold,
+                     needs_attention_days_threshold, needs_attention_progress_threshold,
                      points_earn_rate, points_redemption_rate,
                      quick_restock_5, quick_restock_10, quick_restock_20)
-                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         salon_name = VALUES(salon_name),
                         address = VALUES(address),
@@ -123,6 +133,8 @@ switch ($action) {
                         default_commission_retail = VALUES(default_commission_retail),
                         default_commission_open = VALUES(default_commission_open),
                         default_low_stock_threshold = VALUES(default_low_stock_threshold),
+                        needs_attention_days_threshold = VALUES(needs_attention_days_threshold),
+                        needs_attention_progress_threshold = VALUES(needs_attention_progress_threshold),
                         points_earn_rate = VALUES(points_earn_rate),
                         points_redemption_rate = VALUES(points_redemption_rate),
                         quick_restock_5 = VALUES(quick_restock_5),
@@ -132,6 +144,7 @@ switch ($action) {
                 $stmt->execute([
                     $salon_name, $address, $phone, $printer_width,
                     $service_rate, $retail_rate, $open_rate, $low_stock_threshold,
+                    $needs_days, $needs_progress,
                     $points_earn_rate, $points_redemption_rate,
                     $quick_restock_5, $quick_restock_10, $quick_restock_20
                 ]);
@@ -139,7 +152,7 @@ switch ($action) {
 
             log_activity('settings.updated', 1, 'settings', [
                 'salon_name' => $salon_name,
-                'updated_fields' => 'shop_info + commission_defaults + loyalty_rates + quick_restock_defaults'
+                'updated_fields' => 'shop_info + commission_defaults + loyalty_rates + quick_restock_defaults + payment_plan_attention_thresholds'
             ]);
 
             json_success(null, '設定已成功儲存');

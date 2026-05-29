@@ -403,16 +403,29 @@ async function showCustomerActivePlans(customerId, event) {
         let html = '<ul class="list-unstyled mb-0 small">';
         plans.forEach(plan => {
             const progress = plan.sale_total > 0 ? Math.round((plan.paid_amount / plan.sale_total) * 100) : 0;
+            const planId = plan.id;
             html += `
-                <li class="mb-2 p-2 border rounded" 
-                    style="cursor:pointer;" 
-                    onclick="goToRecordPayment(${plan.sale_id})">
-                    <div><strong>銷售單 #${plan.sale_id}</strong> (${plan.plan_type})</div>
-                    <div class="text-muted">每期 HK$ ${parseFloat(plan.installment_amount).toFixed(0)} × ${plan.total_installments} 期</div>
-                    <div>已付 HK$ ${parseFloat(plan.paid_amount).toFixed(0)} 
-                        <span class="text-muted">(${progress}%)</span>
+                <li class="mb-2 p-2 border rounded">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div style="cursor:pointer;" onclick="goToRecordPayment(${plan.sale_id})">
+                            <strong>銷售單 #${plan.sale_id}</strong> (${plan.plan_type})<br>
+                            <span class="text-muted">每期 HK$ ${parseFloat(plan.installment_amount).toFixed(0)} × ${plan.total_installments} 期</span><br>
+                            已付 HK$ ${parseFloat(plan.paid_amount).toFixed(0)} <span class="text-muted">(${progress}%)</span>
+                        </div>
+                        <div class="btn-group btn-group-sm flex-shrink-0">
+                            <button type="button" class="btn btn-outline-primary" 
+                                    onclick="event.stopImmediatePropagation(); quickFollowupFromCustomer(${planId}, ${customerId}, this)">
+                                快速跟進
+                            </button>
+                            <button type="button" class="btn btn-outline-success" 
+                                    onclick="event.stopImmediatePropagation(); recordPaymentFromCustomer(${plan.sale_id})">
+                                記錄付款
+                            </button>
+                        </div>
                     </div>
-                    <div class="small text-primary mt-1">點擊補錄下一期 →</div>
+                    <div class="small mt-1">
+                        <a href="/payment_plans.php?customer_id=${customerId}" class="text-decoration-none">在計劃管理頁查看 →</a>
+                    </div>
                 </li>
             `;
         });
@@ -423,6 +436,45 @@ async function showCustomerActivePlans(customerId, event) {
         const body = modalEl.querySelector('#active-plans-body');
         body.innerHTML = `<div class="text-danger small">載入失敗：${err.message}</div>`;
     }
+}
+
+// Phase 4 A：從客戶頁快速跟進計劃（入口整合）
+async function quickFollowupFromCustomer(planId, customerId, btnElement) {
+    const originalText = btnElement.textContent;
+    btnElement.disabled = true;
+    btnElement.textContent = '處理中...';
+
+    try {
+        const note = '客戶頁快速跟進';
+        await SalonEase.fetch('/api/payment_plans.php?action=append_followup', {
+            method: 'POST',
+            body: new URLSearchParams({
+                plan_id: planId,
+                note: note,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        btnElement.textContent = '已跟進 ✓';
+        btnElement.classList.remove('btn-outline-primary');
+        btnElement.classList.add('btn-success');
+
+        // 短暫提示後關閉 modal 並刷新列表
+        setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('activePlansModal'));
+            if (modal) modal.hide();
+            loadCustomers();  // 刷新客戶列表的活躍計劃數
+        }, 900);
+
+    } catch (err) {
+        alert('快速跟進失敗：' + err.message);
+        btnElement.textContent = originalText;
+        btnElement.disabled = false;
+    }
+}
+
+function recordPaymentFromCustomer(saleId) {
+    window.location.href = `/record_payment.php?sale_id=${saleId}`;
 }
 
 function showAddModal() {

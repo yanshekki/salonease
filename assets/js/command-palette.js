@@ -18,6 +18,9 @@
     { id: 'nav-dashboard', label: '概覽首頁', url: '/dashboard.php', keywords: '首頁 概覽 dashboard 統計', icon: '🏠', contexts: ['*'] },
     { id: 'nav-reports', label: '報表分析', url: '/reports.php', keywords: '報表 營業額 統計', icon: '📊', contexts: ['*'] },
     { id: 'nav-settings', label: '系統設定', url: '/settings.php', keywords: '設定 員工 房間 服務 產品', icon: '⚙️', contexts: ['*'] },
+    // Phase 4 A：付款計劃入口
+    { id: 'nav-payment-plans', label: '付款計劃管理', url: '/payment_plans.php', keywords: '計劃 分期 周期性 付款 跟進 需要關注', icon: '💳', contexts: ['*'] },
+    { id: 'nav-payment-plans-strict', label: '今日需跟進計劃（嚴格模式）', url: '/payment_plans.php?strict=1', keywords: '嚴格 未跟進 需要關注 今日 指揮中心', icon: '🔴', contexts: ['*'] },
   ];
 
   // POS 專屬靜態快速動作
