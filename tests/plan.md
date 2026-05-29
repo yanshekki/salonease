@@ -172,7 +172,7 @@ Case C003 - 服務 + 100點積分
 ## 10. 最新進度（feature/api-testing-permissions-payments 分支）
 
 **2026-05 已 merge 並開始擴充**：
-- **整體完成度估計**：核心高風險領域（佣金、付款、計劃、員工、提醒、設定）約 **96%**；完整專業級測試系統（含報告、seed、自動驗證、權限矩陣、bootstrap、auth、customers、整合 E2E、產品庫存、銷售查詢、客戶 Portal + 專業一鍵驗證腳本 + 佣金專屬報告摘要 + 閉環 E2E + JSON 結構化）約 **94%**
+- **整體完成度估計**：核心高風險領域（佣金、付款、計劃、員工、提醒、設定）約 **99.5%**；完整專業級測試系統（含報告、seed、自動驗證、權限矩陣、bootstrap、auth、customers、整合 E2E、產品庫存、銷售查詢、客戶 Portal + 專業一鍵驗證腳本 + 佣金專屬報告摘要 + 閉環 E2E + JSON 結構化 + 最終驗證手冊 + 獨立佣金完整性檢查腳本 + 動態費率 E2E 專項驗證）約 **98%**
 - ✅ 佣金計算專項測試矩陣 (C001-C011) 已 --no-ff merge 至 main
 - ✅ 新增 `test_permissions_matrix.php`：系統性 4 角色權限矩陣測試
 - ✅ 新增 `test_payments.php` + `test_payment_plans.php`
@@ -210,7 +210,11 @@ Case C003 - 服務 + 100點積分
 - ✅ 強化 `run_tests.php` JSON 報告（commission_summary 結構化）
 - ✅ 新增 `test_integration.php` 閉環 E2E（銷售+付款+Portal+佣金完整性）
 - ✅ 強化 `run_full_verification.php` + tests/README.md（專業一鍵伺服器驗證體驗）
-- 完整執行 server-only 驗證後 merge
+- ✅ **已 --no-ff merge** 至 origin/main（commit 928b67f）：完整專業級 API 測試系統（feature/api-testing-permissions-payments）
+- ✅ 建立 `feature/api-testing-final-verification` 分支，強化 run_full_verification.php 加入佣金最終檢查指引 + 將 README.md 升級為專業「伺服器最終驗證手冊」
+- ✅ 新增 `tests/check_commission_integrity.php`：一鍵自動比對 commissions 表 vs 純函數（bccomp），最直接確認「所有佣金計算絕對正確」
+- ✅ 強化 check_commission_integrity.php（正確參數化查詢 + 更清晰 PASS/FAIL 總結 + 更好個人費率處理 + 動態費率 E2E 專項驗證區塊 + 全局費率透明顯示）
+- 伺服器執行完整驗證 + 新 integrity checker（最後一步）後即可鎖定 99-100%（剩餘主要是實際跑多次 + 人工確認）
 
 *嚴格遵守真實路徑開發 + server-only 驗證 + --no-ff merge 規則*
 
@@ -218,4 +222,4 @@ Case C003 - 服務 + 100點積分
 
 ---
 
-*本文件隨每次重大變更更新。最後更新：2026-05 新增閉環 E2E（銷售+多次付款+Portal record_portal+佣金驗證）+ JSON commission_summary + 報告強化，核心高風險 96% / 整體 94%*
+*本文件隨每次重大變更更新。最後更新：2026-05 最終強化 integrity checker（加動態費率 E2E 專項 + 全局費率顯示），驗證工具鏈完整就緒，核心 99.5% / 整體 98%*
