@@ -295,6 +295,7 @@ include __DIR__ . '/includes/header.php';
                 </div>
                 <div class="small text-muted">
                     啟用後，客戶可透過 Portal 連結自行查看計劃進度及記錄付款。
+                    <span class="ms-2 badge bg-info text-dark">Phase 8</span>
                 </div>
             </div>
 
