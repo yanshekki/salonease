@@ -46,8 +46,24 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
 
-    <!-- 四大統計卡片 -->
-    <div class="row g-3 mb-4">
+    <!-- Phase 9: 報表 Tab 切換 -->
+    <div class="mb-3 border-bottom">
+        <ul class="nav nav-tabs border-0">
+            <li class="nav-item">
+                <a class="nav-link" :class="{ active: currentTab === 'sales' }" href="#" @click.prevent="currentTab = 'sales'">
+                    銷售分析
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" :class="{ active: currentTab === 'payment_plans' }" href="#" @click.prevent="currentTab = 'payment_plans'">
+                    付款計劃分析 <span class="badge bg-primary ms-1 small">Phase 9</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 四大統計卡片 (銷售分析 Tab) -->
+    <div x-show="currentTab === 'sales'" class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-md-3">
             <div class="card h-100">
                 <div class="card-body">
@@ -246,6 +262,93 @@ include __DIR__ . '/includes/header.php';
             </div>
             <div class="small text-muted mt-1" style="font-size:0.7rem;">
                 總銷售：{{ formatMoney(summary.total_sales) }}
+            </div>
+        </div>
+    </div>
+
+    </div>  <!-- end sales tab content for top sections -->
+
+    <!-- 付款計劃分析 Tab 內容 -->
+    <div x-show="currentTab === 'payment_plans'">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <span class="fw-semibold fs-5">付款計劃分析</span>
+            <span class="badge bg-primary ms-2 small">Phase 9</span>
+        </div>
+        <button x-show="currentTab === 'payment_plans'" @click="exportPaymentPlansPDF()" class="btn btn-sm btn-primary">
+            📄 匯出 PDF（含圖表）
+        </button>
+    </div>
+    <div class="small text-muted mb-3">
+        本區塊展示付款計劃相關的進階分析，包括現金流預測、客戶健康分數分佈及提醒回款成效（Phase 9 新增）。
+        <a href="#" @click="showPhase9Help = !showPhase9Help" class="text-primary text-decoration-none">（使用說明）</a>
+    </div>
+
+    <!-- Phase 9 功能總覽 -->
+    <div x-show="currentTab === 'payment_plans'" class="mb-4 p-3 border rounded bg-light">
+        <div class="fw-semibold mb-2">Phase 9 功能總覽</div>
+        <div class="small">
+            本次升級為報表系統帶來以下核心能力：<br>
+            • <strong>現金流預測</strong>：精準預估未來90天可收回款項，按月拆解，幫助現金流規劃。<br>
+            • <strong>客戶健康分數</strong>：自動計算每位客戶的付款健康度（0-100分），並以圖表呈現分佈，快速識別高風險客戶群。<br>
+            • <strong>提醒回款成效</strong>：量化提醒系統的實際價值，顯示提醒後成功帶動回款的比例及金額。<br>
+            • <strong>Dashboard 分析卡片</strong>：將以上關鍵指標直接展示在首頁，讓管理者每天一開系統就能掌握付款計劃健康度。<br>
+            • <strong>專業 PDF 匯出</strong>：一鍵將付款計劃分析結果匯出成含圖表的完整報告。
+        </div>
+    </div>
+
+    <div x-show="showPhase9Help" class="alert alert-light border small mb-3">
+        <strong>Phase 9 使用說明：</strong><br>
+        • 現金流預測趨勢：顯示未來90天預計可收回的款項總額，按月拆解。<br>
+        • 健康分數分佈：將所有有活躍計劃的客戶按健康分數（0-100）分為三組，幫助識別高風險客戶群。<br>
+        • 提醒回款成效：統計提醒發送後14天內實際有回款的比例及金額，評估提醒系統的實際價值。<br>
+        • 建議定期查看此區塊，配合 Dashboard 的三個 Phase 9 卡片使用。
+    </div>
+
+    <!-- Phase 9: 付款計劃現金流預測趨勢圖 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <span class="fw-semibold">未來 90 天現金流預測趨勢</span>
+                    <span class="badge bg-primary ms-2" x-text="'預計總額 HK$ ' + formatMoney(paymentForecast?.total_expected || 0)"></span>
+                </div>
+                <span class="small text-muted" x-show="paymentForecast">共 {{ paymentForecast?.plans_count || 0 }} 個活躍計劃</span>
+            </div>
+
+            <div v-if="!paymentForecast" class="text-center py-4 text-muted small">
+                載入中...
+            </div>
+            <canvas v-show="paymentForecast" id="cashflowForecastChart" height="90"></canvas>
+        </div>
+    </div>
+
+    <!-- Phase 9: 客戶付款健康分數分佈 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="fw-semibold mb-3">客戶付款健康分數分佈</div>
+            <div class="row">
+                <div class="col-12 col-md-5">
+                    <canvas id="healthDistributionChart" height="120"></canvas>
+                </div>
+                <div class="col-12 col-md-7">
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><span class="badge bg-danger">高風險 (0-49分)</span></span>
+                            <span x-text="healthDistribution?.high || 0"></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><span class="badge bg-warning text-dark">中風險 (50-69分)</span></span>
+                            <span x-text="healthDistribution?.medium || 0"></span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span><span class="badge bg-success">良好 (70-100分)</span></span>
+                            <span x-text="healthDistribution?.good || 0"></span>
+                        </div>
+                        <div class="mt-2 text-muted tiny">總計活躍客戶：{{ healthDistribution?.total || 0 }}</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -506,6 +609,32 @@ include __DIR__ . '/includes/header.php';
                         </div>
                     </div>
 
+                    <!-- Phase 9: 提醒回款成效 -->
+                    <div class="mb-3" x-show="reminderEffectiveness">
+                        <div class="fw-semibold mb-2">提醒回款成效（提醒後 {{ reminderEffectiveness?.window_days || 14 }} 天內）</div>
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 text-center bg-light">
+                                    <div class="small text-muted">成功發送</div>
+                                    <div class="fs-4 fw-semibold" x-text="reminderEffectiveness?.total_sent || 0"></div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 text-center">
+                                    <div class="small text-muted">有效提醒</div>
+                                    <div class="fs-4 fw-semibold text-success" x-text="reminderEffectiveness?.effective || 0"></div>
+                                    <div class="small" x-text="reminderEffectiveness ? reminderEffectiveness.success_rate + '%' : '0%'"></div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="border rounded p-2">
+                                    <div class="small text-muted">提醒後帶動回款</div>
+                                    <div class="fs-5 fw-semibold text-primary" x-text="reminderEffectiveness ? 'HK$ ' + reminderEffectiveness.total_collected_after_reminders.toLocaleString() : '—'"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row g-3 mb-3" x-show="reminderReport.summary">
                         <div class="col-6 col-md-3">
                             <div class="border rounded p-2 text-center">
@@ -694,6 +823,10 @@ include __DIR__ . '/includes/header.php';
 <!-- Chart.js CDN（極輕量，僅本頁使用） -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+<!-- Phase 9: PDF 匯出所需 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <script>
 function reportsApp() {
     return {
@@ -705,12 +838,18 @@ function reportsApp() {
         staffRanking: [],             // 員工銷售排行數據
         loading: false,
 
+        // Phase 9: 報表 Tab 切換
+        currentTab: 'sales',  // 'sales' | 'payment_plans'
+
         // 圖表實例
         paymentChart: null,
         servicesChart: null,
         salesTrendChart: null,   // A125 新增：銷售趨勢圖表
         dailySalesData: [],      // A141 新增：真實每日銷售數據
         dailySalesLoading: false, // A142 新增：每日銷售數據載入中狀態
+
+        // Phase 9: 現金流預測圖表
+        cashflowForecastChart: null,
 
         // A143：庫存報表
         inventoryTurnover: [],
@@ -749,6 +888,9 @@ function reportsApp() {
         reminderFilterStatus: '',
         paymentForecast: null,           // Phase 6
         topRiskCustomers: [],            // Phase 6
+        healthDistribution: null,        // Phase 9: 健康分數分佈
+        reminderEffectiveness: null,   // Phase 9: 提醒回款成效
+        showPhase9Help: false          // Phase 9: 使用說明顯示狀態
 
         init() {
             this.loadStaffList();
@@ -774,7 +916,9 @@ function reportsApp() {
                     this.loadFeeCostBreakdown(),       // Phase 3
                     this.loadReminderReport(),       // Phase 5
                     this.loadPaymentForecast(),        // Phase 6
-                    this.loadTopRiskCustomers()        // Phase 6
+                    this.loadTopRiskCustomers(),       // Phase 6
+                    this.loadHealthDistribution(),     // Phase 9
+                    this.loadReminderEffectiveness()   // Phase 9
                 ]);
             } finally {
                 this.loading = false;
@@ -908,9 +1052,59 @@ function reportsApp() {
             try {
                 const res = await SalonEase.fetch(`/api/reports.php?action=payment_forecast&days=90`);
                 this.paymentForecast = res.data;
+                this.renderCashflowForecastChart();
             } catch (e) {
                 console.warn('載入現金流預測失敗', e);
             }
+        },
+
+        // Phase 9: 渲染現金流預測趨勢圖
+        renderCashflowForecastChart() {
+            const ctx = document.getElementById('cashflowForecastChart');
+            if (!ctx || !this.paymentForecast || !this.paymentForecast.monthly_breakdown) return;
+
+            if (this.cashflowForecastChart) {
+                this.cashflowForecastChart.destroy();
+            }
+
+            const labels = Object.keys(this.paymentForecast.monthly_breakdown);
+            const data = Object.values(this.paymentForecast.monthly_breakdown);
+
+            this.cashflowForecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '預計收款 (HK$)',
+                        data: data,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => '預計 HK$ ' + context.raw.toLocaleString()
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => '$' + (value / 1000) + 'k'
+                            }
+                        }
+                    }
+                }
+            });
         },
 
         // Phase 6: 高風險客戶
@@ -921,6 +1115,59 @@ function reportsApp() {
             } catch (e) {
                 this.topRiskCustomers = [];
             }
+        },
+
+        // Phase 9: 健康分數分佈
+        async loadHealthDistribution() {
+            try {
+                const res = await SalonEase.fetch('/api/reports.php?action=health_score_distribution');
+                this.healthDistribution = res.data;
+                this.$nextTick(() => this.renderHealthDistributionChart());
+            } catch (e) {
+                this.healthDistribution = null;
+            }
+        },
+
+        async loadReminderEffectiveness() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=reminder_effectiveness&from=${this.from}&to=${this.to}`);
+                this.reminderEffectiveness = res.data;
+            } catch (e) {
+                this.reminderEffectiveness = null;
+            }
+        },
+
+        renderHealthDistributionChart() {
+            const ctx = document.getElementById('healthDistributionChart');
+            if (!ctx || !this.healthDistribution) return;
+
+            if (this.healthDistributionChart) this.healthDistributionChart.destroy();
+
+            const labels = ['高風險 (0-49)', '中風險 (50-69)', '良好 (70-100)'];
+            const data = [
+                this.healthDistribution.high || 0,
+                this.healthDistribution.medium || 0,
+                this.healthDistribution.good || 0
+            ];
+            const colors = ['#dc3545', '#ffc107', '#198754'];
+
+            this.healthDistributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
         },
 
         // A62：載入上期數據以計算「較上期」百分比
@@ -1070,6 +1317,127 @@ function reportsApp() {
             link.download = `員工銷售排行_${this.from}_${this.to}.csv`;
             link.click();
             URL.revokeObjectURL(url);
+        },
+
+        // Phase 9: 匯出付款計劃分析為 PDF（專業多頁版）
+        async exportPaymentPlansPDF() {
+            const { jsPDF } = window.jspdf;
+            if (!jsPDF) {
+                alert('PDF 套件載入失敗');
+                return;
+            }
+
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 20;
+
+            let y = margin;
+
+            const addHeader = () => {
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.text('SalonEase 付款計劃分析報表', margin, 10);
+                doc.text(`${this.from} ~ ${this.to}`, pageWidth - margin, 10, { align: 'right' });
+                doc.setDrawColor(200);
+                doc.line(margin, 13, pageWidth - margin, 13);
+                doc.setTextColor(0);
+            };
+
+            const addFooter = (pageNum) => {
+                doc.setFontSize(9);
+                doc.setTextColor(120);
+                doc.text(`第 ${pageNum} 頁`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                doc.text('SalonEase', pageWidth - margin, pageHeight - 10, { align: 'right' });
+                doc.setTextColor(0);
+            };
+
+            let pageNum = 1;
+
+            // === 封面 / 標題頁 ===
+            doc.setFontSize(22);
+            doc.text('SalonEase', pageWidth / 2, 60, { align: 'center' });
+            doc.setFontSize(16);
+            doc.text('付款計劃分析報表', pageWidth / 2, 72, { align: 'center' });
+
+            doc.setFontSize(12);
+            doc.text(`查詢期間：${this.from} 至 ${this.to}`, pageWidth / 2, 90, { align: 'center' });
+            doc.text(`產生時間：${new Date().toLocaleString('zh-HK')}`, pageWidth / 2, 98, { align: 'center' });
+
+            doc.addPage();
+            pageNum++;
+            addHeader();
+            y = 25;
+
+            // === 摘要數據 ===
+            doc.setFontSize(14);
+            doc.text('分析摘要', margin, y);
+            y += 10;
+
+            if (this.paymentForecast) {
+                doc.setFontSize(12);
+                doc.text(`• 未來現金流預測總額：HK$ ${this.paymentForecast.total_expected.toLocaleString()}`, margin, y);
+                y += 7;
+                doc.text(`• 涵蓋活躍計劃數：${this.paymentForecast.plans_count}`, margin, y);
+                y += 12;
+            }
+
+            if (this.healthDistribution) {
+                doc.text(`• 客戶健康分數分佈：高風險 ${this.healthDistribution.high} 人、中風險 ${this.healthDistribution.medium} 人、良好 ${this.healthDistribution.good} 人`, margin, y);
+                y += 12;
+            }
+
+            if (this.reminderEffectiveness) {
+                doc.text(`• 提醒回款成功率：${this.reminderEffectiveness.success_rate}%（${this.reminderEffectiveness.effective}/${this.reminderEffectiveness.total_sent}）`, margin, y);
+                y += 7;
+                doc.text(`• 提醒後帶動回款：HK$ ${this.reminderEffectiveness.total_collected_after_reminders.toLocaleString()}`, margin, y);
+                y += 15;
+            }
+
+            // === 圖表頁 ===
+            const chartsToCapture = [
+                { id: 'cashflowForecastChart', title: '未來現金流預測趨勢' },
+                { id: 'healthDistributionChart', title: '客戶付款健康分數分佈' }
+            ];
+
+            for (const chartInfo of chartsToCapture) {
+                const canvas = document.getElementById(chartInfo.id);
+                if (!canvas) continue;
+
+                try {
+                    const imgData = await html2canvas(canvas, { scale: 2 });
+                    const imgWidth = 170;
+                    const imgHeight = (imgData.height * imgWidth) / imgData.width;
+
+                    if (y + imgHeight + 20 > pageHeight - 20) {
+                        addFooter(pageNum);
+                        doc.addPage();
+                        pageNum++;
+                        addHeader();
+                        y = 25;
+                    }
+
+                    doc.setFontSize(12);
+                    doc.text(chartInfo.title, margin, y);
+                    y += 5;
+
+                    doc.addImage(imgData, 'PNG', margin, y, imgWidth, imgHeight);
+                    y += imgHeight + 15;
+
+                } catch (err) {
+                    console.warn('截圖失敗', chartInfo.id, err);
+                }
+            }
+
+            addFooter(pageNum);
+
+            // Phase 9 額外註記
+            doc.setFontSize(9);
+            doc.setTextColor(150);
+            doc.text('本報表由 Phase 9 報表與數據視覺化系統生成', pageWidth / 2, pageHeight - 18, { align: 'center' });
+            doc.setTextColor(0);
+
+            doc.save(`付款計劃分析_${this.from}_${this.to}.pdf`);
         },
 
         // 初始化 / 更新圖表
@@ -1243,6 +1611,9 @@ function reportsApp() {
                     }
                 });
             }
+
+            // Phase 9: 現金流預測趨勢圖
+            this.renderCashflowForecastChart();
 
             // A143：缺貨趨勢線圖
             const stockoutCtx = document.getElementById('stockoutTrendChart');
