@@ -320,6 +320,20 @@ switch ($action) {
         $success7 = $stats['last_7_days']['email_sent'] + $stats['last_7_days']['sms_sent'];
         $stats['last_7_days']['success_rate'] = $total7 > 0 ? round(($success7 / $total7) * 100) : 100;
 
+        // Phase 7 A：最近失敗記錄（最多 5 筆，方便快速重試）
+        $recentFailed = db_query("
+            SELECT pn.id, pn.plan_id, pn.channel, pn.sent_at, pn.error_message, pn.retry_count,
+                   c.name as customer_name
+            FROM plan_notifications pn
+            LEFT JOIN sale_payment_plans p ON p.id = pn.plan_id
+            LEFT JOIN sales s ON s.id = p.sale_id
+            LEFT JOIN customers c ON c.id = s.customer_id
+            WHERE pn.status = 'failed'
+            ORDER BY pn.sent_at DESC
+            LIMIT 5
+        ");
+        $stats['recent_failed'] = $recentFailed ?: [];
+
         json_success($stats);
         break;
 

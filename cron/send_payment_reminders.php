@@ -124,3 +124,60 @@ echo "=== 結束 ===\n";
 
 // 同時寫入 error_log 方便統一監控
 error_log("[REMINDER CRON] {$summary} @ {$runDate}");
+
+// === Phase 7 A: 每日總結電郵（生產級監控） ===
+try {
+    $shopSettings = db_query_one("
+        SELECT email, salon_name, reminder_from_email 
+        FROM settings WHERE id = 1
+    ");
+    $adminEmail = $shopSettings['email'] ?: $shopSettings['reminder_from_email'] ?: '';
+    $salonName = $shopSettings['salon_name'] ?: 'SalonEase';
+
+    if (empty($adminEmail)) {
+        echo "[SUMMARY-EMAIL] 跳過：未設定管理員 Email\n";
+    } else {
+        $hasIssues = ($stats['failed'] > 0 || (isset($retryStats) && $retryStats['still_failed'] > 0));
+
+        $subject = $hasIssues 
+            ? "【{$salonName}】提醒系統每日報告 - 有問題需關注 ({$runDate})"
+            : "【{$salonName}】提醒系統每日報告 ({$runDate})";
+
+        $body = "{$salonName} 付款計劃提醒系統 - 每日執行報告\n";
+        $body .= "執行時間: {$runDate}\n";
+        $body .= "耗時: {$duration} 秒\n\n";
+
+        $body .= "=== 主執行結果 ===\n";
+        $body .= "成功發送: {$stats['success']} 筆\n";
+        $body .= "跳過: {$stats['skipped']} 筆\n";
+        $body .= "失敗: {$stats['failed']} 筆\n\n";
+
+        if (isset($retryStats) && $retryStats['attempted'] > 0) {
+            $body .= "=== 自動重試結果 ===\n";
+            $body .= "嘗試重試: {$retryStats['attempted']} 筆\n";
+            $body .= "成功: {$retryStats['succeeded']} 筆\n";
+            $body .= "仍失敗: {$retryStats['still_failed']} 筆\n\n";
+        }
+
+        if ($hasIssues) {
+            $body .= "⚠️  有問題需要關注！\n";
+            $body .= "請登入管理後台檢查：\n";
+            $body .= "• /settings.php （提醒執行狀態 + 待重試數）\n";
+            $body .= "• /payment_plans.php （查看失敗提醒記錄並手動重試）\n\n";
+        } else {
+            $body .= "✅ 今日執行正常，無需特別處理。\n\n";
+        }
+
+        $body .= "詳細執行 log 請查看伺服器 cron log 檔案。\n";
+        $body .= "\n--\n{$salonName} 自動發送（" . date('Y-m-d H:i:s') . "）";
+
+        if (send_email($adminEmail, $subject, $body)) {
+            echo "[SUMMARY-EMAIL] 已發送每日報告到 {$adminEmail}\n";
+        } else {
+            echo "[SUMMARY-EMAIL] 發送失敗\n";
+        }
+    }
+} catch (Exception $e) {
+    error_log("[REMINDER CRON] Summary email exception: " . $e->getMessage());
+    echo "[SUMMARY-EMAIL-ERROR] {$e->getMessage()}\n";
+}
