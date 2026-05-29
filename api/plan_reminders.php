@@ -160,6 +160,22 @@ switch ($action) {
         json_success($results, "全量提醒檢查完成：成功 {$results['success']} 筆，跳過 {$results['skipped']} 筆");
         break;
 
+    case 'retry_notification':
+        if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
+
+        $notificationId = (int)post('id');
+        if ($notificationId <= 0) json_error('缺少 notification ID');
+
+        $result = retryNotification($notificationId);
+
+        if ($result['success']) {
+            json_success($result, $result['message']);
+        } else {
+            json_error($result['message'], 400, $result);
+        }
+        break;
+
     default:
         json_error('未知 action');
 }

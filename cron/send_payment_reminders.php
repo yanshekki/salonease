@@ -79,6 +79,42 @@ foreach ($rules as $rule) {
     }
 }
 
+// === Phase 7 A: 自動重試最近失敗的提醒（retry_count < 3，7天內） ===
+try {
+    $failedToRetry = db_query("
+        SELECT id, plan_id, channel, retry_count 
+        FROM plan_notifications 
+        WHERE status = 'failed' 
+          AND retry_count < 3 
+          AND sent_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ORDER BY sent_at ASC
+        LIMIT 50
+    ");
+
+    $retryStats = ['attempted' => 0, 'succeeded' => 0, 'still_failed' => 0];
+
+    foreach ($failedToRetry as $fn) {
+        $retryStats['attempted']++;
+        $res = retryNotification($fn['id']);
+        if ($res['success']) {
+            $retryStats['succeeded']++;
+            echo "[RETRY-SUCCESS] Notification #{$fn['id']} (Plan #{$fn['plan_id']}) - {$res['message']}\n";
+        } else {
+            $retryStats['still_failed']++;
+            echo "[RETRY-FAILED] Notification #{$fn['id']} (Plan #{$fn['plan_id']}) - {$res['message']}\n";
+        }
+        // 簡單速率限制
+        usleep(300000);
+    }
+
+    if ($retryStats['attempted'] > 0) {
+        echo "[RETRY-SUMMARY] 嘗試重試 {$retryStats['attempted']} 筆，成功 {$retryStats['succeeded']}，仍失敗 {$retryStats['still_failed']}\n";
+    }
+} catch (Exception $e) {
+    error_log("[REMINDER CRON] Retry pass exception: " . $e->getMessage());
+    echo "[RETRY-ERROR] 重試階段出錯: {$e->getMessage()}\n";
+}
+
 $duration = round(microtime(true) - $startTime, 2);
 $summary = "執行完成。成功 {$stats['success']} 筆，跳過 {$stats['skipped']} 筆，失敗 {$stats['failed']} 筆。耗時 {$duration}s";
 
