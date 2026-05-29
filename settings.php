@@ -284,6 +284,20 @@ include __DIR__ . '/includes/header.php';
                 </div>
             </div>
 
+            <!-- Phase 8: 客戶自助服務 Portal 設定 -->
+            <div class="mt-3 p-3 border rounded bg-light">
+                <div class="fw-semibold mb-2">客戶自助服務 Portal</div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" x-model="form.customer_portal_enabled" id="customer_portal_enabled">
+                    <label class="form-check-label" for="customer_portal_enabled">
+                        啟用客戶自助服務 Portal
+                    </label>
+                </div>
+                <div class="small text-muted">
+                    啟用後，客戶可透過 Portal 連結自行查看計劃進度及記錄付款。
+                </div>
+            </div>
+
             <div>
                 <div class="fw-semibold mb-2">提醒 Email 發送設定</div>
                 <div class="row g-3 align-items-end">
@@ -719,7 +733,8 @@ function shopSettings() {
             points_redemption_rate: 10,
             quick_restock_5: 5,
             quick_restock_10: 10,
-            quick_restock_20: 20
+            quick_restock_20: 20,
+            customer_portal_enabled: 0
         },
         saving: false,
         saved: false,
@@ -756,6 +771,7 @@ function shopSettings() {
                     this.form.quick_restock_5  = parseInt(d.quick_restock_5) || 5;
                     this.form.quick_restock_10 = parseInt(d.quick_restock_10) || 10;
                     this.form.quick_restock_20 = parseInt(d.quick_restock_20) || 20;
+                    this.form.customer_portal_enabled = parseInt(d.customer_portal_enabled) || 0;
                 }
             } catch (e) {
                 console.warn('載入設定失敗', e);
@@ -791,6 +807,7 @@ function shopSettings() {
                         points_redemption_rate: this.form.points_redemption_rate,
                         quick_restock_5: this.form.quick_restock_5,
                         quick_restock_10: this.form.quick_restock_10,
+                        customer_portal_enabled: this.form.customer_portal_enabled,
                         quick_restock_20: this.form.quick_restock_20
                     }
                 });

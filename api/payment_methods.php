@@ -46,6 +46,18 @@ function calculate_suggested_fee(array $method, float $baseAmount): float
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// Phase 8: 公開取得活躍付款方法（供客戶 Portal 使用）
+if ($action === 'list_active_public') {
+    $methods = db_query("
+        SELECT id, name, code, fee_model, fee_fixed, fee_percent 
+        FROM payment_methods 
+        WHERE is_active = 1 
+        ORDER BY sort_order ASC, id ASC
+    ");
+    json_success($methods);
+    exit;
+}
+
 switch ($action) {
 
     case 'list':

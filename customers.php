@@ -270,6 +270,7 @@ function renderCustomersTable(list) {
                 </td>
                 <td class="text-end">
                     <button onclick="editCustomer(${c.id})" class="btn btn-link btn-sm text-success p-0">編輯</button>
+                    <button onclick="generatePortalLinkForCustomer(${c.id}, this)" class="btn btn-link btn-sm text-primary p-0 ms-1">Portal</button>
                 </td>
             </tr>
         `;
@@ -501,6 +502,43 @@ function showAddModal() {
     modal.show();
 
     setTimeout(() => document.getElementById('customer-name').focus(), 400);
+}
+
+// Phase 8: 快速生成客戶 Portal 連結
+async function generatePortalLinkForCustomer(customerId, btnEl) {
+    const originalText = btnEl.textContent;
+    btnEl.disabled = true;
+    btnEl.textContent = '生成中...';
+
+    try {
+        const res = await SalonEase.fetch('/api/settings.php?action=generate_portal_link', {
+            method: 'POST',
+            body: new URLSearchParams({
+                customer_id: customerId,
+                csrf_token: window.CSRF_TOKEN
+            })
+        });
+
+        if (res.success && res.data && res.data.link) {
+            // 顯示在 toast + 複製到剪貼簿
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(res.data.link);
+            }
+            SalonEase.toast('Portal 連結已複製到剪貼簿！');
+            
+            // 可選：彈出確認
+            if (confirm('連結已複製！\n\n是否現在打開預覽？')) {
+                window.open(res.data.link, '_blank');
+            }
+        } else {
+            alert('生成失敗');
+        }
+    } catch (err) {
+        alert('生成 Portal 連結失敗：' + err.message);
+    } finally {
+        btnEl.disabled = false;
+        btnEl.textContent = originalText;
+    }
 }
 
 async function editCustomer(id) {
