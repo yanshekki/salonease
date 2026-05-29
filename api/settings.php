@@ -219,6 +219,31 @@ switch ($action) {
         }
         break;
 
+    case 'test_email':
+        if (!is_post()) json_error('只接受 POST 請求', 405);
+        require_csrf();
+
+        if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
+            json_error('只有管理員或店長可以測試 Email', 403);
+        }
+
+        $testEmailAddr = trim(post('test_email'));
+        if (empty($testEmailAddr) || !filter_var($testEmailAddr, FILTER_VALIDATE_EMAIL)) {
+            json_error('請輸入有效的測試 Email');
+        }
+
+        $subject = '【SalonEase 測試】Email 提醒測試';
+        $body = "這是一封測試 Email。\n時間：" . date('Y-m-d H:i:s') . "\n\nSalonEase";
+
+        $success = send_email($testEmailAddr, $subject, $body);
+
+        if ($success) {
+            json_success(null, '測試 Email 已發送（請檢查收件箱）');
+        } else {
+            json_error('Email 發送失敗，請檢查設定或伺服器 mail() 配置');
+        }
+        break;
+
     case 'reminder_stats':
         if (!in_array($_SESSION['staff_role'] ?? '', ['admin', 'manager'])) {
             json_error('權限不足', 403);
@@ -278,6 +303,22 @@ switch ($action) {
         $stats['last_30_days']['total'] = 
             $stats['last_30_days']['email_sent'] + $stats['last_30_days']['email_failed'] +
             $stats['last_30_days']['sms_sent'] + $stats['last_30_days']['sms_failed'];
+
+        // Phase 7 A 加強：最後執行時間 + 待重試數
+        $lastRun = db_query_one("SELECT MAX(sent_at) as last_sent FROM plan_notifications");
+        $stats['last_run_at'] = $lastRun['last_sent'] ?? null;
+
+        $pendingRetries = db_query_one("
+            SELECT COUNT(*) as cnt 
+            FROM plan_notifications 
+            WHERE status = 'failed' AND retry_count < 3
+        ");
+        $stats['pending_retries'] = (int)($pendingRetries['cnt'] ?? 0);
+
+        // 計算成功率（7天）
+        $total7 = $stats['last_7_days']['total'];
+        $success7 = $stats['last_7_days']['email_sent'] + $stats['last_7_days']['sms_sent'];
+        $stats['last_7_days']['success_rate'] = $total7 > 0 ? round(($success7 / $total7) * 100) : 100;
 
         json_success($stats);
         break;
