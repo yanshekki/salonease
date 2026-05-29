@@ -384,30 +384,54 @@ function send_sms(string $phone, string $message): bool
         return true;
     }
 
-    // 如果有完整設定 Twilio，就真正發送
+    // Phase 7 A：生產級實作 — 使用 Twilio REST API 直接 cURL（無需 Composer SDK）
     if (!empty($settings['twilio_account_sid']) && !empty($settings['twilio_auth_token']) && !empty($settings['twilio_from_number'])) {
+        $sid   = $settings['twilio_account_sid'];
+        $token = $settings['twilio_auth_token'];
+        $from  = $settings['twilio_from_number'];
 
-        if (!class_exists('\Twilio\Rest\Client')) {
-            log_error('sms', 'Twilio SDK not installed. Please run: composer require twilio/sdk');
-            error_log("[SMS] Twilio SDK not found.");
+        $url = "https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json";
+
+        $postFields = http_build_query([
+            'From' => $from,
+            'To'   => $phone,
+            'Body' => $message
+        ]);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERPWD, "{$sid}:{$token}");
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            log_error('sms', 'Twilio cURL error', ['error' => $curlError, 'phone' => $phone]);
+            error_log("[SMS] Twilio cURL Error: " . $curlError);
             return false;
         }
 
-        try {
-            $sid   = $settings['twilio_account_sid'];
-            $token = $settings['twilio_auth_token'];
-            $from  = $settings['twilio_from_number'];
+        $data = json_decode($response, true);
 
-            $client = new \Twilio\Rest\Client($sid, $token);
-            $client->messages->create($phone, [
-                'from' => $from,
-                'body' => $message
-            ]);
-
+        if ($httpCode >= 200 && $httpCode < 300 && isset($data['sid'])) {
+            // 成功
             return true;
-        } catch (Exception $e) {
-            log_error('sms', 'Twilio send failed', ['error' => $e->getMessage()]);
-            error_log("[SMS] Twilio Error: " . $e->getMessage());
+        } else {
+            $errMsg = $data['message'] ?? $response;
+            log_error('sms', 'Twilio API error', [
+                'http_code' => $httpCode,
+                'response'  => $errMsg,
+                'phone'     => $phone
+            ]);
+            error_log("[SMS] Twilio API Error (HTTP {$httpCode}): " . $errMsg);
             return false;
         }
     }
