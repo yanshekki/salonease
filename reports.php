@@ -387,6 +387,55 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
 
+        <!-- Phase 3: 分期計劃進度概覽 -->
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="fw-semibold mb-3">分期計劃進度</div>
+                    <div x-show="installmentOverview.length > 0">
+                        <template x-for="plan in installmentOverview" :key="plan.plan_id">
+                            <div class="d-flex justify-content-between align-items-center small py-1 border-bottom">
+                                <div>
+                                    <span x-text="plan.plan_type === 'installment' ? '分期' : '周期性'"></span>
+                                    <span class="text-muted ms-1">#<span x-text="plan.sale_id"></span></span>
+                                </div>
+                                <div class="text-end">
+                                    <span x-text="plan.progress_percent + '%'"></span>
+                                    <span class="text-muted ms-1 small" x-text="'(' + plan.payments_made + '/' + plan.total_installments + ')'"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="installmentOverview.length === 0" class="text-muted small py-4 text-center">
+                        查詢期間暫無分期計劃
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 3: 手續費成本統計 -->
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="fw-semibold mb-3">手續費成本統計（商戶承擔）</div>
+                    <div x-show="feeCostBreakdown.length > 0">
+                        <template x-for="item in feeCostBreakdown" :key="item.method">
+                            <div class="d-flex justify-content-between align-items-center small py-1 border-bottom">
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="fw-medium" style="width: 80px;" x-text="item.method"></span>
+                                    <span class="text-muted" x-text="item.count + ' 筆'"></span>
+                                </div>
+                                <div class="fw-semibold text-danger" x-text="formatMoney(item.merchant_fee)"></div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="feeCostBreakdown.length === 0" class="text-muted small py-4 text-center">
+                        查詢期間暫無手續費記錄
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 套票扣減明細 -->
         <div class="col-12 col-lg-6">
             <div class="card h-100">
@@ -528,6 +577,8 @@ function reportsApp() {
         topServices: [],
         topProducts: [],
         packageRedemptions: [],
+        installmentOverview: [],  // Phase 3
+        feeCostBreakdown: [],     // Phase 3
 
         init() {
             this.loadStaffList();
@@ -548,7 +599,9 @@ function reportsApp() {
                     this.loadDailySales(),   // A141
                     this.loadInventoryTurnover(), // A143
                     this.loadStockoutTrend(),     // A143
-                    this.loadStaffPerformanceTrend() // A144
+                    this.loadStaffPerformanceTrend(), // A144
+                    this.loadInstallmentOverview(),  // Phase 3
+                    this.loadFeeCostBreakdown()        // Phase 3
                 ]);
             } finally {
                 this.loading = false;
@@ -607,6 +660,34 @@ function reportsApp() {
                 const res = await SalonEase.fetch(`/api/reports.php?action=package_redemptions&from=${this.from}&to=${this.to}`);
                 this.packageRedemptions = res.data || [];
             } catch (e) {}
+        },
+
+        // Phase 3: 分期計劃概覽
+        async loadInstallmentOverview() {
+            try {
+                let url = `/api/reports.php?action=installment_overview&from=${this.from}&to=${this.to}`;
+                if (this.selectedStaffId) {
+                    url += `&staff_id=${this.selectedStaffId}`;
+                }
+                const res = await SalonEase.fetch(url);
+                this.installmentOverview = res.data || [];
+            } catch (e) {
+                this.installmentOverview = [];
+            }
+        },
+
+        // Phase 3: 手續費成本統計
+        async loadFeeCostBreakdown() {
+            try {
+                let url = `/api/reports.php?action=fee_cost_breakdown&from=${this.from}&to=${this.to}`;
+                if (this.selectedStaffId) {
+                    url += `&staff_id=${this.selectedStaffId}`;
+                }
+                const res = await SalonEase.fetch(url);
+                this.feeCostBreakdown = res.data || [];
+            } catch (e) {
+                this.feeCostBreakdown = [];
+            }
         },
 
         // A62：載入上期數據以計算「較上期」百分比
