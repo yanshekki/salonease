@@ -343,6 +343,55 @@ switch ($action) {
         ]);
         break;
 
+    case 'reminder_effectiveness':
+        // Phase 9: 提醒系統回款成效分析
+        $daysAfter = 14; // 提醒後14天內有付款算有效
+
+        // 只看成功發送的提醒
+        $reminders = db_query("
+            SELECT pn.plan_id, pn.sent_at
+            FROM plan_notifications pn
+            JOIN sale_payment_plans spp ON spp.id = pn.plan_id
+            WHERE pn.sent_at BETWEEN ? AND ?
+              AND pn.status = 'sent'
+              AND spp.status = 'active'
+        ", [$from, $to]);
+
+        $totalSent = count($reminders);
+        $effective = 0;
+        $totalCollected = 0;
+
+        foreach ($reminders as $r) {
+            $planId = $r['plan_id'];
+            $sentAt = $r['sent_at'];
+
+            // 檢查提醒後 $daysAfter 天內是否有付款
+            $payment = db_query_one("
+                SELECT COALESCE(SUM(amount), 0) as collected
+                FROM payments 
+                WHERE plan_id = ? 
+                  AND paid_at > ? 
+                  AND paid_at <= DATE_ADD(?, INTERVAL $daysAfter DAY)
+                  AND is_refund = 0
+            ", [$planId, $sentAt, $sentAt]);
+
+            if ($payment && $payment['collected'] > 0) {
+                $effective++;
+                $totalCollected += (float)$payment['collected'];
+            }
+        }
+
+        $successRate = $totalSent > 0 ? round(($effective / $totalSent) * 100, 1) : 0;
+
+        json_success([
+            'total_sent' => $totalSent,
+            'effective' => $effective,
+            'success_rate' => $successRate,
+            'total_collected_after_reminders' => round($totalCollected, 2),
+            'window_days' => $daysAfter
+        ]);
+        break;
+
     case 'payment_forecast':
         // Phase 6: 付款計劃現金流預測（強化版）
         $days = (int)get('days', 90);
@@ -422,6 +471,38 @@ switch ($action) {
         });
 
         json_success(array_slice($riskList, 0, $limit));
+        break;
+
+    case 'health_score_distribution':
+        // Phase 9: 客戶付款健康分數分佈
+        $customers = db_query("
+            SELECT DISTINCT c.id 
+            FROM customers c
+            JOIN sales s ON s.customer_id = c.id
+            JOIN sale_payment_plans spp ON spp.sale_id = s.id
+            WHERE spp.status = 'active'
+        ");
+
+        $buckets = [
+            'high' => 0,   // 0-49
+            'medium' => 0, // 50-69
+            'good' => 0    // 70-100
+        ];
+
+        foreach ($customers as $c) {
+            $h = calculateCustomerPaymentHealthScore($c['id']);
+            $score = $h['score'];
+            if ($score < 50) $buckets['high']++;
+            elseif ($score < 70) $buckets['medium']++;
+            else $buckets['good']++;
+        }
+
+        json_success([
+            'high' => $buckets['high'],
+            'medium' => $buckets['medium'],
+            'good' => $buckets['good'],
+            'total' => count($customers)
+        ]);
         break;
 
     case 'installment_overview':

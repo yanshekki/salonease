@@ -127,6 +127,45 @@ $lastMonthSales = db_query_one("
     WHERE sale_date >= ? AND sale_date <= ?
 ", [$lastMonthStart, $lastMonthEnd]);
 
+// Phase 9: 高價值付款計劃分析卡片數據
+$next30DaysExpected = 0;
+try {
+    $activePlans = db_query("SELECT id FROM sale_payment_plans WHERE status = 'active' LIMIT 200");
+    foreach ($activePlans as $p) {
+        $f = calculatePlanCashFlowForecast($p['id'], 30);
+        if (!isset($f['error'])) {
+            $next30DaysExpected += $f['expected_collections'] ?? 0;
+        }
+    }
+} catch (Throwable $e) {
+    $next30DaysExpected = 0;
+}
+
+$highRiskCustomersCount = 0;
+try {
+    $customersWithActivePlans = db_query("
+        SELECT DISTINCT s.customer_id 
+        FROM sale_payment_plans spp
+        JOIN sales s ON spp.sale_id = s.id
+        WHERE spp.status = 'active'
+    ");
+    foreach ($customersWithActivePlans as $c) {
+        $h = calculateCustomerPaymentHealthScore($c['customer_id']);
+        if ($h['score'] < 50) {
+            $highRiskCustomersCount++;
+        }
+    }
+} catch (Throwable $e) {
+    $highRiskCustomersCount = 0;
+}
+
+$reminderHealth = ['score' => 0];
+try {
+    $reminderHealth = calculateReminderHealthScore();
+} catch (Throwable $e) {
+    $reminderHealth = ['score' => 0];
+}
+
 $thisMonthTotal = (float)($thisMonthSales['total'] ?? 0);
 $lastMonthTotal = (float)($lastMonthSales['total'] ?? 0);
 $salesDiff = $thisMonthTotal - $lastMonthTotal;
@@ -286,6 +325,49 @@ try {
                     共缺 <span class="fw-semibold text-danger"><?= (int)($lowStock['total_shortage'] ?? 0) ?></span> 件
                 </div>
                 <a href="/products.php?low-stock-only=1" class="small text-danger text-decoration-none d-inline-block mt-2">查看需補貨產品 →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Phase 9: 付款計劃關鍵指標 -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-primary-subtle shadow-sm" style="transition: all 0.2s;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div class="text-uppercase text-muted small mb-1">未來30天預計收款</div>
+                    <span class="badge bg-primary small">Phase 9</span>
+                </div>
+                <div class="fs-2 fs-md-1 fw-semibold text-primary"><?= format_money($next30DaysExpected) ?></div>
+                <div class="small text-muted mt-1">來自活躍付款計劃</div>
+                <a href="/reports.php" class="small text-primary text-decoration-none d-inline-block mt-2">查看詳細預測 →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-danger-subtle shadow-sm" style="transition: all 0.2s;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div class="text-uppercase text-muted small mb-1">高風險客戶</div>
+                    <span class="badge bg-danger small">Phase 9</span>
+                </div>
+                <div class="fs-2 fs-md-1 fw-semibold text-danger"><?= (int)$highRiskCustomersCount ?></div>
+                <div class="small text-muted mt-1">健康分數 &lt; 50 分</div>
+                <a href="/reports.php" class="small text-danger text-decoration-none d-inline-block mt-2">查看高風險列表 →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-info-subtle shadow-sm" style="transition: all 0.2s;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div class="text-uppercase text-muted small mb-1">提醒系統健康分數</div>
+                    <span class="badge bg-info text-dark small">Phase 9</span>
+                </div>
+                <div class="fs-2 fs-md-1 fw-semibold text-info"><?= (int)($reminderHealth['score'] ?? 0) ?> <span class="fs-6">/ 100</span></div>
+                <div class="small text-muted mt-1">綜合成功率、待重試、執行頻率</div>
+                <a href="/settings.php" class="small text-info text-decoration-none d-inline-block mt-2">查看詳情 →</a>
             </div>
         </div>
     </div>
