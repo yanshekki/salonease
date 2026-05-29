@@ -254,6 +254,10 @@ $extraJs = 'hotkeys.js';
                 <span class="text-muted">需跟進：</span>
                 <strong id="summary-needs-attention" class="text-danger">0</strong> 筆
             </div>
+            <div>
+                <span class="text-muted">高風險：</span>
+                <strong id="summary-high-risk" class="text-danger">0</strong>
+            </div>
             <div class="flex-grow-1">
                 <span class="text-muted">最老計劃：</span>
                 <span id="summary-oldest-plan" class="fw-medium" style="cursor:pointer; text-decoration: underline;"></span>
@@ -329,6 +333,7 @@ $extraJs = 'hotkeys.js';
             
             <select id="today-work-sort" class="form-select form-select-sm" style="width: auto;" onchange="renderTodayWorkList()">
                 <option value="priority-desc">優先級 高→低</option>
+                <option value="risk-desc">風險由高到低（健康分數低優先）</option>
                 <option value="progress-asc">進度 低→高</option>
                 <option value="added-desc">最近加入</option>
             </select>
@@ -389,6 +394,12 @@ $extraJs = 'hotkeys.js';
         <div class="small">
             <span class="text-muted">明天重點關注 Top 3：</span>
             <span id="summary-top3" class="text-dark"></span>
+        </div>
+        <!-- Phase 6 A：高風險統計（今日工作指揮中心） -->
+        <div class="small mt-1">
+            <span class="text-muted">高風險客戶計劃：</span>
+            <strong id="summary-high-risk-count" class="text-danger">0</strong> 個
+            <span class="tiny text-muted">（健康分數 &lt;50，優先處理）</span>
         </div>
         <div class="tiny text-muted mt-1">行動越多，數字即時更新。結轉後明日自動帶入「昨日未完」提示。</div>
     </div>
@@ -933,6 +944,12 @@ function renderTodayWorkList() {
         const priB = calculatePlanPriority(fullB).score;
 
         if (sortMode === 'priority-desc') return priB - priA;
+        if (sortMode === 'risk-desc') {
+            // 風險由高到低：健康分數越低越前
+            const ha = (fullA.customer_health && typeof fullA.customer_health.score === 'number') ? fullA.customer_health.score : 100;
+            const hb = (fullB.customer_health && typeof fullB.customer_health.score === 'number') ? fullB.customer_health.score : 100;
+            return ha - hb;
+        }
         if (sortMode === 'progress-asc') {
             const pa = parseFloat(a.progress) || 0;
             const pb = parseFloat(b.progress) || 0;
@@ -957,12 +974,22 @@ function renderTodayWorkList() {
         const fullPlan = currentPlansData.find(p => p.id == plan.id) || plan;
         const pri = calculatePlanPriority(fullPlan);
 
+        // Phase 6 A：風險徽章（與主列表頁一致：紅<50 / 黃50-69 / 綠>=70）
+        let riskBadge = '';
+        if (fullPlan.customer_health && typeof fullPlan.customer_health.score === 'number') {
+            const hs = fullPlan.customer_health.score;
+            const rl = fullPlan.customer_health.risk_level || (hs < 50 ? 'high' : (hs < 70 ? 'medium' : 'low'));
+            const cls = rl === 'high' ? 'bg-danger' : (rl === 'medium' ? 'bg-warning text-dark' : 'bg-success');
+            riskBadge = `<span class="badge ms-1 ${cls}" style="font-size:0.65rem;" title="客戶付款健康分數：${hs}（風險${rl==='high'?'高':rl==='medium'?'中':'低'}）">${hs}分</span>`;
+        }
+
         html += `
             <div class="d-flex align-items-center justify-content-between bg-white rounded px-2 py-1 border small">
                 <div>
                     <strong>#${plan.id}</strong> ${plan.customer_name ? e(plan.customer_name) : ''}
                     <span class="text-muted">（進度 ${plan.progress || 0}%）</span>
                     <span class="badge bg-dark ms-1" title="${pri.reasons.join('、')}">優先級 ${pri.score}</span>
+                    ${riskBadge}
                 </div>
                 <div class="btn-group btn-group-sm">
                     <button type="button" class="btn btn-outline-primary" onclick="quickFollowupFromWorkList(${plan.id}, this)">快速跟進</button>
@@ -1042,6 +1069,19 @@ function renderTodaySummary() {
         }).join('');
     }
     if (top3El) top3El.innerHTML = top3Html || '<span class="text-muted">暫無剩餘計劃</span>';
+
+    // Phase 6 A：計算並顯示今日清單內高風險客戶計劃數（即時零刷新）
+    const highRiskCountEl = document.getElementById('summary-high-risk-count');
+    if (highRiskCountEl) {
+        let hr = 0;
+        todayWorkList.forEach(item => {
+            const full = currentPlansData.find(p => p.id == item.id) || item;
+            if (full.customer_health && typeof full.customer_health.score === 'number' && full.customer_health.score < 50) {
+                hr++;
+            }
+        });
+        highRiskCountEl.textContent = hr;
+    }
 
     // 顯示或隱藏卡片
     if (todayWorkList.length > 0 || actioned > 0 || dailyTotal > 0) {
@@ -1489,6 +1529,13 @@ function updateSelectedSummary() {
     document.getElementById('summary-avg-progress').textContent = avgProgress + '%';
     document.getElementById('summary-needs-attention').textContent = needsAttentionCount;
 
+    // Phase 6 A：已選計劃中高風險客戶數（健康分數 <50）
+    const highRiskEl = document.getElementById('summary-high-risk');
+    if (highRiskEl) {
+        const hr = selected.filter(p => p.customer_health && typeof p.customer_health.score === 'number' && p.customer_health.score < 50).length;
+        highRiskEl.textContent = hr;
+    }
+
     const oldestEl = document.getElementById('summary-oldest-plan');
     if (oldestPlan) {
         const days = oldestPlan.created_at ? Math.floor((today - new Date(oldestPlan.created_at)) / (1000*60*60*24)) : 0;
@@ -1717,6 +1764,7 @@ function updateProactiveSuggestions() {
                 <span class="badge bg-danger">最老未跟進</span>
                 <span class="small">共 <strong>${oldestUnfollowed.length}</strong> 筆</span>
                 <span class="badge bg-dark ms-1" title="${pri.reasons.join('、')}">優先級 ${pri.score}</span>
+                ${top.customer_health ? `<span class="badge ms-1 ${top.customer_health.score<50?'bg-danger':top.customer_health.score<70?'bg-warning text-dark':'bg-success'}" style="font-size:0.65rem;" title="客戶健康 ${top.customer_health.score}分">${top.customer_health.score}分</span>` : ''}
                 <button type="button" class="btn btn-sm btn-danger ms-1" onclick="applyProactiveGroup('oldest-unfollowed')">
                     選取 + 批量快速跟進
                 </button>
@@ -1735,6 +1783,7 @@ function updateProactiveSuggestions() {
                 <span class="badge bg-warning text-dark">嚴重落後</span>
                 <span class="small">共 <strong>${severelyBehind.length}</strong> 筆</span>
                 <span class="badge bg-dark ms-1" title="${pri.reasons.join('、')}">優先級 ${pri.score}</span>
+                ${top.customer_health ? `<span class="badge ms-1 ${top.customer_health.score<50?'bg-danger':top.customer_health.score<70?'bg-warning text-dark':'bg-success'}" style="font-size:0.65rem;" title="客戶健康 ${top.customer_health.score}分">${top.customer_health.score}分</span>` : ''}
                 <button type="button" class="btn btn-sm btn-warning text-dark ms-1" onclick="applyProactiveGroup('severely-behind')">
                     選取 + 批量記錄付款
                 </button>
@@ -1974,6 +2023,18 @@ function calculatePlanPriority(plan) {
 
     // 計劃越老（在活躍計劃中）越優先
     // 這裡用簡單啟發式：如果進度低 + 時間長，已經加分夠多
+
+    // Phase 6 A：把客戶付款健康分數整合為優先級依據（低健康 = 高風險，加權）
+    if (plan.customer_health && typeof plan.customer_health.score === 'number') {
+        const hs = plan.customer_health.score;
+        if (hs < 50) {
+            score += 15;
+            reasons.push('客戶健康分數低');
+        } else if (hs < 70) {
+            score += 5;
+            reasons.push('客戶健康偏低');
+        }
+    }
 
     return {
         score: Math.min(100, Math.round(score)),
@@ -2905,6 +2966,13 @@ function renderPlansTable(plans) {
                         ${e(p.customer_name || '-')} <span class="small text-primary">→</span>
                     </div>
                     <div class="small text-muted font-mono">${e(p.customer_phone || '')}</div>
+                    ${p.customer_health ? `
+                        <span class="badge ms-1 ${p.customer_health.risk_level === 'high' ? 'bg-danger' : p.customer_health.risk_level === 'medium' ? 'bg-warning text-dark' : 'bg-success'}"
+                              style="font-size: 0.65rem;"
+                              title="客戶付款健康分數：${p.customer_health.score}">
+                            ${p.customer_health.score}分
+                        </span>
+                    ` : ''}
                 </td>
                 <td>${typeBadge}</td>
                 <td class="text-end fw-medium">HK$ ${parseFloat(p.installment_amount).toFixed(0)}</td>
@@ -3101,6 +3169,24 @@ async function showPlanDetail(planId) {
                     <div class="mb-2"><strong>每期金額</strong> HK$ ${parseFloat(p.installment_amount).toFixed(0)}</div>
                     <div class="mb-2"><strong>總期數</strong> ${total} 期</div>
                 </div>
+
+                <!-- Phase 6: 客戶付款健康分數 -->
+                ${p.customer_health ? `
+                <div class="col-12 mt-2">
+                    <div class="border rounded p-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong class="small">客戶付款健康</strong>
+                                <span class="badge ms-2 ${p.customer_health.score < 50 ? 'bg-danger' : p.customer_health.score < 70 ? 'bg-warning text-dark' : 'bg-success'}">
+                                    ${p.customer_health.score} 分
+                                </span>
+                            </div>
+                            <div class="small text-muted">
+                                ${p.customer_health.factors.join('、')}
+                            </div>
+                        </div>
+                    </div>
+                </div>` : ''}
                 <div class="col-md-6">
                     <div class="mb-2"><strong>狀態</strong> ${statusBadge}</div>
                     <div class="mb-2"><strong>開始日期</strong> ${p.start_date || '-'}</div>

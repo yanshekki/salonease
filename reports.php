@@ -413,6 +413,71 @@ include __DIR__ . '/includes/header.php';
             </div>
         </div>
 
+        <!-- Phase 6: 付款計劃現金流預測（強化版） -->
+        <div class="col-12">
+            <div class="card mb-4 border-primary-subtle">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="fw-semibold">未來現金流預測</div>
+                            <div class="small text-muted">按月分群顯示（支援不同 frequency）</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="small text-muted">總預計</div>
+                            <div class="fs-4 fw-semibold text-primary" x-text="paymentForecast ? 'HK$ ' + paymentForecast.total_expected.toLocaleString() : '—'"></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2" x-show="paymentForecast && paymentForecast.monthly_breakdown">
+                        <template x-for="(amount, month) in (paymentForecast?.monthly_breakdown || {})" :key="month">
+                            <div class="col-6 col-md-3 col-lg-2">
+                                <div class="border rounded p-2 text-center">
+                                    <div class="small text-muted" x-text="month"></div>
+                                    <div class="fw-semibold" x-text="'HK$ ' + amount.toLocaleString()"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="!paymentForecast || !paymentForecast.monthly_breakdown" class="text-muted small">
+                        暫無預測數據
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 6: 高風險客戶 -->
+        <div class="col-12">
+            <div class="card mb-4 border-danger-subtle">
+                <div class="card-body">
+                    <div class="fw-semibold mb-3 text-danger">高風險客戶（付款健康分數較低）</div>
+
+                    <div class="row g-2" x-show="topRiskCustomers.length > 0">
+                        <template x-for="c in topRiskCustomers" :key="c.customer_id">
+                            <div class="col-12 col-md-6 col-lg-4">
+                                <div class="border rounded p-2 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-medium">
+                                            <a :href="`/payment_plans.php?customer_id=${c.customer_id}`" class="text-decoration-none" x-text="c.name"></a>
+                                        </div>
+                                        <div class="tiny text-muted" x-text="c.phone"></div>
+                                        <div class="small">
+                                            <span class="badge" :class="c.score < 50 ? 'bg-danger' : 'bg-warning text-dark'" x-text="c.score + ' 分'"></span>
+                                        </div>
+                                    </div>
+                                    <div class="text-end small text-muted" style="max-width: 140px;">
+                                        <div x-text="c.factors.join('、')"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="topRiskCustomers.length === 0" class="text-muted small">
+                        目前無明顯高風險客戶
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Phase 5: 付款計劃提醒發送報表 -->
         <div class="col-12">
             <div class="card mb-4">
@@ -682,6 +747,8 @@ function reportsApp() {
         reminderReport: { summary: null, list: [] },  // Phase 5
         reminderFilterChannel: '',
         reminderFilterStatus: '',
+        paymentForecast: null,           // Phase 6
+        topRiskCustomers: [],            // Phase 6
 
         init() {
             this.loadStaffList();
@@ -705,7 +772,9 @@ function reportsApp() {
                     this.loadStaffPerformanceTrend(), // A144
                     this.loadInstallmentOverview(),  // Phase 3
                     this.loadFeeCostBreakdown(),       // Phase 3
-                    this.loadReminderReport()          // Phase 5
+                    this.loadReminderReport(),       // Phase 5
+                    this.loadPaymentForecast(),        // Phase 6
+                    this.loadTopRiskCustomers()        // Phase 6
                 ]);
             } finally {
                 this.loading = false;
@@ -832,6 +901,26 @@ function reportsApp() {
             link.href = URL.createObjectURL(blob);
             link.download = `reminder_report_${this.from}_${this.to}.csv`;
             link.click();
+        },
+
+        // Phase 6: 付款計劃現金流預測
+        async loadPaymentForecast() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=payment_forecast&days=90`);
+                this.paymentForecast = res.data;
+            } catch (e) {
+                console.warn('載入現金流預測失敗', e);
+            }
+        },
+
+        // Phase 6: 高風險客戶
+        async loadTopRiskCustomers() {
+            try {
+                const res = await SalonEase.fetch(`/api/reports.php?action=top_risk_customers&limit=8`);
+                this.topRiskCustomers = res.data || [];
+            } catch (e) {
+                this.topRiskCustomers = [];
+            }
         },
 
         // A62：載入上期數據以計算「較上期」百分比

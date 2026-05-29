@@ -136,6 +136,36 @@ switch ($action) {
         $sql .= " ORDER BY spp.created_at DESC LIMIT 150";
 
         $plans = db_query($sql, $params);
+
+        // Phase 6: 附上客戶付款健康分數（用於風險徽章）
+        $customerIds = array_unique(array_column($plans, 'customer_id'));
+        if (!empty($customerIds)) {
+            $healthMap = [];
+            // 為了效能，這裡只算活躍計劃較多的客戶，實際可優化
+            $healthCustomers = db_query("
+                SELECT DISTINCT c.id 
+                FROM customers c
+                JOIN sales s ON s.customer_id = c.id
+                JOIN sale_payment_plans spp ON spp.sale_id = s.id
+                WHERE c.id IN (" . implode(',', array_map('intval', $customerIds)) . ")
+                  AND spp.status = 'active'
+            ");
+
+            foreach ($healthCustomers as $hc) {
+                $h = calculateCustomerPaymentHealthScore($hc['id']);
+                $healthMap[$hc['id']] = [
+                    'score' => $h['score'],
+                    'risk_level' => $h['score'] < 50 ? 'high' : ($h['score'] < 70 ? 'medium' : 'low')
+                ];
+            }
+
+            foreach ($plans as &$plan) {
+                if (isset($healthMap[$plan['customer_id']])) {
+                    $plan['customer_health'] = $healthMap[$plan['customer_id']];
+                }
+            }
+        }
+
         json_success($plans);
         break;
 
@@ -167,9 +197,13 @@ switch ($action) {
             SELECT 
                 spp.*,
                 s.total as sale_total,
-                s.amount_paid as sale_amount_paid
+                s.amount_paid as sale_amount_paid,
+                c.id as customer_id,
+                c.name as customer_name,
+                c.phone as customer_phone
             FROM sale_payment_plans spp
             JOIN sales s ON spp.sale_id = s.id
+            JOIN customers c ON s.customer_id = c.id
             WHERE spp.id = ?
         ", [$id]);
 
@@ -185,6 +219,16 @@ switch ($action) {
         ", [$id]);
 
         $plan['payments'] = $payments;
+
+        // Phase 6: 附上客戶健康分數
+        if ($plan['customer_id']) {
+            $health = calculateCustomerPaymentHealthScore($plan['customer_id']);
+            $plan['customer_health'] = [
+                'score' => $health['score'],
+                'factors' => $health['factors'],
+                'risk_level' => $health['score'] < 50 ? 'high' : ($health['score'] < 70 ? 'medium' : 'low')
+            ];
+        }
 
         json_success($plan);
         break;
