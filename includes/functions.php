@@ -760,6 +760,55 @@ function calculateReminderHealthScore(): array
     ];
 }
 
+/**
+ * Phase 8: 產生客戶 Portal 安全存取 token（有限期）
+ */
+function generateCustomerPortalToken(int $customerId, int $daysValid = 45): string
+{
+    $token = bin2hex(random_bytes(32)); // 64 chars
+
+    $expiresAt = date('Y-m-d H:i:s', time() + ($daysValid * 86400));
+
+    db_exec("
+        INSERT INTO customer_portal_tokens (customer_id, token, expires_at, created_at)
+        VALUES (?, ?, ?, NOW())
+    ", [$customerId, $token, $expiresAt]);
+
+    return $token;
+}
+
+/**
+ * Phase 8: 驗證客戶 Portal token
+ * 回傳客戶基本資料 + token 資訊，或 null（無效/過期）
+ */
+function validateCustomerPortalToken(string $token): ?array
+{
+    $row = db_query_one("
+        SELECT t.*, c.id as customer_id, c.name, c.phone, c.email
+        FROM customer_portal_tokens t
+        JOIN customers c ON c.id = t.customer_id
+        WHERE t.token = ? 
+          AND t.expires_at > NOW()
+        LIMIT 1
+    ", [$token]);
+
+    if (!$row) {
+        return null;
+    }
+
+    // 可選：標記使用（不強制 one-time）
+    // db_exec("UPDATE customer_portal_tokens SET used_at = NOW() WHERE id = ?", [$row['id']]);
+
+    return [
+        'customer_id' => (int)$row['customer_id'],
+        'name'        => $row['name'],
+        'phone'       => $row['phone'],
+        'email'       => $row['email'],
+        'token'       => $row['token'],
+        'expires_at'  => $row['expires_at']
+    ];
+}
+
 /* ==================== Phase 6: 付款計劃進階分析與預測 ==================== */
 
 /**
