@@ -343,6 +343,87 @@ switch ($action) {
         ]);
         break;
 
+    case 'payment_forecast':
+        // Phase 6: 付款計劃現金流預測（強化版）
+        $days = (int)get('days', 90);
+        $plans = db_query("
+            SELECT id FROM sale_payment_plans 
+            WHERE status = 'active'
+            ORDER BY created_at DESC
+            LIMIT 300
+        ");
+
+        $forecasts = [];
+        $totalExpected = 0;
+        $monthlyTotal = [];
+
+        foreach ($plans as $p) {
+            $f = calculatePlanCashFlowForecast($p['id'], $days);
+            if (!isset($f['error'])) {
+                $forecasts[] = $f;
+                $totalExpected += $f['expected_collections'];
+
+                foreach ($f['monthly'] as $month => $amt) {
+                    if (!isset($monthlyTotal[$month])) $monthlyTotal[$month] = 0;
+                    $monthlyTotal[$month] += $amt;
+                }
+            }
+        }
+
+        ksort($monthlyTotal);
+
+        json_success([
+            'days_ahead' => $days,
+            'total_expected' => round($totalExpected, 2),
+            'monthly_breakdown' => $monthlyTotal,
+            'plans_count' => count($forecasts)
+        ]);
+        break;
+
+    case 'customer_payment_health':
+        // Phase 6: 客戶付款健康分數
+        $customerId = (int)get('customer_id', 0);
+        if ($customerId <= 0) json_error('缺少 customer_id');
+
+        $health = calculateCustomerPaymentHealthScore($customerId);
+        json_success($health);
+        break;
+
+    case 'top_risk_customers':
+        // Phase 6: 高風險客戶 Top 列表
+        $limit = (int)get('limit', 10);
+
+        // 取得有活躍計劃的客戶
+        $customers = db_query("
+            SELECT DISTINCT c.id, c.name, c.phone
+            FROM customers c
+            JOIN sales s ON s.customer_id = c.id
+            JOIN sale_payment_plans spp ON spp.sale_id = s.id
+            WHERE spp.status = 'active'
+            LIMIT 100
+        ");
+
+        $riskList = [];
+        foreach ($customers as $c) {
+            $health = calculateCustomerPaymentHealthScore($c['id']);
+            $riskList[] = [
+                'customer_id' => $c['id'],
+                'name' => $c['name'],
+                'phone' => $c['phone'],
+                'score' => $health['score'],
+                'factors' => $health['factors'],
+                'stats' => $health['stats']
+            ];
+        }
+
+        // 按分數由低到高排序（分數越低風險越高）
+        usort($riskList, function($a, $b) {
+            return $a['score'] <=> $b['score'];
+        });
+
+        json_success(array_slice($riskList, 0, $limit));
+        break;
+
     case 'installment_overview':
         // Phase 3: 分期計劃概覽報表
         $staffId = (int)($_GET['staff_id'] ?? 0);

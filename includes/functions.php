@@ -584,3 +584,198 @@ function executePaymentReminder(int $ruleId): array
     ];
 }
 
+/* ==================== Phase 6: 付款計劃進階分析與預測 ==================== */
+
+/**
+ * 計算單一計劃的未來現金流預測（簡化版）
+ * 目前假設每月一期（後續可根據 frequency 加強）
+ *
+ * @param int $planId
+ * @param int $daysAhead 預測未來多少天
+ * @return array
+ */
+function calculatePlanCashFlowForecast(int $planId, int $daysAhead = 90): array
+{
+    $plan = db_query_one("
+        SELECT spp.*, 
+               COALESCE(SUM(CASE WHEN p.is_refund=0 THEN p.amount ELSE 0 END), 0) as paid_amount,
+               COUNT(CASE WHEN p.is_refund=0 THEN 1 END) as payments_made
+        FROM sale_payment_plans spp
+        LEFT JOIN payments p ON p.plan_id = spp.id
+        WHERE spp.id = ? AND spp.status = 'active'
+        GROUP BY spp.id
+    ", [$planId]);
+
+    if (!$plan) {
+        return ['error' => '計劃不存在或非進行中'];
+    }
+
+    $total = (int)$plan['total_installments'];
+    $amount = (float)$plan['installment_amount'];
+    $made = (int)$plan['payments_made'];
+    $remaining = $total - $made;
+    $frequency = $plan['frequency'] ?: 'monthly'; // installment 預設 monthly
+
+    if ($remaining <= 0) {
+        return ['expected_collections' => 0, 'periods' => [], 'monthly' => []];
+    }
+
+    $startDate = new DateTime($plan['start_date']);
+    $today = new DateTime();
+    $endDate = (clone $today)->modify("+$daysAhead days");
+
+    $forecast = [];
+    $monthly = [];
+    $totalExpected = 0;
+
+    $currentInstallment = $made + 1;
+    $currentDate = clone $startDate;
+
+    // 根據 frequency 計算每期應付日期
+    $intervalMap = [
+        'weekly'    => '+1 week',
+        'biweekly'  => '+2 weeks',
+        'monthly'   => '+1 month',
+        'quarterly' => '+3 months',
+    ];
+    $interval = $intervalMap[$frequency] ?? '+1 month';
+
+    // 推進到目前已付的最後一期日期
+    for ($i = 1; $i <= $made; $i++) {
+        $currentDate->modify($interval);
+    }
+
+    for ($i = 0; $i < $remaining; $i++) {
+        $dueDate = clone $currentDate;
+        $dueDate->modify($interval);
+
+        if ($dueDate > $endDate) break;
+
+        if ($dueDate >= $today) {
+            $monthKey = $dueDate->format('Y-m');
+
+            $forecast[] = [
+                'date' => $dueDate->format('Y-m-d'),
+                'amount' => $amount,
+                'installment_no' => $currentInstallment
+            ];
+
+            if (!isset($monthly[$monthKey])) $monthly[$monthKey] = 0;
+            $monthly[$monthKey] += $amount;
+
+            $totalExpected += $amount;
+        }
+
+        $currentInstallment++;
+        $currentDate = $dueDate;
+    }
+
+    ksort($monthly);
+
+    return [
+        'plan_id' => $planId,
+        'plan_type' => $plan['plan_type'],
+        'frequency' => $frequency,
+        'remaining_installments' => $remaining,
+        'expected_collections' => round($totalExpected, 2),
+        'periods' => $forecast,
+        'monthly' => $monthly
+    ];
+}
+
+/**
+ * 計算客戶付款健康分數（0-100）
+ */
+function calculateCustomerPaymentHealthScore(int $customerId): array
+{
+    $plans = db_query("
+        SELECT spp.id, spp.status, spp.created_at, spp.notes,
+               COALESCE(SUM(CASE WHEN p.is_refund=0 THEN p.amount ELSE 0 END), 0) as paid,
+               spp.installment_amount * spp.total_installments as total_expected,
+               COUNT(CASE WHEN p.is_refund=0 THEN 1 END) as payments_made
+        FROM sale_payment_plans spp
+        LEFT JOIN payments p ON p.plan_id = spp.id
+        JOIN sales s ON s.id = spp.sale_id
+        WHERE s.customer_id = ?
+        GROUP BY spp.id
+    ", [$customerId]);
+
+    if (empty($plans)) {
+        return ['score' => 50, 'factors' => ['無歷史計劃資料']];
+    }
+
+    $totalPlans = count($plans);
+    $completed = 0;
+    $active = 0;
+    $cancelled = 0;
+    $totalPaid = 0;
+    $totalExpected = 0;
+    $overdueKeywords = 0;
+    $recentPlans = 0;
+
+    $now = new DateTime();
+
+    foreach ($plans as $p) {
+        if ($p['status'] === 'completed') $completed++;
+        if ($p['status'] === 'active') $active++;
+        if ($p['status'] === 'cancelled') $cancelled++;
+
+        $totalPaid += (float)$p['paid'];
+        $totalExpected += (float)$p['total_expected'];
+
+        // 計算逾期相關跟進次數
+        if (!empty($p['notes'])) {
+            $overdueKeywords += substr_count(strtolower($p['notes']), '逾期') +
+                                substr_count(strtolower($p['notes']), '遲繳') +
+                                substr_count(strtolower($p['notes']), '拖欠');
+        }
+
+        // 最近計劃加權（6個月內）
+        $created = new DateTime($p['created_at']);
+        if ($now->diff($created)->m + ($now->diff($created)->y * 12) <= 6) {
+            $recentPlans++;
+        }
+    }
+
+    $completionRate = $totalPlans > 0 ? ($completed / $totalPlans) : 0;
+    $paymentProgress = $totalExpected > 0 ? min(1, $totalPaid / $totalExpected) : 0;
+
+    // 實用版健康分數計算
+    $score = 55;
+    $score += ($completionRate * 28);
+    $score += ($paymentProgress * 22);
+
+    // 逾期扣分（強力）
+    $score -= min(25, $overdueKeywords * 4);
+
+    // 取消計劃扣分
+    $score -= ($cancelled * 6);
+
+    // 近期活躍計劃給予小加分（表示有持續往來）
+    if ($recentPlans > 0 && $active > 0) {
+        $score += 5;
+    }
+
+    $score = max(10, min(100, round($score)));
+
+    $factors = [];
+    if ($completionRate >= 0.85) $factors[] = '高完成率';
+    if ($paymentProgress >= 0.92) $factors[] = '付款紀律良好';
+    if ($overdueKeywords >= 2) $factors[] = '曾多次逾期';
+    if ($cancelled > 0) $factors[] = '曾取消計劃';
+    if ($score >= 85) $factors[] = '優良客戶';
+
+    return [
+        'score' => $score,
+        'factors' => $factors ?: ['一般水平'],
+        'stats' => [
+            'total_plans' => $totalPlans,
+            'completed' => $completed,
+            'active' => $active,
+            'cancelled' => $cancelled,
+            'overall_progress' => round($paymentProgress * 100, 1),
+            'overdue_followups' => $overdueKeywords
+        ]
+    ];
+}
+
