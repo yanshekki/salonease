@@ -265,6 +265,25 @@ include __DIR__ . '/includes/header.php';
 
             <hr class="my-3">
 
+            <!-- Phase 7 A 最終收尾：提醒健康分數 -->
+            <div class="mb-3 p-3 border rounded bg-light" x-show="reminderStats && reminderStats.health">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="fw-semibold">提醒系統健康分數</span>
+                        <span class="badge ms-2" 
+                              :class="reminderStats?.health?.score >= 80 ? 'bg-success' : (reminderStats?.health?.score >= 60 ? 'bg-warning text-dark' : 'bg-danger')"
+                              x-text="(reminderStats?.health?.score || 0) + ' 分'">
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" @click="loadReminderStats()">刷新</button>
+                </div>
+                <div class="small mt-1 text-muted" x-text="(reminderStats?.health?.factors || []).join('、')"></div>
+                <div class="tiny mt-1">
+                    待重試：<span class="fw-semibold" x-text="reminderStats?.health?.pending_retries || 0"></span> 筆
+                    <span class="ms-2">最後執行：<span x-text="reminderStats?.health?.last_run ? new Date(reminderStats.health.last_run).toLocaleDateString('zh-HK') : '無'"></span></span>
+                </div>
+            </div>
+
             <div>
                 <div class="fw-semibold mb-2">提醒 Email 發送設定</div>
                 <div class="row g-3 align-items-end">
