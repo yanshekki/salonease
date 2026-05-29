@@ -143,6 +143,14 @@ try {
             ? "【{$salonName}】提醒系統每日報告 - 有問題需關注 ({$runDate})"
             : "【{$salonName}】提醒系統每日報告 ({$runDate})";
 
+        // 額外查詢待重試數（給電郵用）
+        $pending = db_query_one("SELECT COUNT(*) as cnt FROM plan_notifications WHERE status='failed' AND retry_count < 3");
+        $pendingCount = (int)($pending['cnt'] ?? 0);
+
+        $successRate = ($stats['success'] + $stats['skipped'] + $stats['failed']) > 0 
+            ? round( ($stats['success'] / ($stats['success'] + $stats['skipped'] + $stats['failed'])) * 100 ) 
+            : 100;
+
         $body = "{$salonName} 付款計劃提醒系統 - 每日執行報告\n";
         $body .= "執行時間: {$runDate}\n";
         $body .= "耗時: {$duration} 秒\n\n";
@@ -150,7 +158,8 @@ try {
         $body .= "=== 主執行結果 ===\n";
         $body .= "成功發送: {$stats['success']} 筆\n";
         $body .= "跳過: {$stats['skipped']} 筆\n";
-        $body .= "失敗: {$stats['failed']} 筆\n\n";
+        $body .= "失敗: {$stats['failed']} 筆\n";
+        $body .= "成功率: {$successRate}%\n\n";
 
         if (isset($retryStats) && $retryStats['attempted'] > 0) {
             $body .= "=== 自動重試結果 ===\n";
@@ -159,10 +168,13 @@ try {
             $body .= "仍失敗: {$retryStats['still_failed']} 筆\n\n";
         }
 
-        if ($hasIssues) {
+        $body .= "=== 目前狀態 ===\n";
+        $body .= "待重試失敗記錄: {$pendingCount} 筆\n\n";
+
+        if ($hasIssues || $pendingCount > 0) {
             $body .= "⚠️  有問題需要關注！\n";
             $body .= "請登入管理後台檢查：\n";
-            $body .= "• /settings.php （提醒執行狀態 + 待重試數）\n";
+            $body .= "• /settings.php （提醒執行狀態 + 待重試數 + 最近失敗列表）\n";
             $body .= "• /payment_plans.php （查看失敗提醒記錄並手動重試）\n\n";
         } else {
             $body .= "✅ 今日執行正常，無需特別處理。\n\n";

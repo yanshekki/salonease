@@ -334,6 +334,9 @@ switch ($action) {
         ");
         $stats['recent_failed'] = $recentFailed ?: [];
 
+        // Phase 7 A 最終：提醒健康分數
+        $stats['health'] = calculateReminderHealthScore();
+
         json_success($stats);
         break;
 

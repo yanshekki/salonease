@@ -690,6 +690,76 @@ function retryNotification(int $notificationId): array
     ];
 }
 
+/**
+ * Phase 7 A 最終收尾：計算提醒系統健康分數（0-100）
+ * 用於 settings 頁顯示，讓用戶一目了然系統狀態。
+ */
+function calculateReminderHealthScore(): array
+{
+    $score = 100;
+    $factors = [];
+
+    // 1. 最近7天失敗率扣分
+    $stats7 = db_query_one("
+        SELECT 
+            SUM(CASE WHEN status='sent' THEN 1 ELSE 0 END) as sent,
+            SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as failed
+        FROM plan_notifications 
+        WHERE sent_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    ");
+    $total7 = (int)($stats7['sent'] ?? 0) + (int)($stats7['failed'] ?? 0);
+    if ($total7 > 0) {
+        $failRate = (int)$stats7['failed'] / $total7;
+        if ($failRate > 0.15) {
+            $score -= 25;
+            $factors[] = '7天失敗率偏高';
+        } elseif ($failRate > 0.05) {
+            $score -= 10;
+            $factors[] = '7天有少量失敗';
+        }
+    }
+
+    // 2. 待重試數扣分
+    $pending = db_query_one("SELECT COUNT(*) as cnt FROM plan_notifications WHERE status='failed' AND retry_count < 3");
+    $pendingCount = (int)($pending['cnt'] ?? 0);
+    if ($pendingCount >= 10) {
+        $score -= 30;
+        $factors[] = '大量待重試提醒';
+    } elseif ($pendingCount >= 3) {
+        $score -= 15;
+        $factors[] = '有待重試提醒';
+    }
+
+    // 3. 最後執行時間（超過2天沒跑扣分）
+    $lastRun = db_query_one("SELECT MAX(sent_at) as last_sent FROM plan_notifications");
+    if ($lastRun && $lastRun['last_sent']) {
+        $days = (time() - strtotime($lastRun['last_sent'])) / 86400;
+        if ($days > 2) {
+            $score -= 20;
+            $factors[] = '超過2天未執行提醒';
+        } elseif ($days > 1) {
+            $score -= 8;
+            $factors[] = '昨日未執行提醒';
+        }
+    } else {
+        $score -= 15;
+        $factors[] = '無執行記錄';
+    }
+
+    $score = max(0, min(100, $score));
+
+    if (empty($factors)) {
+        $factors[] = '系統運行良好';
+    }
+
+    return [
+        'score' => $score,
+        'factors' => $factors,
+        'pending_retries' => $pendingCount,
+        'last_run' => $lastRun['last_sent'] ?? null
+    ];
+}
+
 /* ==================== Phase 6: 付款計劃進階分析與預測 ==================== */
 
 /**
